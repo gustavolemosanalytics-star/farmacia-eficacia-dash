@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageHeader } from '@/components/ui/MockDataBadge';
+import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
 import { Package, ShoppingCart, TrendingUp, MapPin, Tag } from 'lucide-react';
 import {
     BarChart,
@@ -87,17 +88,25 @@ export default function CatalogoPage() {
         color: COLORS[index % COLORS.length]
     }));
 
+
+    // ...
+
     return (
         <div className="space-y-6">
-            {/* Header Padronizado */}
-            <PageHeader
-                title="Catálogo & E-commerce (Magento)"
-                description="Dados do CRM Magento - Aba BD Mag"
-                hasRealData={!!realData}
-                hasMockData={!realData && !loading}
-            >
-                <DatePickerWithRange />
-            </PageHeader>
+            {/* Header with Date Picker */}
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <PageHeader
+                    title="Catálogo de Produtos"
+                    description="Performance de produtos, categorias e regiões"
+                    hasRealData={!!realData}
+                />
+                <GlobalDatePicker />
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {kpis.map((kpi) => (
+                    <KPICard key={kpi.id} data={kpi} />
+                ))}
+            </div>
 
             {/* Loading State */}
             {loading && (

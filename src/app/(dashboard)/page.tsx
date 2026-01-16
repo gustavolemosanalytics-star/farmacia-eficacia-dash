@@ -10,6 +10,8 @@ import {
 } from 'recharts';
 import { useCatalogoData, useGA4KPIs, useGoogleAdsKPIs } from '@/hooks/useSheetData';
 
+import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
+
 export default function HomeExecutiva() {
     const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
     const { loading: loadingGA4 } = useGA4KPIs();
@@ -17,7 +19,7 @@ export default function HomeExecutiva() {
 
     const loading = loadingCatalogo || loadingGA4 || loadingGads;
 
-    // Build KPIs from Magento data (primary source for e-commerce)
+    // KPIs from Magento data (primary source for e-commerce)
     const magentoKpis = catalogoData ? [
         {
             id: 'receita_magento',
@@ -122,12 +124,16 @@ export default function HomeExecutiva() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <PageHeader
-                title="Home Executiva"
-                description="Visão consolidada de performance • Dados do Magento (BD Mag), GA4 e Google Ads"
-                hasRealData={!!catalogoData}
-            />
+            {/* Header with Date Picker */}
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <PageHeader
+                    title="Visão Geral Executiva"
+                    description="Visão consolidada de performance • Dados do Magento (BD Mag), GA4 e Google Ads"
+                    hasRealData={!!catalogoData}
+                />
+                <GlobalDatePicker />
+            </div>
+
 
             {/* Loading State */}
             {loading && (

@@ -153,9 +153,32 @@ export const fetchTVSalesData = async () => {
     });
 };
 
+// Helper to parse date
+const parseDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    // Try YYYY-MM-DD
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return new Date(dateStr);
+    // Try DD/MM/YYYY
+    if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+        const [d, m, y] = dateStr.split('/');
+        return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+    // Try parsing as is
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? null : d;
+};
+
 // Aggregate Google Ads KPIs
-export const aggregateGoogleAdsKPIs = async () => {
-    const data = await fetchGoogleAdsData();
+export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) => {
+    let data = await fetchGoogleAdsData();
+
+    if (startDate && endDate) {
+        data = data.filter(entry => {
+            const entryDate = parseDate(entry.day || entry.data || entry.campaignStartDate);
+            if (!entryDate) return true; // Keep if no date (safe?) or false? false is safer.
+            return entryDate >= startDate && entryDate <= endDate;
+        });
+    }
 
     const totalCost = data.reduce((sum, entry) => sum + (entry.cost || 0), 0);
     const totalConversions = data.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
@@ -176,8 +199,16 @@ export const aggregateGoogleAdsKPIs = async () => {
 };
 
 // Aggregate GA4 KPIs
-export const aggregateGA4KPIs = async () => {
-    const data = await fetchGA4Data();
+export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
+    let data = await fetchGA4Data();
+
+    if (startDate && endDate) {
+        data = data.filter(entry => {
+            const entryDate = parseDate(entry.transactionDate || entry.data);
+            if (!entryDate) return true;
+            return entryDate >= startDate && entryDate <= endDate;
+        });
+    }
 
     const totalRevenue = data.reduce((sum, entry) => sum + (entry.purchaseRevenue || 0), 0);
     const totalTransactions = data.length;
@@ -281,26 +312,40 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
     );
 
     // Filter by Date Range if provided
+    // Filter by Date Range if provided
     if (startDate && endDate) {
         completedOrders = completedOrders.filter(order => {
             const dateStr = order.data || order.dataTransacao;
             if (!dateStr) return false;
 
             try {
-                // Assume DD/MM/YYYY
-                const [day, month, year] = dateStr.includes('/')
-                    ? dateStr.split(' ')[0].split('/')
-                    : [];
+                // Normaliza a data para objeto Date
+                let orderDate: Date | null = null;
+                const datePart = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr;
 
-                if (day && month && year) {
-                    const orderDate = new Date(Number(year), Number(month) - 1, Number(day));
+                if (datePart.includes('/')) {
+                    // Formato DD/MM/YYYY
+                    const parts = datePart.split('/');
+                    if (parts.length === 3) {
+                        orderDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                    }
+                } else if (datePart.includes('-')) {
+                    // Formato YYYY-MM-DD
+                    orderDate = new Date(datePart);
+                    // Adjust for timezone if needed, usually new Date('YYYY-MM-DD') is UTC, 
+                    // but simple comparison usually works if we reset hours.
+                    // For safety, assume local time if it's simple date string
+                    if (orderDate) orderDate.setHours(12, 0, 0, 0);
+                }
+
+                if (orderDate && !isNaN(orderDate.getTime())) {
                     // Reset hours for comparison
                     const start = new Date(startDate); start.setHours(0, 0, 0, 0);
                     const end = new Date(endDate); end.setHours(23, 59, 59, 999);
-
                     return orderDate >= start && orderDate <= end;
                 }
-                return true; // Keep if date parse fails? Or false? Better keep to avoid losing data on bad format
+
+                return true;
             } catch (e) {
                 return true;
             }
@@ -371,7 +416,8 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
     // Revenue by channel/origin
     const channelRevenue: { [key: string]: number } = {};
     completedOrders.forEach(order => {
-        const channel = order.origem || order.midia || 'Direto';
+        // User requested grouping by 'Origem' specifically
+        const channel = order.origem || 'Não identificado';
         channelRevenue[channel] = (channelRevenue[channel] || 0) + (order.receitaProduto || 0);
     });
 
@@ -471,25 +517,36 @@ export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
             if (!dateStr) return false;
 
             try {
-                // Assume DD/MM/YYYY
-                const [day, month, year] = dateStr.includes('/')
-                    ? dateStr.split(' ')[0].split('/')
-                    : [];
+                // Normaliza a data para objeto Date
+                let orderDate: Date | null = null;
+                const datePart = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr;
 
-                if (day && month && year) {
-                    const orderDate = new Date(Number(year), Number(month) - 1, Number(day));
+                if (datePart.includes('/')) {
+                    // Formato DD/MM/YYYY
+                    const parts = datePart.split('/');
+                    if (parts.length === 3) {
+                        orderDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                    }
+                } else if (datePart.includes('-')) {
+                    // Formato YYYY-MM-DD
+                    orderDate = new Date(datePart);
+                    if (orderDate) orderDate.setHours(12, 0, 0, 0);
+                }
+
+                if (orderDate && !isNaN(orderDate.getTime())) {
                     // Reset hours for comparison
                     const start = new Date(startDate); start.setHours(0, 0, 0, 0);
                     const end = new Date(endDate); end.setHours(23, 59, 59, 999);
-
                     return orderDate >= start && orderDate <= end;
                 }
+
                 return true;
             } catch (e) {
                 return true;
             }
         });
     }
+
 
     // Unique customers
     const uniqueCustomers = new Set(completedOrders.map(d => d.emailCliente || d.cpfCliente).filter(Boolean));

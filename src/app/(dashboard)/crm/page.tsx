@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageHeader } from '@/components/ui/MockDataBadge';
+import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
 import { kpisCRM, cohortData, segmentosRFM } from '@/lib/mockData';
 import { Users, Heart, Crown, AlertTriangle, XCircle, TrendingUp } from 'lucide-react';
 import {
@@ -91,17 +92,20 @@ export default function CrmPage() {
         return topCities;
     };
 
+
+    // ...
+
     return (
         <div className="space-y-6">
-            {/* Header Padronizado */}
-            <PageHeader
-                title="CRM & Retenção"
-                description="Análise de base de clientes, cohorts e segmentação RFM"
-                hasRealData={!!realData}
-                hasMockData={!realData}
-            >
-                <DatePickerWithRange />
-            </PageHeader>
+            {/* Header with Date Picker */}
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <PageHeader
+                    title="CRM & Retenção"
+                    description="Análise de clientes, vendas e retenção"
+                    hasRealData={!!realData}
+                />
+                <GlobalDatePicker />
+            </div>
 
             {/* KPIs */}
             <section>
@@ -401,114 +405,118 @@ export default function CrmPage() {
             </div>
 
             {/* Top Clientes & Vendas por Vendedor */}
-            {realData && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Top Clientes */}
-                    <Card className="border-border bg-card">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium text-foreground">Top 10 Clientes (Receita)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b border-border">
-                                            <th className="text-left py-3 px-2 font-medium text-muted-foreground">Cliente (CPF/ID)</th>
-                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Pedidos</th>
-                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {realData.topCustomers?.map((row: any) => (
-                                            <tr key={row.email || row.nome} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                                                <td className="py-3 px-2">
-                                                    <p className="font-medium text-foreground">{row.nome}</p>
-                                                    {row.email && <p className="text-xs text-muted-foreground">{row.email}</p>}
-                                                </td>
-                                                <td className="py-3 px-2 text-right text-muted-foreground">
-                                                    {row.qtdPedidos}
-                                                </td>
-                                                <td className="py-3 px-2 text-right font-medium text-foreground">
-                                                    {row.receita_formatted}
-                                                </td>
+            {
+                realData && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Top Clientes */}
+                        <Card className="border-border bg-card">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium text-foreground">Top 10 Clientes (Receita)</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b border-border">
+                                                <th className="text-left py-3 px-2 font-medium text-muted-foreground">Cliente (CPF/ID)</th>
+                                                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Pedidos</th>
+                                                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                        </thead>
+                                        <tbody>
+                                            {realData.topCustomers?.map((row: any) => (
+                                                <tr key={row.email || row.nome} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                                                    <td className="py-3 px-2">
+                                                        <p className="font-medium text-foreground">{row.nome}</p>
+                                                        {row.email && <p className="text-xs text-muted-foreground">{row.email}</p>}
+                                                    </td>
+                                                    <td className="py-3 px-2 text-right text-muted-foreground">
+                                                        {row.qtdPedidos}
+                                                    </td>
+                                                    <td className="py-3 px-2 text-right font-medium text-foreground">
+                                                        {row.receita_formatted}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                    {/* Vendas por Vendedor */}
-                    <Card className="border-border bg-card">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium text-foreground">Receita por Vendedor</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-[300px] w-full">
-                                {realData.bySeller?.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart
-                                            data={realData.bySeller.slice(0, 8)}
-                                            layout="vertical"
-                                            margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
-                                            <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
-                                            <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={11} width={80} />
-                                            <Tooltip
-                                                formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
-                                                contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                                            />
-                                            <Bar dataKey="value" name="Receita" fill="#10b981" radius={[0, 4, 4, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                                        Sem dados de vendedores
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+                        {/* Vendas por Vendedor */}
+                        <Card className="border-border bg-card">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium text-foreground">Receita por Vendedor</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="h-[300px] w-full">
+                                    {realData.bySeller?.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                data={realData.bySeller.slice(0, 8)}
+                                                layout="vertical"
+                                                margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
+                                                <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
+                                                <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={11} width={80} />
+                                                <Tooltip
+                                                    formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                                    contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                                                />
+                                                <Bar dataKey="value" name="Receita" fill="#10b981" radius={[0, 4, 4, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                                            Sem dados de vendedores
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )
+            }
 
             {/* Vendas por Cidade */}
-            {realData && (
-                <section>
-                    <Card className="border-border bg-card">
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium text-foreground">Top 10 Cidades (Receita)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-[300px] w-full">
-                                {realData.byCity?.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart
-                                            data={realData.byCity}
-                                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                            <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                                            <YAxis stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
-                                            <Tooltip
-                                                formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
-                                                contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                                            />
-                                            <Bar dataKey="value" name="Receita" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="flex items-center justify-center h-full text-muted-foreground">
-                                        Sem dados de cidades
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
-            )}
+            {
+                realData && (
+                    <section>
+                        <Card className="border-border bg-card">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium text-foreground">Top 10 Cidades (Receita)</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="h-[300px] w-full">
+                                    {realData.byCity?.length > 0 ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                data={realData.byCity}
+                                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                            >
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
+                                                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
+                                                <Tooltip
+                                                    formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                                    contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                                                />
+                                                <Bar dataKey="value" name="Receita" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-muted-foreground">
+                                            Sem dados de cidades
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </section>
+                )
+            }
 
             {/* Cohort Heatmap */}
             <section>
@@ -557,6 +565,6 @@ export default function CrmPage() {
                     </CardContent>
                 </Card>
             </section>
-        </div>
+        </div >
     );
 }

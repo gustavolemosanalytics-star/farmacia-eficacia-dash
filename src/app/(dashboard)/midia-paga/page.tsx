@@ -56,7 +56,7 @@ const COLORS = ['#4285F4', '#EA4335', '#FBBC05', '#34A853', '#9C27B0', '#FF5722'
 const TYPE_COLORS: Record<string, string> = { 'PMax': '#4285F4', 'Shopping': '#EA4335', 'Search': '#34A853' };
 
 import { PageHeader } from '@/components/ui/MockDataBadge';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
 
 export default function MidiaPagaPage() {
     const kpis = getKpisMidiaPaga();
@@ -82,14 +82,15 @@ export default function MidiaPagaPage() {
 
     return (
         <div className="space-y-6">
-            {/* Título Padronizado */}
-            <PageHeader
-                title="Mídia Paga"
-                description="Performance de Google Ads - Dados do BD GAds"
-                hasRealData={true}
-            >
-                <DatePickerWithRange />
-            </PageHeader>
+            {/* Header with Date Picker */}
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <PageHeader
+                    title="Mídia Paga"
+                    description="Performance de Google Ads - Dados do BD GAds"
+                    hasRealData={true}
+                />
+                <GlobalDatePicker />
+            </div>
 
             {/* KPIs Overview */}
             <section>

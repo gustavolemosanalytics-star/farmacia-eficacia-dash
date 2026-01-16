@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/MockDataBadge';
+import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
 import { getGA4KPIs } from '@/lib/data/ga4Data';
 import { getGoogleAdsKPIs, getGoogleAdsByCampaign } from '@/lib/data/googleAdsData';
 import { Brain, MessageSquare, Send, TrendingUp, TrendingDown, Lightbulb, AlertTriangle, CheckCircle, Target } from 'lucide-react';
@@ -43,6 +44,7 @@ const generateInsights = () => {
 export default function DiagnosticoPage() {
     const [pergunta, setPergunta] = useState('');
     const insights = generateInsights();
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const initialResponse = `## Análise Integrada GA4 + Google Ads
 
@@ -69,6 +71,14 @@ Baseado nos dados reais das suas planilhas, aqui está o diagnóstico atual:
     const [respostas, setRespostas] = useState<{ pergunta: string; resposta: string }[]>([
         { pergunta: 'Qual é a situação atual do meu e-commerce?', resposta: initialResponse }
     ]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [respostas]);
 
     const handleEnviar = () => {
         if (!pergunta.trim()) return;
@@ -107,12 +117,15 @@ Baseado nos dados reais das suas planilhas, aqui está o diagnóstico atual:
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <PageHeader
-                title="Diagnóstico IA"
-                description="Root Cause Analysis com dados reais do GA4 e Google Ads"
-                hasRealData={true}
-            />
+            {/* Header with Date Picker */}
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <PageHeader
+                    title="Diagnóstico IA"
+                    description="Root Cause Analysis com dados reais do GA4 e Google Ads"
+                    hasRealData={true}
+                />
+                <GlobalDatePicker />
+            </div>
 
             {/* Key Metrics */}
             <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -125,7 +138,7 @@ Baseado nos dados reais das suas planilhas, aqui está o diagnóstico atual:
                                     <p className="text-xl font-bold text-foreground">{metric.value}</p>
                                 </div>
                                 <div className={`w-3 h-3 rounded-full ${metric.status === 'good' ? 'bg-emerald-500' :
-                                        metric.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'
+                                    metric.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'
                                     }`} />
                             </div>
                         </CardContent>
@@ -211,6 +224,7 @@ Baseado nos dados reais das suas planilhas, aqui está o diagnóstico atual:
                                         </div>
                                     </div>
                                 ))}
+                                <div ref={messagesEndRef} />
                             </div>
 
                             {/* Sugestões */}

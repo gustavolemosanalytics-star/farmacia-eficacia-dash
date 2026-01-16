@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageHeader } from '@/components/ui/MockDataBadge';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
 import {
     ga4Data,
     getGA4KPIs,
@@ -24,19 +23,11 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart as RechartsPie, Pie, Cell, AreaChart, Area, Legend
 } from 'recharts';
-import { DateRange } from 'react-day-picker';
-import { addDays } from 'date-fns';
 
 const COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#60a5fa', '#81c995'];
 const STATUS_COLORS = { 'Faturado': '#34A853', 'Cancelado': '#EA4335' }; // Green for Paid, Red for Cancelled
 
 export default function AquisicaoPage() {
-    // Date Range State (Default: Last 30 days)
-    const [date, setDate] = useState<DateRange | undefined>({
-        from: addDays(new Date(), -30),
-        to: new Date(),
-    });
-
     // Fetch data (In a real app, we would filter by date here)
     const kpis = getGA4KPIs();
     const attributionData = getTopAttribution();
@@ -67,7 +58,7 @@ export default function AquisicaoPage() {
                     description="Performance de canais, atribuição e produtos (Base: BD GA4)"
                     hasRealData={true}
                 />
-                <DatePickerWithRange date={date} setDate={setDate} />
+                <GlobalDatePicker />
             </div>
 
             {/* KPIs Principais */}

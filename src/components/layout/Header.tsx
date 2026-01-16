@@ -4,57 +4,50 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {
-    useFilterStore,
-    comparacaoLabels,
-    granularidadeLabels,
-    type Granularidade,
-    type TipoComparacao,
-} from '@/stores/filterStore';
 import { useTheme } from '@/components/theme-provider';
 import { MobileSidebar } from './Sidebar';
 import {
     RefreshCw,
     Sparkles,
-    Calendar,
-    ChevronDown,
     Bell,
     Sun,
     Moon,
 } from 'lucide-react';
-
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
-import { DateRange } from 'react-day-picker';
+import { usePathname } from 'next/navigation';
 
 interface HeaderProps {
     titulo?: string;
 }
 
-export function Header({ titulo = 'Home Executiva' }: HeaderProps) {
+export function Header({ titulo: defaultTitulo }: HeaderProps) {
+    const pathname = usePathname();
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const { granularidade, setGranularidade, comparacao, setComparacao, periodoInicio, periodoFim, setPeriodo } = useFilterStore();
     const { theme, toggleTheme } = useTheme();
+
+    const getTitle = () => {
+        switch (pathname) {
+            case '/': return 'Visão Geral Executiva';
+            case '/catalogo': return 'Catálogo de Produtos';
+            case '/crm': return 'CRM & Retenção';
+            case '/aquisicao': return 'Aquisição & Tráfego';
+            case '/midia-paga': return 'Mídia Paga (Ads)';
+            case '/seo': return 'SEO & Demanda';
+            case '/funil': return 'Funil de Conversão';
+            case '/email': return 'E-mail & Automação';
+            case '/social': return 'Social & Marca';
+            case '/preco': return 'Monitoramento de Preços';
+            case '/operacao': return 'Operação & CX';
+            case '/data-quality': return 'Qualidade de Dados';
+            case '/diagnostico': return 'Diagnóstico com IA';
+            default: return defaultTitulo || 'Plataforma BI';
+        }
+    };
+
+    const titulo = getTitle();
 
     const handleRefresh = () => {
         setIsRefreshing(true);
         setTimeout(() => setIsRefreshing(false), 1500);
-    };
-
-    const handleDateChange = (range: DateRange | undefined) => {
-        if (range?.from) {
-            // If 'to' is undefined, react-day-picker might be in selection, 
-            // but we enforce from/to in store. If 'to' is missing, maybe default to 'from' or wait.
-            // For safety, only update if from is present. Use from as to if missing?
-            setPeriodo(range.from, range.to || range.from);
-        }
     };
 
     return (
@@ -62,94 +55,40 @@ export function Header({ titulo = 'Home Executiva' }: HeaderProps) {
             {/* Mobile Menu + Título */}
             <div className="flex items-center gap-3">
                 <MobileSidebar />
-                <div>
-                    <h1 className="text-base lg:text-lg font-semibold text-zinc-900 dark:text-white">{titulo}</h1>
-                    <div className="hidden sm:block mt-1">
-                        <DatePickerWithRange
-                            date={{ from: periodoInicio, to: periodoFim }}
-                            setDate={handleDateChange}
-                            className="w-auto"
-                        />
-                    </div>
-                </div>
+                <h1 className="text-base lg:text-lg font-semibold text-zinc-900 dark:text-white">{titulo}</h1>
             </div>
 
-            {/* Filtros Globais */}
-            <div className="flex items-center gap-2 lg:gap-3">
-                {/* Granularidade - Hidden on mobile */}
-                <Select value={granularidade} onValueChange={(v) => setGranularidade(v as Granularidade)}>
-                    <SelectTrigger className="hidden sm:flex h-8 w-24 lg:w-28 border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-xs text-zinc-700 dark:text-zinc-300">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900">
-                        {(Object.entries(granularidadeLabels) as [Granularidade, string][]).map(([key, label]) => (
-                            <SelectItem key={key} value={key} className="text-xs text-zinc-700 dark:text-zinc-300">
-                                {label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+            {/* Ações Direita */}
+            <div className="flex items-center gap-2 sm:gap-4">
+                <Button variant="ghost" size="icon" className="w-9 h-9 relative" aria-label="Notificações">
+                    <Bell className="h-4 w-4 text-zinc-600 dark:text-zinc-400" />
+                    <span className="absolute top-2 right-2.5 h-2 w-2 rounded-full bg-red-500 border-2 border-white dark:border-zinc-950" />
+                    <span className="sr-only">Notificações: 3</span>
+                </Button>
 
-                {/* Comparação */}
-                <Select value={comparacao} onValueChange={(v) => setComparacao(v as TipoComparacao)}>
-                    <SelectTrigger className="h-8 w-28 lg:w-36 border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-xs text-zinc-700 dark:text-zinc-300">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900">
-                        {(Object.entries(comparacaoLabels) as [TipoComparacao, string][]).map(([key, label]) => (
-                            <SelectItem key={key} value={key} className="text-xs text-zinc-700 dark:text-zinc-300">
-                                {label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <Button variant="outline" size="sm" className="hidden sm:flex gap-2 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Pergunte à IA</span>
+                </Button>
 
-                {/* Theme Toggle */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                    onClick={toggleTheme}
-                >
+                <Button variant="ghost" size="icon" className="w-9 h-9" onClick={handleRefresh}>
+                    <RefreshCw className={`h-4 w-4 text-zinc-600 dark:text-zinc-400 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+
+                <Button variant="ghost" size="icon" onClick={toggleTheme} className="w-9 h-9">
                     {theme === 'dark' ? (
-                        <Sun className="h-4 w-4" />
+                        <Moon className="h-4 w-4 text-zinc-600 dark:text-zinc-400 transition-all" />
                     ) : (
-                        <Moon className="h-4 w-4" />
+                        <Sun className="h-4 w-4 text-zinc-600 dark:text-zinc-400 transition-all" />
                     )}
                 </Button>
 
-                {/* Notificações */}
-                <Button variant="ghost" size="icon" className="relative h-8 w-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">
-                    <Bell className="h-4 w-4" />
-                    <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                        3
-                    </span>
-                </Button>
-
-                {/* Ask AI - Hidden on small mobile */}
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="hidden sm:flex h-8 gap-2 border-purple-500/50 bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20 hover:text-purple-700 dark:hover:text-purple-300"
-                >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span className="hidden md:inline text-xs">Pergunte à IA</span>
-                </Button>
-
-                {/* Refresh */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
-                    onClick={handleRefresh}
-                >
-                    <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </Button>
-
-                {/* Last Update - Hidden on mobile */}
-                <Badge variant="outline" className="hidden lg:flex h-6 border-zinc-300 dark:border-zinc-700 text-[10px] text-zinc-500">
-                    Atualizado: {format(new Date(), 'HH:mm')}
-                </Badge>
+                <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-zinc-200 dark:border-zinc-800">
+                    <div className="text-xs text-right hidden lg:block">
+                        <p className="font-medium text-zinc-900 dark:text-zinc-100">Atualizado</p>
+                        <p className="text-zinc-500 dark:text-zinc-400">{format(new Date(), 'HH:mm', { locale: ptBR })}</p>
+                    </div>
+                </div>
             </div>
         </header>
     );

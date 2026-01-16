@@ -106,7 +106,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                 <div className="px-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                     <div className="flex items-center gap-2 text-[10px] text-zinc-400">
                         <MockDataBadge variant="sidebar" />
-                        <span>Dados de demonstração</span>
+                        <span>Developed by DeltaViz</span>
                     </div>
                 </div>
             </nav>
