@@ -157,13 +157,13 @@ export default function HomeExecutiva() {
             {catalogoData && (
                 <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Revenue Trend */}
-                    <Card className="border-border bg-card">
+                    <Card className="border-border bg-card h-full">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <Activity className="h-5 w-5 text-primary" />
                             <CardTitle className="text-sm font-medium text-card-foreground">Receita Diária (Magento)</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={280}>
+                            <ResponsiveContainer width="100%" height={350}>
                                 <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
@@ -173,7 +173,6 @@ export default function HomeExecutiva() {
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                                     <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(val) => {
-                                        // Format date to DD/MM if it's YYYY-MM-DD or similar
                                         if (typeof val === 'string' && val.includes('-')) {
                                             const parts = val.split('-');
                                             if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
@@ -193,20 +192,20 @@ export default function HomeExecutiva() {
                     </Card>
 
                     {/* Channel Distribution */}
-                    <Card className="border-border bg-card">
+                    <Card className="border-border bg-card h-full">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <PieChart className="h-5 w-5 text-primary" />
                             <CardTitle className="text-sm font-medium text-card-foreground">Receita por Canal de Origem</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={280}>
+                            <ResponsiveContainer width="100%" height={350}>
                                 <RechartsPie>
                                     <Pie
                                         data={channelData}
                                         cx="50%"
                                         cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={100}
+                                        innerRadius={80}
+                                        outerRadius={120}
                                         paddingAngle={2}
                                         dataKey="value"
                                         label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
@@ -230,20 +229,20 @@ export default function HomeExecutiva() {
             {/* Revenue by Category */}
             {categoryData.length > 0 && (
                 <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card className="border-border bg-card">
+                    <Card className="border-border bg-card h-full">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <PieChart className="h-5 w-5 text-primary" />
                             <CardTitle className="text-sm font-medium text-card-foreground">Receita por Categoria</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={280}>
+                            <ResponsiveContainer width="100%" height={350}>
                                 <RechartsPie>
                                     <Pie
                                         data={categoryData}
                                         cx="50%"
                                         cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={100}
+                                        innerRadius={80}
+                                        outerRadius={120}
                                         paddingAngle={2}
                                         dataKey="value"
                                         label={({ name, percent }) => `${(name || '').substring(0, 15)} ${((percent || 0) * 100).toFixed(0)}%`}
@@ -263,22 +262,22 @@ export default function HomeExecutiva() {
                     </Card>
 
                     {/* Revenue by State */}
-                    <Card className="border-border bg-card">
+                    <Card className="border-border bg-card h-full">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <BarChart3 className="h-5 w-5 text-primary" />
                             <CardTitle className="text-sm font-medium text-card-foreground">Receita por Estado</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={280}>
-                                <BarChart data={stateData} margin={{ left: 20, right: 20, bottom: 20 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                                    <YAxis stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                            <ResponsiveContainer width="100%" height={350}>
+                                <BarChart data={stateData} margin={{ left: 20, right: 20, bottom: 20 }} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
+                                    <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                                    <YAxis dataKey="name" type="category" stroke="var(--muted-foreground)" fontSize={12} width={50} />
                                     <Tooltip
                                         formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
                                         contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                     />
-                                    <Bar dataKey="value" name="Receita" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="value" name="Receita" fill="#3b82f6" radius={[0, 4, 4, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </CardContent>

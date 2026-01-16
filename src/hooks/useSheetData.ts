@@ -1,17 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 
+import { useFilterStore } from '@/stores/filterStore';
+
 // Generic hook for fetching sheet data
 export function useSheetData<T>(endpoint: string, aggregated: boolean = false) {
     const [data, setData] = useState<T | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { periodoInicio, periodoFim } = useFilterStore();
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         setError(null);
 
         try {
-            const url = aggregated ? `${endpoint}?aggregated=true` : endpoint;
+            const params = new URLSearchParams();
+            if (aggregated) params.append('aggregated', 'true');
+            if (periodoInicio) params.append('startDate', periodoInicio.toISOString());
+            if (periodoFim) params.append('endDate', periodoFim.toISOString());
+
+            const url = `${endpoint}?${params.toString()}`;
             const response = await fetch(url);
             const result = await response.json();
 
@@ -25,7 +33,7 @@ export function useSheetData<T>(endpoint: string, aggregated: boolean = false) {
         } finally {
             setLoading(false);
         }
-    }, [endpoint, aggregated]);
+    }, [endpoint, aggregated, periodoInicio, periodoFim]);
 
     useEffect(() => {
         fetchData();

@@ -31,13 +31,16 @@ import {
     Moon,
 } from 'lucide-react';
 
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { DateRange } from 'react-day-picker';
+
 interface HeaderProps {
     titulo?: string;
 }
 
 export function Header({ titulo = 'Home Executiva' }: HeaderProps) {
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const { granularidade, setGranularidade, comparacao, setComparacao, periodoInicio, periodoFim } = useFilterStore();
+    const { granularidade, setGranularidade, comparacao, setComparacao, periodoInicio, periodoFim, setPeriodo } = useFilterStore();
     const { theme, toggleTheme } = useTheme();
 
     const handleRefresh = () => {
@@ -45,8 +48,13 @@ export function Header({ titulo = 'Home Executiva' }: HeaderProps) {
         setTimeout(() => setIsRefreshing(false), 1500);
     };
 
-    const formatarPeriodo = () => {
-        return `${format(periodoInicio, "dd MMM", { locale: ptBR })} - ${format(periodoFim, "dd MMM yyyy", { locale: ptBR })}`;
+    const handleDateChange = (range: DateRange | undefined) => {
+        if (range?.from) {
+            // If 'to' is undefined, react-day-picker might be in selection, 
+            // but we enforce from/to in store. If 'to' is missing, maybe default to 'from' or wait.
+            // For safety, only update if from is present. Use from as to if missing?
+            setPeriodo(range.from, range.to || range.from);
+        }
     };
 
     return (
@@ -56,11 +64,13 @@ export function Header({ titulo = 'Home Executiva' }: HeaderProps) {
                 <MobileSidebar />
                 <div>
                     <h1 className="text-base lg:text-lg font-semibold text-zinc-900 dark:text-white">{titulo}</h1>
-                    <button className="hidden sm:flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                        <Calendar className="h-3 w-3" />
-                        {formatarPeriodo()}
-                        <ChevronDown className="h-3 w-3" />
-                    </button>
+                    <div className="hidden sm:block mt-1">
+                        <DatePickerWithRange
+                            date={{ from: periodoInicio, to: periodoFim }}
+                            setDate={handleDateChange}
+                            className="w-auto"
+                        />
+                    </div>
                 </div>
             </div>
 

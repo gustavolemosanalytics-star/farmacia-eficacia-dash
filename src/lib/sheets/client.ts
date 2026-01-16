@@ -58,6 +58,12 @@ export const getSheetData = async (sheetName: string, range?: string): Promise<a
         return response.data.values || [];
     } catch (error) {
         console.error(`Error fetching sheet ${sheetName}:`, error);
+        if (error instanceof Error) {
+            console.error('Error Stack:', error.stack);
+            console.error('Error Message:', error.message);
+        }
+        // If it's a file issue (missing credentials), log it clearly
+        // Don't swallow the error, let it bubble up to the route handler which returns 500
         throw error;
     }
 };
@@ -262,17 +268,44 @@ export const fetchMagData = async () => {
 };
 
 // Aggregate Catalogo/Magento KPIs
-export const aggregateCatalogoKPIs = async () => {
+export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) => {
     const data = await fetchMagData();
 
     // Filter only completed orders (status validation)
-    const completedOrders = data.filter(d =>
+    let completedOrders = data.filter(d =>
         d.status?.toLowerCase().includes('complete') ||
         d.status?.toLowerCase().includes('completo') ||
         d.status?.toLowerCase().includes('pago') ||
         d.status?.toLowerCase().includes('enviado') ||
         !d.status // Include if no status
     );
+
+    // Filter by Date Range if provided
+    if (startDate && endDate) {
+        completedOrders = completedOrders.filter(order => {
+            const dateStr = order.data || order.dataTransacao;
+            if (!dateStr) return false;
+
+            try {
+                // Assume DD/MM/YYYY
+                const [day, month, year] = dateStr.includes('/')
+                    ? dateStr.split(' ')[0].split('/')
+                    : [];
+
+                if (day && month && year) {
+                    const orderDate = new Date(Number(year), Number(month) - 1, Number(day));
+                    // Reset hours for comparison
+                    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+                    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+
+                    return orderDate >= start && orderDate <= end;
+                }
+                return true; // Keep if date parse fails? Or false? Better keep to avoid losing data on bad format
+            } catch (e) {
+                return true;
+            }
+        });
+    }
 
     // Total revenue
     const totalReceita = completedOrders.reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0);
@@ -419,17 +452,44 @@ export const aggregateCatalogoKPIs = async () => {
 };
 
 // Aggregate CRM KPIs
-export const aggregateCRMKPIs = async () => {
+export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
     const data = await fetchMagData();
 
     // Filter only completed orders
-    const completedOrders = data.filter(d =>
+    let completedOrders = data.filter(d =>
         d.status?.toLowerCase().includes('complete') ||
         d.status?.toLowerCase().includes('completo') ||
         d.status?.toLowerCase().includes('pago') ||
         d.status?.toLowerCase().includes('enviado') ||
         !d.status
     );
+
+    // Filter by Date Range if provided
+    if (startDate && endDate) {
+        completedOrders = completedOrders.filter(order => {
+            const dateStr = order.data || order.dataTransacao;
+            if (!dateStr) return false;
+
+            try {
+                // Assume DD/MM/YYYY
+                const [day, month, year] = dateStr.includes('/')
+                    ? dateStr.split(' ')[0].split('/')
+                    : [];
+
+                if (day && month && year) {
+                    const orderDate = new Date(Number(year), Number(month) - 1, Number(day));
+                    // Reset hours for comparison
+                    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+                    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+
+                    return orderDate >= start && orderDate <= end;
+                }
+                return true;
+            } catch (e) {
+                return true;
+            }
+        });
+    }
 
     // Unique customers
     const uniqueCustomers = new Set(completedOrders.map(d => d.emailCliente || d.cpfCliente).filter(Boolean));
