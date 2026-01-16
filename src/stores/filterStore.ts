@@ -34,9 +34,21 @@ interface FilterState {
     resetFilters: () => void;
 }
 
+// Use fixed dates to avoid hydration mismatch (server vs client time difference)
+const getInitialDates = () => {
+    const now = new Date();
+    // Set to start of today to avoid time component causing hydration issues
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    return { inicio: thirtyDaysAgo, fim: today };
+};
+
+const dates = getInitialDates();
+
 const initialState = {
-    periodoInicio: subDays(new Date(), 30),
-    periodoFim: new Date(),
+    periodoInicio: dates.inicio,
+    periodoFim: dates.fim,
     granularidade: 'day' as Granularidade,
     canais: [],
     dispositivos: [],

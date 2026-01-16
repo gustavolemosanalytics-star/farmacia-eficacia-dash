@@ -96,16 +96,16 @@ export function DateRangePicker({ date, setDate, className }: DateRangePickerPro
             </div>
 
             {isOpen && (
-                <div className="absolute top-full mt-2 left-0 z-[100] bg-[#0F172A] border border-white/10 rounded-xl shadow-2xl p-4 animate-in fade-in zoom-in-95 text-white">
+                <div className="absolute top-full mt-2 right-0 z-[100] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-4 animate-in fade-in zoom-in-95 text-white max-w-[90vw] overflow-auto">
                     {/* Preset Buttons */}
-                    <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b border-white/10">
+                    <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b border-slate-700">
                         {getPresets().map((preset) => (
                             <button
                                 key={preset.label}
                                 onClick={() => {
                                     setDate(preset.getValue());
                                 }}
-                                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-white/10 hover:bg-primary hover:text-primary-foreground transition-all"
+                                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-200 hover:bg-violet-600 hover:text-white transition-all"
                             >
                                 {preset.label}
                             </button>
@@ -121,17 +121,24 @@ export function DateRangePicker({ date, setDate, className }: DateRangePickerPro
                     </div>
 
                     <style>{`
-                        .rdp { --rdp-cell-size: 32px; --rdp-accent-color: #8b5cf6; --rdp-background-color: #8b5cf6; margin: 0; }
-                        .rdp-day_selected:not([disabled]) { font-weight: bold; background-color: #8b5cf6; color: white; }
-                        .rdp-day_selected:hover:not([disabled]) { background-color: #7c3aed; color: white; }
-                        .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: rgba(255,255,255,0.1); }
-                        .rdp-caption_label { color: white; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
-                        .rdp-head_cell { color: #9CA3AF; font-size: 0.75rem; font-weight: 500; }
-                        .rdp-day { color: white; font-size: 0.85rem; }
+                        .rdp { --rdp-cell-size: 32px; --rdp-accent-color: #8b5cf6; --rdp-background-color: #8b5cf6; margin: 0; background: transparent !important; }
+                        .rdp-months { background: transparent !important; }
+                        .rdp-month { background: transparent !important; }
+                        .rdp-table { background: transparent !important; }
+                        .rdp-day_selected:not([disabled]) { font-weight: bold; background-color: #8b5cf6 !important; color: white !important; }
+                        .rdp-day_selected:hover:not([disabled]) { background-color: #7c3aed !important; color: white !important; }
+                        .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: rgba(255,255,255,0.1) !important; }
+                        .rdp-caption_label { color: white !important; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+                        .rdp-head_cell { color: #9CA3AF !important; font-size: 0.75rem; font-weight: 500; background: transparent !important; }
+                        .rdp-day { color: white !important; font-size: 0.85rem; background: transparent !important; }
                         .rdp-day_outside { opacity: 0.3; }
-                        .rdp-nav_button { color: white; }
+                        .rdp-nav_button { color: white !important; background: transparent !important; }
+                        .rdp-nav_button:hover { background: rgba(255,255,255,0.1) !important; }
                         .rdp-caption_dropdowns { display: flex; gap: 0.5rem; }
-                        .rdp-day_range_middle { background-color: rgba(139, 92, 246, 0.2); }
+                        .rdp-day_range_middle { background-color: rgba(139, 92, 246, 0.3) !important; color: white !important; }
+                        .rdp-dropdown { background: #1e293b !important; color: white !important; border: 1px solid #475569 !important; border-radius: 6px; padding: 4px 8px; }
+                        .rdp-dropdown option { background: #1e293b !important; color: white !important; }
+                        .rdp-vhidden { display: none; }
                     `}</style>
                     <DayPicker
                         mode="range"
