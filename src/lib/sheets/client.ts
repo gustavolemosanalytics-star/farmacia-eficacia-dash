@@ -20,10 +20,20 @@ const getAuthClient = async () => {
     if (process.env.GOOGLE_CREDENTIALS) {
         try {
             const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
-            return google.auth.fromJSON(credentials);
+
+            // Use GoogleAuth with credentials object directly
+            const auth = new google.auth.GoogleAuth({
+                credentials: {
+                    client_email: credentials.client_email,
+                    private_key: credentials.private_key,
+                },
+                scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+            });
+
+            return auth.getClient();
         } catch (error) {
             console.error('Error parsing GOOGLE_CREDENTIALS env var:', error);
-            // Fallback to file if parsing fails
+            throw new Error('Failed to parse GOOGLE_CREDENTIALS environment variable');
         }
     }
 
