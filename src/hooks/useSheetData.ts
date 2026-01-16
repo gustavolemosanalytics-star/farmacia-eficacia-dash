@@ -70,3 +70,13 @@ export function useGA4KPIs() {
         refetch
     };
 }
+
+// Hook for Catalogo Data
+export function useCatalogoData() {
+    return useSheetData<any>('/api/sheets/catalogo');
+}
+
+// Hook for CRM Data
+export function useCRMData() {
+    return useSheetData<any>('/api/sheets/crm');
+}
