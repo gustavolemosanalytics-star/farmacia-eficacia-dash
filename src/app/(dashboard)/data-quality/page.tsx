@@ -3,26 +3,46 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
+import { PageHeader } from '@/components/ui/MockDataBadge';
 import { kpisDataQuality, discrepancias } from '@/lib/mockData';
-import { Database, AlertTriangle, Check, X } from 'lucide-react';
+import { Database, AlertTriangle, Check, X, ShieldCheck } from 'lucide-react';
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    RadialBarChart,
+    RadialBar,
+    Legend,
+    Cell
+} from 'recharts';
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 
 export default function DataQualityPage() {
+    // Score Global de Qualidade (Simulado para Visualização)
+    const healthScoreData = [
+        { name: 'Integridade', uv: 98, fill: '#10b981' },
+        { name: 'Completude', uv: 92, fill: '#3b82f6' },
+        { name: 'Consistência', uv: 85, fill: '#eab308' },
+        { name: 'Temporalidade', uv: 100, fill: '#8b5cf6' },
+    ];
+
     return (
         <div className="space-y-6">
-            {/* Título */}
-            <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
-                    <Database className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-bold text-white">Data Quality & Governança</h1>
-                    <p className="text-sm text-zinc-400">Monitoramento de integridade e qualidade dos dados</p>
-                </div>
-            </div>
+            <PageHeader
+                title="Data Quality & Governança"
+                description="Monitoramento de integridade e qualidade dos dados"
+                hasMockData={true}
+            >
+                <DatePickerWithRange />
+            </PageHeader>
 
             {/* KPIs */}
             <section>
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">Saúde dos Dados</h2>
+                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Saúde dos Dados</h2>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     {kpisDataQuality.map((kpi) => (
                         <KPICard
@@ -34,104 +54,134 @@ export default function DataQualityPage() {
                 </div>
             </section>
 
-            {/* Discrepâncias */}
-            <section>
-                <Card className="border-zinc-800 bg-zinc-900/50">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-sm font-medium text-zinc-300">Discrepância GA4 vs Backend</CardTitle>
-                        <Badge variant="destructive">Atenção</Badge>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Discrepâncias Visual (Bar Chart) */}
+                <Card className="lg:col-span-2 border-border bg-card">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-foreground">Discrepância GA4 vs Backend (%)</CardTitle>
+                        <Badge variant="outline" className="border-yellow-500/50 text-yellow-500">
+                            Diferença Média: 4.2%
+                        </Badge>
                     </CardHeader>
                     <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-zinc-800">
-                                        <th className="text-left py-3 px-2 text-xs font-medium text-zinc-500">Métrica</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-zinc-500">GA4</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-zinc-500">Backend</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-zinc-500">Diferença</th>
-                                        <th className="text-center py-3 px-2 text-xs font-medium text-zinc-500">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {discrepancias.map((row) => (
-                                        <tr key={row.metrica} className="border-b border-zinc-800/50">
-                                            <td className="py-3 px-2 text-zinc-300 font-medium">{row.metrica}</td>
-                                            <td className="py-3 px-2 text-right text-zinc-400">
-                                                {row.metrica === 'Receita' ? `R$ ${(row.ga4 / 1000).toFixed(1)}k` : row.ga4?.toLocaleString('pt-BR') || '-'}
-                                            </td>
-                                            <td className="py-3 px-2 text-right text-zinc-300">
-                                                {row.backend ? (row.metrica === 'Receita' ? `R$ ${(row.backend / 1000).toFixed(1)}k` : row.backend.toLocaleString('pt-BR')) : '-'}
-                                            </td>
-                                            <td className="py-3 px-2 text-right">
-                                                {row.diferenca !== null ? (
-                                                    <span className={Math.abs(row.diferenca) > 5 ? 'text-red-400' : 'text-yellow-400'}>
-                                                        {row.diferenca > 0 ? '+' : ''}{row.diferenca.toFixed(1)}%
-                                                    </span>
-                                                ) : '-'}
-                                            </td>
-                                            <td className="py-3 px-2 text-center">
-                                                {row.diferenca !== null ? (
-                                                    Math.abs(row.diferenca) > 5 ? (
-                                                        <X className="h-4 w-4 text-red-400 mx-auto" />
-                                                    ) : (
-                                                        <AlertTriangle className="h-4 w-4 text-yellow-400 mx-auto" />
-                                                    )
-                                                ) : (
-                                                    <Check className="h-4 w-4 text-emerald-400 mx-auto" />
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={discrepancias}
+                                    layout="vertical"
+                                    margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
+                                    <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} domain={[-20, 20]} />
+                                    <YAxis
+                                        type="category"
+                                        dataKey="metrica"
+                                        width={100}
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={12}
+                                        tickLine={false}
+                                        axisLine={false}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: 'var(--accent)', opacity: 0.2 }}
+                                        formatter={(value: any) => [`${value}%`, 'Diferença']}
+                                        contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                                    />
+                                    <Bar dataKey="diferenca" name="Diferença %" radius={[0, 4, 4, 0]} barSize={20}>
+                                        {discrepancias.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.diferenca && Math.abs(entry.diferenca) > 5 ? '#ef4444' : '#eab308'} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
                     </CardContent>
                 </Card>
-            </section>
 
-            {/* Alertas de Tracking */}
-            <section>
-                <Card className="border-zinc-800 bg-zinc-900/50">
+                {/* Score de Saúde (Radial Bar) */}
+                <Card className="lg:col-span-1 border-border bg-card">
                     <CardHeader>
-                        <CardTitle className="text-sm font-medium text-zinc-300">Alertas de Tracking</CardTitle>
+                        <CardTitle className="text-sm font-medium text-foreground">Score de Qualidade</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
-                                <div className="flex items-center gap-3">
-                                    <AlertTriangle className="h-5 w-5 text-yellow-400" />
-                                    <div>
-                                        <p className="text-sm font-medium text-yellow-400">UTM Coverage baixa em Paid Social</p>
-                                        <p className="text-xs text-zinc-400">22% das sessões de Meta Ads sem UTM parameters</p>
-                                    </div>
-                                </div>
-                                <Badge variant="outline" className="border-yellow-500/30 text-yellow-400">Warning</Badge>
-                            </div>
-                            <div className="flex items-center justify-between p-4 rounded-lg border border-zinc-800 bg-zinc-900">
-                                <div className="flex items-center gap-3">
-                                    <Check className="h-5 w-5 text-emerald-400" />
-                                    <div>
-                                        <p className="text-sm font-medium text-zinc-300">Eventos de Purchase funcionando</p>
-                                        <p className="text-xs text-zinc-400">1.847 eventos registrados nas últimas 24h</p>
-                                    </div>
-                                </div>
-                                <Badge variant="outline" className="border-emerald-500/30 text-emerald-400">OK</Badge>
-                            </div>
-                            <div className="flex items-center justify-between p-4 rounded-lg border border-red-500/30 bg-red-500/10">
-                                <div className="flex items-center gap-3">
-                                    <X className="h-5 w-5 text-red-400" />
-                                    <div>
-                                        <p className="text-sm font-medium text-red-400">Evento view_item_list faltando</p>
-                                        <p className="text-xs text-zinc-400">Não detectado nas últimas 48h - possível quebra</p>
-                                    </div>
-                                </div>
-                                <Badge variant="destructive">Erro</Badge>
+                        <div className="h-[300px] w-full relative">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadialBarChart
+                                    innerRadius="30%"
+                                    outerRadius="100%"
+                                    barSize={20}
+                                    data={healthScoreData}
+                                    startAngle={180}
+                                    endAngle={0}
+                                    cy="60%"
+                                >
+                                    <RadialBar
+                                        label={{ position: 'insideStart', fill: '#fff', fontSize: 10 }} // Removed background prop as it's not valid
+                                        background={{ fill: 'var(--muted)' }}  // Correct usage of background for the track
+                                        dataKey="uv"
+                                        cornerRadius={5}
+                                    />
+                                    <Legend
+                                        iconSize={10}
+                                        layout="vertical"
+                                        verticalAlign="bottom"
+                                        wrapperStyle={{ bottom: 0, left: '50%', transform: 'translateX(-50%)' }}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                                    />
+                                </RadialBarChart>
+                            </ResponsiveContainer>
+                            <div className="absolute top-[60%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center mt-4">
+                                <span className="block text-4xl font-bold text-foreground">94</span>
+                                <span className="text-xs text-muted-foreground">Score Geral</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-            </section>
+            </div>
+
+            {/* Tracking Status List */}
+            <Card className="border-border bg-card">
+                <CardHeader className="flex flex-row items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium text-foreground">Monitoramento de Tags & Tracking</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 hover:bg-yellow-500/15 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                                <div>
+                                    <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">UTM Coverage baixa em Paid Social</p>
+                                    <p className="text-xs text-muted-foreground">22% das sessões de Meta Ads sem UTM parameters</p>
+                                </div>
+                            </div>
+                            <Badge variant="outline" className="border-yellow-500/30 text-yellow-500 bg-background">Warning</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <Check className="h-5 w-5 text-emerald-500" />
+                                <div>
+                                    <p className="text-sm font-medium text-foreground">Eventos de Purchase funcionando</p>
+                                    <p className="text-xs text-muted-foreground">1.847 eventos registrados nas últimas 24h</p>
+                                </div>
+                            </div>
+                            <Badge variant="outline" className="border-emerald-500/30 text-emerald-500 bg-emerald-500/5">OK</Badge>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-lg border border-red-500/20 bg-red-500/10 hover:bg-red-500/15 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <X className="h-5 w-5 text-red-500" />
+                                <div>
+                                    <p className="text-sm font-medium text-red-600 dark:text-red-400">Evento view_item_list faltando</p>
+                                    <p className="text-xs text-muted-foreground">Não detectado nas últimas 48h - possível quebra</p>
+                                </div>
+                            </div>
+                            <Badge variant="destructive">Erro Crítico</Badge>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

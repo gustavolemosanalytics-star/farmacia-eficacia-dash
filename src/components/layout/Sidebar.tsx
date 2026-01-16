@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { MockDataBadge } from '@/components/ui/MockDataBadge';
 import {
     LayoutDashboard,
     Brain,
@@ -82,6 +83,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                                         >
                                             <Icon className="h-4 w-4 flex-shrink-0" />
                                             <span className="flex-1 truncate">{item.titulo}</span>
+                                            {item.isMockData && (
+                                                <MockDataBadge variant="sidebar" />
+                                            )}
                                             {item.badge && (
                                                 <Badge
                                                     variant={item.badge === '!' ? 'destructive' : 'secondary'}
@@ -97,6 +101,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                         </ul>
                     </div>
                 ))}
+
+                {/* Legend */}
+                <div className="px-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                    <div className="flex items-center gap-2 text-[10px] text-zinc-400">
+                        <MockDataBadge variant="sidebar" />
+                        <span>Dados de demonstração</span>
+                    </div>
+                </div>
             </nav>
         </ScrollArea>
     );

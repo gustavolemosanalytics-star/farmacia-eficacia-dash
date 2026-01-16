@@ -503,20 +503,20 @@ export const timeSeriesSessoes = gerarTimeSeries(30, 10333, 'down');
 // NAVEGAÇÃO
 // ============================================
 export const navegacaoItems = [
-    { titulo: 'Home Executiva', href: '/', icone: 'LayoutDashboard', grupo: 'ceo' as const },
-    { titulo: 'Diagnóstico IA', href: '/diagnostico', icone: 'Brain', grupo: 'ceo' as const, badge: '3' },
-    { titulo: 'Aquisição & Tráfego', href: '/aquisicao', icone: 'Users', grupo: 'marketing' as const },
-    { titulo: 'Mídia Paga', href: '/midia-paga', icone: 'Target', grupo: 'marketing' as const },
-    { titulo: 'SEO & Demanda', href: '/seo', icone: 'Search', grupo: 'marketing' as const, badge: '!' },
-    { titulo: 'Funil E-commerce', href: '/funil', icone: 'Filter', grupo: 'cro' as const },
-    { titulo: 'Catálogo & Merchandising', href: '/catalogo', icone: 'Package', grupo: 'cro' as const },
-    { titulo: 'CRM & Retenção', href: '/crm', icone: 'Heart', grupo: 'crm' as const },
-    { titulo: 'E-mail & Automação', href: '/email', icone: 'Mail', grupo: 'crm' as const },
-    { titulo: 'Social & Marca', href: '/social', icone: 'Share2', grupo: 'crm' as const },
-    { titulo: 'Preço & Concorrência', href: '/preco', icone: 'DollarSign', grupo: 'operacao' as const },
-    { titulo: 'Operação & Experiência', href: '/operacao', icone: 'Truck', grupo: 'operacao' as const },
-    { titulo: 'Data Quality', href: '/data-quality', icone: 'Database', grupo: 'dados' as const },
-    { titulo: 'Tendências & Oportunidades', href: '/tendencias', icone: 'TrendingUp', grupo: 'dados' as const },
+    { titulo: 'Home Executiva', href: '/', icone: 'LayoutDashboard', grupo: 'ceo' as const, isMockData: false },
+    { titulo: 'Diagnóstico IA', href: '/diagnostico', icone: 'Brain', grupo: 'ceo' as const, badge: '3', isMockData: false },
+    { titulo: 'Aquisição & Tráfego', href: '/aquisicao', icone: 'Users', grupo: 'marketing' as const, isMockData: false },
+    { titulo: 'Mídia Paga', href: '/midia-paga', icone: 'Target', grupo: 'marketing' as const, isMockData: false },
+    { titulo: 'SEO & Demanda', href: '/seo', icone: 'Search', grupo: 'marketing' as const, badge: '!', isMockData: true },
+    { titulo: 'Funil E-commerce', href: '/funil', icone: 'Filter', grupo: 'cro' as const, isMockData: false },
+    { titulo: 'Catálogo & Merchandising', href: '/catalogo', icone: 'Package', grupo: 'cro' as const, isMockData: true },
+    { titulo: 'CRM & Retenção', href: '/crm', icone: 'Heart', grupo: 'crm' as const, isMockData: true },
+    { titulo: 'E-mail & Automação', href: '/email', icone: 'Mail', grupo: 'crm' as const, isMockData: true },
+    { titulo: 'Social & Marca', href: '/social', icone: 'Share2', grupo: 'crm' as const, isMockData: true },
+    { titulo: 'Preço & Concorrência', href: '/preco', icone: 'DollarSign', grupo: 'operacao' as const, isMockData: true },
+    { titulo: 'Operação & Experiência', href: '/operacao', icone: 'Truck', grupo: 'operacao' as const, isMockData: true },
+    { titulo: 'Data Quality', href: '/data-quality', icone: 'Database', grupo: 'dados' as const, isMockData: true },
+    { titulo: 'Tendências & Oportunidades', href: '/tendencias', icone: 'TrendingUp', grupo: 'dados' as const, isMockData: true },
 ];
 
 export const gruposLabels = { ceo: 'Executivo', marketing: 'Marketing', cro: 'Conversão', crm: 'Retenção', operacao: 'Operação', dados: 'Dados & IA' };

@@ -3,30 +3,66 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
+import { PageHeader } from '@/components/ui/MockDataBadge';
 import { kpisEmail, fluxosAutomacao } from '@/lib/mockData';
-import { Mail, Send, MousePointer, ShoppingCart, UserPlus, Gift, RotateCcw, Heart } from 'lucide-react';
+import { Mail, Send, MousePointer, ShoppingCart, UserPlus, Gift, RotateCcw, Heart, ArrowRight } from 'lucide-react';
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Cell,
+    LineChart,
+    Line,
+    Legend
+} from 'recharts';
+import { DatePickerWithRange } from '@/components/ui/date-range-picker';
 
 const getFluxoIcon = (fluxo: string) => {
-    if (fluxo.includes('Carrinho')) return <ShoppingCart className="h-4 w-4 text-orange-400" />;
-    if (fluxo.includes('Welcome')) return <UserPlus className="h-4 w-4 text-blue-400" />;
-    if (fluxo.includes('Winback')) return <RotateCcw className="h-4 w-4 text-purple-400" />;
-    if (fluxo.includes('Aniversário')) return <Gift className="h-4 w-4 text-pink-400" />;
-    if (fluxo.includes('Pós-Compra')) return <Heart className="h-4 w-4 text-emerald-400" />;
-    return <Mail className="h-4 w-4 text-zinc-400" />;
+    if (fluxo.includes('Carrinho')) return <ShoppingCart className="h-4 w-4 text-orange-500" />;
+    if (fluxo.includes('Welcome')) return <UserPlus className="h-4 w-4 text-blue-500" />;
+    if (fluxo.includes('Winback')) return <RotateCcw className="h-4 w-4 text-purple-500" />;
+    if (fluxo.includes('Aniversário')) return <Gift className="h-4 w-4 text-pink-500" />;
+    if (fluxo.includes('Pós-Compra')) return <Heart className="h-4 w-4 text-emerald-500" />;
+    return <Mail className="h-4 w-4 text-muted-foreground" />;
 };
 
 export default function EmailPage() {
+    // Transform data for charts
+    const performanceData = fluxosAutomacao.map(f => ({
+        name: f.fluxo.replace('Fluxo ', ''),
+        envios: f.envios,
+        opens: f.opens,
+        cliques: f.cliques,
+        receita: f.receita,
+        conversionRate: f.cr
+    })).sort((a, b) => b.receita - a.receita);
+
+    // Funnel Data for "Carrinho Abandonado" (index 0 usually)
+    const cartFlow = fluxosAutomacao.find(f => f.fluxo.includes('Carrinho'));
+    const funnelData = cartFlow ? [
+        { stage: 'Envios', value: cartFlow.envios, fill: '#94a3b8' },
+        { stage: 'Aberturas', value: cartFlow.opens, fill: '#60a5fa' },
+        { stage: 'Cliques', value: cartFlow.cliques, fill: '#818cf8' },
+        { stage: 'Conversões', value: cartFlow.conversoes, fill: '#10b981' },
+    ] : [];
+
     return (
         <div className="space-y-6">
-            {/* Título */}
-            <div>
-                <h1 className="text-2xl font-bold text-white">E-mail & Automação</h1>
-                <p className="text-sm text-zinc-400">Performance de campanhas e fluxos automatizados</p>
-            </div>
+            <PageHeader
+                title="E-mail & Automação"
+                description="Performance de campanhas e fluxos automatizados"
+                hasMockData={true}
+            >
+                <DatePickerWithRange />
+            </PageHeader>
 
             {/* KPIs */}
             <section>
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500">Métricas Gerais</h2>
+                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Métricas Gerais</h2>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
                     {kpisEmail.map((kpi) => (
                         <KPICard
@@ -39,93 +75,139 @@ export default function EmailPage() {
                 </div>
             </section>
 
-            {/* Fluxos de Automação */}
-            <section>
-                <Card className="border-zinc-800 bg-zinc-900/50">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Receita por Fluxo (Bar Chart) */}
+                <Card className="border-border bg-card">
                     <CardHeader>
-                        <CardTitle className="text-sm font-medium text-zinc-300">Fluxos de Automação</CardTitle>
+                        <CardTitle className="text-sm font-medium text-foreground">Receita por Fluxo Automático</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-zinc-800">
-                                        <th className="text-left py-3 px-2 text-xs font-medium text-zinc-500">Fluxo</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-zinc-500">Envios</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-zinc-500">Opens</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-zinc-500">Cliques</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-zinc-500">Conversões</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-zinc-500">Receita</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-zinc-500">CR</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {fluxosAutomacao.map((fluxo) => (
-                                        <tr key={fluxo.fluxo} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                                            <td className="py-3 px-2">
-                                                <span className="flex items-center gap-2 text-zinc-300">
-                                                    {getFluxoIcon(fluxo.fluxo)}
-                                                    {fluxo.fluxo}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-2 text-right text-zinc-400">{fluxo.envios.toLocaleString('pt-BR')}</td>
-                                            <td className="py-3 px-2 text-right text-zinc-300">
-                                                {fluxo.opens.toLocaleString('pt-BR')}
-                                                <span className="text-xs text-zinc-500 ml-1">({((fluxo.opens / fluxo.envios) * 100).toFixed(1)}%)</span>
-                                            </td>
-                                            <td className="py-3 px-2 text-right text-zinc-300">
-                                                {fluxo.cliques.toLocaleString('pt-BR')}
-                                                <span className="text-xs text-zinc-500 ml-1">({((fluxo.cliques / fluxo.envios) * 100).toFixed(1)}%)</span>
-                                            </td>
-                                            <td className="py-3 px-2 text-right text-emerald-400">{fluxo.conversoes}</td>
-                                            <td className="py-3 px-2 text-right text-white font-medium">R$ {(fluxo.receita / 1000).toFixed(1)}k</td>
-                                            <td className="py-3 px-2 text-right">
-                                                <Badge variant={fluxo.cr >= 2 ? 'default' : 'secondary'} className={fluxo.cr >= 2 ? 'bg-emerald-500' : ''}>
-                                                    {fluxo.cr.toFixed(2)}%
-                                                </Badge>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div className="h-[300px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={performanceData}
+                                    layout="vertical"
+                                    margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
+                                    <XAxis type="number" hide />
+                                    <YAxis
+                                        type="category"
+                                        dataKey="name"
+                                        width={100}
+                                        tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <Tooltip
+                                        cursor={{ fill: 'var(--accent)', opacity: 0.2 }}
+                                        formatter={(value: any) => `R$ ${Number(value || 0).toLocaleString()}`}
+                                        contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
+                                    />
+                                    <Bar dataKey="receita" name="Receita" radius={[0, 4, 4, 0]}>
+                                        {performanceData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={
+                                                index === 0 ? '#10b981' : // Top 1 Emerald
+                                                    index === 1 ? '#3b82f6' : // Top 2 Blue
+                                                        '#64748b'                 // Others Slate
+                                            } />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
                     </CardContent>
                 </Card>
-            </section>
 
-            {/* Funil Visual */}
-            <section>
-                <Card className="border-zinc-800 bg-zinc-900/50">
+                {/* Funil Visual - Carrinho Abandonado */}
+                <Card className="border-border bg-card">
                     <CardHeader>
-                        <CardTitle className="text-sm font-medium text-zinc-300">Funil - Carrinho Abandonado</CardTitle>
+                        <CardTitle className="text-sm font-medium text-foreground">Funil: Recuperação de Carrinho</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-center justify-between gap-4 overflow-x-auto py-4">
-                            {['Envios', 'Opens', 'Cliques', 'Conversões'].map((step, index) => {
-                                const fluxo = fluxosAutomacao[0];
-                                const values = [fluxo.envios, fluxo.opens, fluxo.cliques, fluxo.conversoes];
-                                const percentuals = values.map(v => (v / fluxo.envios) * 100);
+                        <div className="flex flex-col justify-center h-[300px] space-y-4">
+                            {funnelData.map((step, index) => {
+                                // Calculate width relative to first step
+                                const firstValue = funnelData[0]?.value || 1;
+                                const widthPercentage = (step.value / firstValue) * 100;
+                                const previousValue = index > 0 ? funnelData[index - 1].value : step.value;
+                                const dropOff = index > 0 ? ((1 - (step.value / previousValue)) * 100).toFixed(0) : 0;
 
                                 return (
-                                    <div key={step} className="flex-1 min-w-[120px]">
-                                        <div className="text-center mb-2">
-                                            <p className="text-2xl font-bold text-white">{values[index].toLocaleString('pt-BR')}</p>
-                                            <p className="text-xs text-zinc-500">{step}</p>
+                                    <div key={step.stage} className="relative">
+                                        <div className="flex items-center justify-between text-sm mb-1">
+                                            <span className="font-medium text-foreground">{step.stage}</span>
+                                            <span className="font-bold text-foreground">{step.value.toLocaleString()}</span>
                                         </div>
-                                        <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                                        <div className="h-8 bg-muted rounded-r-lg overflow-hidden relative">
                                             <div
-                                                className="h-full rounded-full bg-gradient-to-r from-purple-500 to-purple-400"
-                                                style={{ width: `${percentuals[index]}%` }}
+                                                className="h-full rounded-r-lg transition-all duration-1000 ease-out"
+                                                style={{
+                                                    width: `${widthPercentage}%`,
+                                                    backgroundColor: step.fill
+                                                }}
                                             />
                                         </div>
-                                        <p className="text-center text-xs text-zinc-400 mt-1">{percentuals[index].toFixed(1)}%</p>
+                                        {index > 0 && (
+                                            <div className="absolute right-0 top-8 text-xs text-muted-foreground">
+                                                {dropOff}% drop
+                                            </div>
+                                        )}
                                     </div>
-                                );
+                                )
                             })}
                         </div>
                     </CardContent>
                 </Card>
-            </section>
+            </div>
+
+            {/* Tabela Detalhada (Refatorada) */}
+            <Card className="border-border bg-card">
+                <CardHeader>
+                    <CardTitle className="text-sm font-medium text-foreground">Performance Detalhada</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-border">
+                                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Fluxo</th>
+                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Open Rate</th>
+                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Click Rate</th>
+                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Conv. Rate</th>
+                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {fluxosAutomacao.map((fluxo) => (
+                                    <tr key={fluxo.fluxo} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                                        <td className="py-3 px-2">
+                                            <div className="flex items-center gap-2">
+                                                {getFluxoIcon(fluxo.fluxo)}
+                                                <span className="font-medium text-foreground">{fluxo.fluxo}</span>
+                                            </div>
+                                        </td>
+                                        <td className="py-3 px-2 text-right text-muted-foreground">
+                                            {((fluxo.opens / fluxo.envios) * 100).toFixed(1)}%
+                                        </td>
+                                        <td className="py-3 px-2 text-right text-muted-foreground">
+                                            {((fluxo.cliques / fluxo.envios) * 100).toFixed(1)}%
+                                        </td>
+                                        <td className="py-3 px-2 text-right">
+                                            <Badge variant={fluxo.cr >= 2 ? 'default' : 'secondary'} className={fluxo.cr >= 2 ? 'bg-emerald-500 hover:bg-emerald-600' : ''}>
+                                                {fluxo.cr.toFixed(1)}%
+                                            </Badge>
+                                        </td>
+                                        <td className="py-3 px-2 text-right font-medium text-foreground">
+                                            R$ {fluxo.receita.toLocaleString()}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

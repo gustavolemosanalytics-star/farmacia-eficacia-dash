@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <ThemeProvider defaultTheme="dark" storageKey="warroom-theme">
+        <ThemeProvider defaultTheme="light" storageKey="warroom-theme">
           {children}
         </ThemeProvider>
       </body>

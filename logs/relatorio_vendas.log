@@ -1,0 +1,1795 @@
+2026-01-16 11:42:41 | INFO     | Configurando autenticação OAuth 1.0a...
+2026-01-16 11:42:41 | INFO     | ============================================================
+2026-01-16 11:42:41 | INFO     | RELATÓRIO DE VENDAS - MAGENTO
+2026-01-16 11:42:41 | INFO     | Período: 2026-01-01 a 2026-01-16
+2026-01-16 11:42:41 | INFO     | ============================================================
+2026-01-16 11:42:41 | INFO     | Buscando pedidos de 2026-01-01 00:00:00 até 2026-01-17 00:00:00...
+2026-01-16 11:42:41 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 1, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:42:42 | ERROR    | Erro de API: 400 Client Error: Bad Request for url: https://www.farmaciaeficacia.com.br/rest/default/V1/orders?searchCriteria%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bfield%5D=created_at&searchCriteria%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bvalue%5D=2026-01-01+00%3A00%3A00&searchCriteria%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bcondition_type%5D=gteq&searchCriteria%5Bfilter_groups%5D%5B1%5D%5Bfilters%5D%5B0%5D%5Bfield%5D=created_at&searchCriteria%5Bfilter_groups%5D%5B1%5D%5Bfilters%5D%5B0%5D%5Bvalue%5D=2026-01-17+00%3A00%3A00&searchCriteria%5Bfilter_groups%5D%5B1%5D%5Bfilters%5D%5B0%5D%5Bcondition_type%5D=lt&searchCriteria%5BpageSize%5D=100&searchCriteria%5BcurrentPage%5D=1&searchCriteria%5BsortOrders%5D%5B0%5D%5Bfield%5D=created_at&searchCriteria%5BsortOrders%5D%5B0%5D%5Bdirection%5D=ASC
+2026-01-16 11:42:42 | ERROR    | Response: N/A
+2026-01-16 11:43:17 | INFO     | Configurando autenticação OAuth 1.0a...
+2026-01-16 11:43:17 | INFO     | ============================================================
+2026-01-16 11:43:17 | INFO     | RELATÓRIO DE VENDAS - MAGENTO
+2026-01-16 11:43:17 | INFO     | Período: 2026-01-01 a 2026-01-16
+2026-01-16 11:43:17 | INFO     | ============================================================
+2026-01-16 11:43:17 | INFO     | Buscando pedidos de 2026-01-01 00:00:00 até 2026-01-17 00:00:00...
+2026-01-16 11:43:17 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 1, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:18 | ERROR    | Erro 400: {"message":"Signature method %1 is not supported","parameters":["HMAC-SHA1"]}
+2026-01-16 11:43:18 | ERROR    | Erro de API: 400 Client Error: Bad Request for url: https://www.farmaciaeficacia.com.br/rest/default/V1/orders?searchCriteria%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bfield%5D=created_at&searchCriteria%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bvalue%5D=2026-01-01%2000%3A00%3A00&searchCriteria%5Bfilter_groups%5D%5B0%5D%5Bfilters%5D%5B0%5D%5Bcondition_type%5D=gteq&searchCriteria%5Bfilter_groups%5D%5B1%5D%5Bfilters%5D%5B0%5D%5Bfield%5D=created_at&searchCriteria%5Bfilter_groups%5D%5B1%5D%5Bfilters%5D%5B0%5D%5Bvalue%5D=2026-01-17%2000%3A00%3A00&searchCriteria%5Bfilter_groups%5D%5B1%5D%5Bfilters%5D%5B0%5D%5Bcondition_type%5D=lt&searchCriteria%5BpageSize%5D=100&searchCriteria%5BcurrentPage%5D=1&searchCriteria%5BsortOrders%5D%5B0%5D%5Bfield%5D=created_at&searchCriteria%5BsortOrders%5D%5B0%5D%5Bdirection%5D=ASC
+2026-01-16 11:43:18 | ERROR    | Response: N/A
+2026-01-16 11:43:48 | INFO     | Configurando autenticação OAuth 1.0a...
+2026-01-16 11:43:48 | INFO     | ============================================================
+2026-01-16 11:43:48 | INFO     | RELATÓRIO DE VENDAS - MAGENTO
+2026-01-16 11:43:48 | INFO     | Período: 2026-01-01 a 2026-01-16
+2026-01-16 11:43:48 | INFO     | ============================================================
+2026-01-16 11:43:48 | INFO     | Buscando pedidos de 2026-01-01 00:00:00 até 2026-01-17 00:00:00...
+2026-01-16 11:43:48 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 1, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:49 | INFO     |   Página 1: 100 pedidos (total: 100/1346)
+2026-01-16 11:43:49 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 2, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:50 | INFO     |   Página 2: 100 pedidos (total: 200/1346)
+2026-01-16 11:43:50 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 3, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:52 | INFO     |   Página 3: 100 pedidos (total: 300/1346)
+2026-01-16 11:43:52 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 4, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:53 | INFO     |   Página 4: 100 pedidos (total: 400/1346)
+2026-01-16 11:43:53 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 5, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:54 | INFO     |   Página 5: 100 pedidos (total: 500/1346)
+2026-01-16 11:43:54 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 6, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:55 | INFO     |   Página 6: 100 pedidos (total: 600/1346)
+2026-01-16 11:43:55 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 7, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:56 | INFO     |   Página 7: 100 pedidos (total: 700/1346)
+2026-01-16 11:43:56 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 8, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:57 | INFO     |   Página 8: 100 pedidos (total: 800/1346)
+2026-01-16 11:43:57 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 9, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:58 | INFO     |   Página 9: 100 pedidos (total: 900/1346)
+2026-01-16 11:43:58 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 10, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:43:59 | INFO     |   Página 10: 100 pedidos (total: 1000/1346)
+2026-01-16 11:43:59 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 11, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:44:00 | INFO     |   Página 11: 100 pedidos (total: 1100/1346)
+2026-01-16 11:44:00 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 12, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:44:01 | INFO     |   Página 12: 100 pedidos (total: 1200/1346)
+2026-01-16 11:44:01 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 13, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:44:03 | INFO     |   Página 13: 100 pedidos (total: 1300/1346)
+2026-01-16 11:44:03 | DEBUG    | GET orders params={'searchCriteria[filter_groups][0][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][0][filters][0][value]': '2026-01-01 00:00:00', 'searchCriteria[filter_groups][0][filters][0][condition_type]': 'gteq', 'searchCriteria[filter_groups][1][filters][0][field]': 'created_at', 'searchCriteria[filter_groups][1][filters][0][value]': '2026-01-17 00:00:00', 'searchCriteria[filter_groups][1][filters][0][condition_type]': 'lt', 'searchCriteria[pageSize]': 100, 'searchCriteria[currentPage]': 14, 'searchCriteria[sortOrders][0][field]': 'created_at', 'searchCriteria[sortOrders][0][direction]': 'ASC'}
+2026-01-16 11:44:03 | INFO     |   Página 14: 46 pedidos (total: 1346/1346)
+2026-01-16 11:44:03 | INFO     | Total de pedidos carregados: 1346
+2026-01-16 11:44:03 | INFO     | Carregando mapa de status de pedidos...
+2026-01-16 11:44:03 | DEBUG    | GET orders/statuses params=None
+2026-01-16 11:44:03 | ERROR    | Erro 400: {"message":"The \"statuses\" value's type is invalid. The \"int\" type was expected. Verify and try again."}
+2026-01-16 11:44:03 | WARNING  | Endpoint /orders/statuses falhou (400 Client Error: Bad Request for url: https://www.farmaciaeficacia.com.br/rest/default/V1/orders/statuses), tentando alternativa...
+2026-01-16 11:44:03 | DEBUG    | GET order/statuses params=None
+2026-01-16 11:44:03 | ERROR    | Erro 404: {"message":"O pedido n\u00e3o corresponde a nenhuma rota. (URL inv\u00e1lido)"}
+2026-01-16 11:44:03 | WARNING  | Não foi possível carregar labels de status; usando codes
+2026-01-16 11:44:03 | INFO     |   -> 0 status carregados
+2026-01-16 11:44:03 | INFO     | Carregando opções do atributo saleswoman...
+2026-01-16 11:44:03 | DEBUG    | GET products/attributes/saleswoman/options params=None
+2026-01-16 11:44:04 | INFO     |   -> 20 opções carregadas
+2026-01-16 11:44:04 | DEBUG    | Buscando produto SKU: 3136-2
+2026-01-16 11:44:04 | DEBUG    | GET products/3136-2 params=None
+2026-01-16 11:44:04 | DEBUG    | Buscando categoria ID: 97
+2026-01-16 11:44:04 | DEBUG    | GET categories/97 params=None
+2026-01-16 11:44:04 | DEBUG    | Buscando categoria ID: 100
+2026-01-16 11:44:04 | DEBUG    | GET categories/100 params=None
+2026-01-16 11:44:04 | DEBUG    | Buscando produto SKU: 2072-0_3086-1
+2026-01-16 11:44:04 | DEBUG    | GET products/2072-0_3086-1 params=None
+2026-01-16 11:44:04 | DEBUG    | Buscando categoria ID: 13
+2026-01-16 11:44:04 | DEBUG    | GET categories/13 params=None
+2026-01-16 11:44:04 | DEBUG    | Buscando categoria ID: 117
+2026-01-16 11:44:04 | DEBUG    | GET categories/117 params=None
+2026-01-16 11:44:04 | DEBUG    | Buscando produto SKU: 1718-0
+2026-01-16 11:44:04 | DEBUG    | GET products/1718-0 params=None
+2026-01-16 11:44:05 | DEBUG    | Buscando categoria ID: 20
+2026-01-16 11:44:05 | DEBUG    | GET categories/20 params=None
+2026-01-16 11:44:05 | DEBUG    | Buscando categoria ID: 25
+2026-01-16 11:44:05 | DEBUG    | GET categories/25 params=None
+2026-01-16 11:44:05 | DEBUG    | Buscando produto SKU: 3265-1
+2026-01-16 11:44:05 | DEBUG    | GET products/3265-1 params=None
+2026-01-16 11:44:05 | DEBUG    | Buscando categoria ID: 62
+2026-01-16 11:44:05 | DEBUG    | GET categories/62 params=None
+2026-01-16 11:44:05 | DEBUG    | Buscando categoria ID: 68
+2026-01-16 11:44:05 | DEBUG    | GET categories/68 params=None
+2026-01-16 11:44:05 | DEBUG    | Buscando produto SKU: TS7113-1
+2026-01-16 11:44:05 | DEBUG    | GET products/TS7113-1 params=None
+2026-01-16 11:44:05 | DEBUG    | Buscando produto SKU: 2805-0
+2026-01-16 11:44:05 | DEBUG    | GET products/2805-0 params=None
+2026-01-16 11:44:06 | DEBUG    | Buscando categoria ID: 79
+2026-01-16 11:44:06 | DEBUG    | GET categories/79 params=None
+2026-01-16 11:44:06 | DEBUG    | Buscando produto SKU: 2115-0
+2026-01-16 11:44:06 | DEBUG    | GET products/2115-0 params=None
+2026-01-16 11:44:06 | DEBUG    | Buscando produto SKU: fmsa
+2026-01-16 11:44:06 | DEBUG    | GET products/fmsa params=None
+2026-01-16 11:44:06 | DEBUG    | Buscando produto SKU: 2558-0
+2026-01-16 11:44:06 | DEBUG    | GET products/2558-0 params=None
+2026-01-16 11:44:06 | DEBUG    | Buscando categoria ID: 102
+2026-01-16 11:44:06 | DEBUG    | GET categories/102 params=None
+2026-01-16 11:44:06 | DEBUG    | Buscando categoria ID: 106
+2026-01-16 11:44:06 | DEBUG    | GET categories/106 params=None
+2026-01-16 11:44:06 | DEBUG    | Buscando produto SKU: 49372-0
+2026-01-16 11:44:06 | DEBUG    | GET products/49372-0 params=None
+2026-01-16 11:44:07 | DEBUG    | Buscando categoria ID: 104
+2026-01-16 11:44:07 | DEBUG    | GET categories/104 params=None
+2026-01-16 11:44:07 | DEBUG    | Buscando produto SKU: 1521-0
+2026-01-16 11:44:07 | DEBUG    | GET products/1521-0 params=None
+2026-01-16 11:44:07 | DEBUG    | Buscando categoria ID: 37
+2026-01-16 11:44:07 | DEBUG    | GET categories/37 params=None
+2026-01-16 11:44:07 | DEBUG    | Buscando categoria ID: 49
+2026-01-16 11:44:07 | DEBUG    | GET categories/49 params=None
+2026-01-16 11:44:07 | DEBUG    | Buscando categoria ID: 126
+2026-01-16 11:44:07 | DEBUG    | GET categories/126 params=None
+2026-01-16 11:44:07 | DEBUG    | Buscando produto SKU: DP1901-0
+2026-01-16 11:44:07 | DEBUG    | GET products/DP1901-0 params=None
+2026-01-16 11:44:08 | DEBUG    | Buscando categoria ID: 7
+2026-01-16 11:44:08 | DEBUG    | GET categories/7 params=None
+2026-01-16 11:44:08 | DEBUG    | Buscando categoria ID: 10
+2026-01-16 11:44:08 | DEBUG    | GET categories/10 params=None
+2026-01-16 11:44:08 | DEBUG    | Buscando categoria ID: 122
+2026-01-16 11:44:08 | DEBUG    | GET categories/122 params=None
+2026-01-16 11:44:08 | DEBUG    | Buscando produto SKU: 3325-0
+2026-01-16 11:44:08 | DEBUG    | GET products/3325-0 params=None
+2026-01-16 11:44:08 | DEBUG    | Buscando categoria ID: 95
+2026-01-16 11:44:08 | DEBUG    | GET categories/95 params=None
+2026-01-16 11:44:08 | DEBUG    | Buscando produto SKU: 3669-0
+2026-01-16 11:44:08 | DEBUG    | GET products/3669-0 params=None
+2026-01-16 11:44:08 | DEBUG    | Buscando categoria ID: 65
+2026-01-16 11:44:08 | DEBUG    | GET categories/65 params=None
+2026-01-16 11:44:09 | DEBUG    | Buscando produto SKU: KITEP-TratamentoPrata
+2026-01-16 11:44:09 | DEBUG    | GET products/KITEP-TratamentoPrata params=None
+2026-01-16 11:44:09 | DEBUG    | Buscando produto SKU: uxiunha0
+2026-01-16 11:44:09 | DEBUG    | GET products/uxiunha0 params=None
+2026-01-16 11:44:09 | DEBUG    | Buscando categoria ID: 73
+2026-01-16 11:44:09 | DEBUG    | GET categories/73 params=None
+2026-01-16 11:44:09 | DEBUG    | Buscando produto SKU: 3650-1
+2026-01-16 11:44:09 | DEBUG    | GET products/3650-1 params=None
+2026-01-16 11:44:09 | DEBUG    | Buscando produto SKU: 3571-3
+2026-01-16 11:44:09 | DEBUG    | GET products/3571-3 params=None
+2026-01-16 11:44:09 | DEBUG    | Buscando produto SKU: DP1676-0
+2026-01-16 11:44:09 | DEBUG    | GET products/DP1676-0 params=None
+2026-01-16 11:44:10 | DEBUG    | Buscando produto SKU: 66476-0
+2026-01-16 11:44:10 | DEBUG    | GET products/66476-0 params=None
+2026-01-16 11:44:10 | DEBUG    | Buscando categoria ID: 78
+2026-01-16 11:44:10 | DEBUG    | GET categories/78 params=None
+2026-01-16 11:44:10 | DEBUG    | Buscando produto SKU: 3331-0
+2026-01-16 11:44:10 | DEBUG    | GET products/3331-0 params=None
+2026-01-16 11:44:10 | DEBUG    | Buscando categoria ID: 94
+2026-01-16 11:44:10 | DEBUG    | GET categories/94 params=None
+2026-01-16 11:44:10 | DEBUG    | Buscando produto SKU: 55570-0
+2026-01-16 11:44:10 | DEBUG    | GET products/55570-0 params=None
+2026-01-16 11:44:10 | DEBUG    | Buscando produto SKU: 3539-1
+2026-01-16 11:44:10 | DEBUG    | GET products/3539-1 params=None
+2026-01-16 11:44:11 | DEBUG    | Buscando produto SKU: 2426-0
+2026-01-16 11:44:11 | DEBUG    | GET products/2426-0 params=None
+2026-01-16 11:44:11 | DEBUG    | Buscando categoria ID: 72
+2026-01-16 11:44:11 | DEBUG    | GET categories/72 params=None
+2026-01-16 11:44:11 | DEBUG    | Buscando produto SKU: 40557-0
+2026-01-16 11:44:11 | DEBUG    | GET products/40557-0 params=None
+2026-01-16 11:44:11 | DEBUG    | Buscando produto SKU: 3290-1
+2026-01-16 11:44:11 | DEBUG    | GET products/3290-1 params=None
+2026-01-16 11:44:11 | DEBUG    | Buscando categoria ID: 131
+2026-01-16 11:44:11 | DEBUG    | GET categories/131 params=None
+2026-01-16 11:44:11 | DEBUG    | Buscando categoria ID: 134
+2026-01-16 11:44:11 | DEBUG    | GET categories/134 params=None
+2026-01-16 11:44:11 | DEBUG    | Buscando categoria ID: 137
+2026-01-16 11:44:11 | DEBUG    | GET categories/137 params=None
+2026-01-16 11:44:12 | DEBUG    | Buscando produto SKU: 965-0
+2026-01-16 11:44:12 | DEBUG    | GET products/965-0 params=None
+2026-01-16 11:44:12 | DEBUG    | Buscando produto SKU: 958-0
+2026-01-16 11:44:12 | DEBUG    | GET products/958-0 params=None
+2026-01-16 11:44:12 | DEBUG    | Buscando produto SKU: 3702-0
+2026-01-16 11:44:12 | DEBUG    | GET products/3702-0 params=None
+2026-01-16 11:44:12 | DEBUG    | Buscando categoria ID: 124
+2026-01-16 11:44:12 | DEBUG    | GET categories/124 params=None
+2026-01-16 11:44:12 | DEBUG    | Buscando produto SKU: 3896-2
+2026-01-16 11:44:12 | DEBUG    | GET products/3896-2 params=None
+2026-01-16 11:44:12 | DEBUG    | Buscando produto SKU: 3897-0-2
+2026-01-16 11:44:12 | DEBUG    | GET products/3897-0-2 params=None
+2026-01-16 11:44:12 | DEBUG    | Buscando produto SKU: 3097-0
+2026-01-16 11:44:12 | DEBUG    | GET products/3097-0 params=None
+2026-01-16 11:44:13 | DEBUG    | Buscando categoria ID: 32
+2026-01-16 11:44:13 | DEBUG    | GET categories/32 params=None
+2026-01-16 11:44:13 | DEBUG    | Buscando produto SKU: 7046-1
+2026-01-16 11:44:13 | DEBUG    | GET products/7046-1 params=None
+2026-01-16 11:44:13 | DEBUG    | Buscando produto SKU: 1484-0
+2026-01-16 11:44:13 | DEBUG    | GET products/1484-0 params=None
+2026-01-16 11:44:13 | DEBUG    | Buscando produto SKU: 3824-1
+2026-01-16 11:44:13 | DEBUG    | GET products/3824-1 params=None
+2026-01-16 11:44:13 | DEBUG    | Buscando produto SKU: 3324-0-2
+2026-01-16 11:44:13 | DEBUG    | GET products/3324-0-2 params=None
+2026-01-16 11:44:13 | DEBUG    | Buscando produto SKU: teste3265-1
+2026-01-16 11:44:13 | DEBUG    | GET products/teste3265-1 params=None
+2026-01-16 11:44:14 | DEBUG    | Buscando produto SKU: TS1675-0-1
+2026-01-16 11:44:14 | DEBUG    | GET products/TS1675-0-1 params=None
+2026-01-16 11:44:14 | DEBUG    | Buscando produto SKU: 2789-0
+2026-01-16 11:44:14 | DEBUG    | GET products/2789-0 params=None
+2026-01-16 11:44:14 | DEBUG    | Buscando categoria ID: 14
+2026-01-16 11:44:14 | DEBUG    | GET categories/14 params=None
+2026-01-16 11:44:14 | DEBUG    | Buscando produto SKU: 37345-0_37345-1_37345-2_37345-3-D
+2026-01-16 11:44:14 | DEBUG    | GET products/37345-0_37345-1_37345-2_37345-3-D params=None
+2026-01-16 11:44:14 | DEBUG    | Buscando categoria ID: 99
+2026-01-16 11:44:14 | DEBUG    | GET categories/99 params=None
+2026-01-16 11:44:14 | DEBUG    | Buscando produto SKU: 1969-0
+2026-01-16 11:44:14 | DEBUG    | GET products/1969-0 params=None
+2026-01-16 11:44:14 | DEBUG    | Buscando produto SKU: 3057-0
+2026-01-16 11:44:14 | DEBUG    | GET products/3057-0 params=None
+2026-01-16 11:44:15 | DEBUG    | Buscando produto SKU: 3551
+2026-01-16 11:44:15 | DEBUG    | GET products/3551 params=None
+2026-01-16 11:44:15 | DEBUG    | Buscando produto SKU: 2071-0
+2026-01-16 11:44:15 | DEBUG    | GET products/2071-0 params=None
+2026-01-16 11:44:15 | DEBUG    | Buscando produto SKU: 2066-0
+2026-01-16 11:44:15 | DEBUG    | GET products/2066-0 params=None
+2026-01-16 11:44:15 | DEBUG    | Buscando categoria ID: 64
+2026-01-16 11:44:15 | DEBUG    | GET categories/64 params=None
+2026-01-16 11:44:15 | DEBUG    | Buscando produto SKU: 1835-0_1314-0_2035-0
+2026-01-16 11:44:15 | DEBUG    | GET products/1835-0_1314-0_2035-0 params=None
+2026-01-16 11:44:15 | DEBUG    | Buscando categoria ID: 92
+2026-01-16 11:44:15 | DEBUG    | GET categories/92 params=None
+2026-01-16 11:44:16 | DEBUG    | Buscando produto SKU: 3533-0
+2026-01-16 11:44:16 | DEBUG    | GET products/3533-0 params=None
+2026-01-16 11:44:16 | DEBUG    | Buscando produto SKU: 1764-0
+2026-01-16 11:44:16 | DEBUG    | GET products/1764-0 params=None
+2026-01-16 11:44:16 | DEBUG    | Buscando categoria ID: 93
+2026-01-16 11:44:16 | DEBUG    | GET categories/93 params=None
+2026-01-16 11:44:16 | DEBUG    | Buscando produto SKU: 3209-0
+2026-01-16 11:44:16 | DEBUG    | GET products/3209-0 params=None
+2026-01-16 11:44:16 | DEBUG    | Buscando categoria ID: 22
+2026-01-16 11:44:16 | DEBUG    | GET categories/22 params=None
+2026-01-16 11:44:16 | DEBUG    | Buscando produto SKU: 2571-0-2
+2026-01-16 11:44:16 | DEBUG    | GET products/2571-0-2 params=None
+2026-01-16 11:44:16 | DEBUG    | Buscando produto SKU: 3918-0
+2026-01-16 11:44:16 | DEBUG    | GET products/3918-0 params=None
+2026-01-16 11:44:17 | DEBUG    | Buscando categoria ID: 101
+2026-01-16 11:44:17 | DEBUG    | GET categories/101 params=None
+2026-01-16 11:44:17 | DEBUG    | Buscando produto SKU: 3241-0
+2026-01-16 11:44:17 | DEBUG    | GET products/3241-0 params=None
+2026-01-16 11:44:17 | DEBUG    | Buscando categoria ID: 76
+2026-01-16 11:44:17 | DEBUG    | GET categories/76 params=None
+2026-01-16 11:44:17 | DEBUG    | Buscando produto SKU: teste3660-0
+2026-01-16 11:44:17 | DEBUG    | GET products/teste3660-0 params=None
+2026-01-16 11:44:17 | DEBUG    | Buscando produto SKU: 3394
+2026-01-16 11:44:17 | DEBUG    | GET products/3394 params=None
+2026-01-16 11:44:17 | DEBUG    | Buscando produto SKU: TS48-0
+2026-01-16 11:44:17 | DEBUG    | GET products/TS48-0 params=None
+2026-01-16 11:44:17 | DEBUG    | Buscando categoria ID: 40
+2026-01-16 11:44:17 | DEBUG    | GET categories/40 params=None
+2026-01-16 11:44:18 | DEBUG    | Buscando produto SKU: 3475-0
+2026-01-16 11:44:18 | DEBUG    | GET products/3475-0 params=None
+2026-01-16 11:44:18 | DEBUG    | Buscando produto SKU: 2762-1
+2026-01-16 11:44:18 | DEBUG    | GET products/2762-1 params=None
+2026-01-16 11:44:18 | DEBUG    | Buscando produto SKU: 55601-0
+2026-01-16 11:44:18 | DEBUG    | GET products/55601-0 params=None
+2026-01-16 11:44:18 | DEBUG    | Buscando categoria ID: 8
+2026-01-16 11:44:18 | DEBUG    | GET categories/8 params=None
+2026-01-16 11:44:18 | DEBUG    | Buscando produto SKU: 3816-1
+2026-01-16 11:44:18 | DEBUG    | GET products/3816-1 params=None
+2026-01-16 11:44:18 | DEBUG    | Buscando produto SKU: 37917-0
+2026-01-16 11:44:18 | DEBUG    | GET products/37917-0 params=None
+2026-01-16 11:44:19 | DEBUG    | Buscando categoria ID: 63
+2026-01-16 11:44:19 | DEBUG    | GET categories/63 params=None
+2026-01-16 11:44:19 | DEBUG    | Buscando produto SKU: 2566-0
+2026-01-16 11:44:19 | DEBUG    | GET products/2566-0 params=None
+2026-01-16 11:44:19 | DEBUG    | Buscando produto SKU: 6507
+2026-01-16 11:44:19 | DEBUG    | GET products/6507 params=None
+2026-01-16 11:44:19 | DEBUG    | Buscando categoria ID: 81
+2026-01-16 11:44:19 | DEBUG    | GET categories/81 params=None
+2026-01-16 11:44:19 | DEBUG    | Buscando produto SKU: 1975-0
+2026-01-16 11:44:19 | DEBUG    | GET products/1975-0 params=None
+2026-01-16 11:44:19 | DEBUG    | Buscando produto SKU: 2815-0
+2026-01-16 11:44:19 | DEBUG    | GET products/2815-0 params=None
+2026-01-16 11:44:19 | DEBUG    | Buscando produto SKU: 1738-0
+2026-01-16 11:44:19 | DEBUG    | GET products/1738-0 params=None
+2026-01-16 11:44:20 | DEBUG    | Buscando produto SKU: 34961-A
+2026-01-16 11:44:20 | DEBUG    | GET products/34961-A params=None
+2026-01-16 11:44:20 | DEBUG    | Buscando categoria ID: 82
+2026-01-16 11:44:20 | DEBUG    | GET categories/82 params=None
+2026-01-16 11:44:20 | DEBUG    | Buscando produto SKU: fpasv
+2026-01-16 11:44:20 | DEBUG    | GET products/fpasv params=None
+2026-01-16 11:44:20 | DEBUG    | Buscando categoria ID: 39
+2026-01-16 11:44:20 | DEBUG    | GET categories/39 params=None
+2026-01-16 11:44:20 | DEBUG    | Buscando produto SKU: 2406-0
+2026-01-16 11:44:20 | DEBUG    | GET products/2406-0 params=None
+2026-01-16 11:44:20 | DEBUG    | Buscando produto SKU: 36200-A
+2026-01-16 11:44:20 | DEBUG    | GET products/36200-A params=None
+2026-01-16 11:44:21 | DEBUG    | Buscando produto SKU: 3726-4
+2026-01-16 11:44:21 | DEBUG    | GET products/3726-4 params=None
+2026-01-16 11:44:21 | DEBUG    | Buscando categoria ID: 6
+2026-01-16 11:44:21 | DEBUG    | GET categories/6 params=None
+2026-01-16 11:44:21 | DEBUG    | Buscando categoria ID: 96
+2026-01-16 11:44:21 | DEBUG    | GET categories/96 params=None
+2026-01-16 11:44:21 | DEBUG    | Buscando produto SKU: 3489
+2026-01-16 11:44:21 | DEBUG    | GET products/3489 params=None
+2026-01-16 11:44:21 | DEBUG    | Buscando produto SKU: TS1420-0
+2026-01-16 11:44:21 | DEBUG    | GET products/TS1420-0 params=None
+2026-01-16 11:44:21 | DEBUG    | Buscando categoria ID: 16
+2026-01-16 11:44:21 | DEBUG    | GET categories/16 params=None
+2026-01-16 11:44:21 | DEBUG    | Buscando produto SKU: 2123-0
+2026-01-16 11:44:21 | DEBUG    | GET products/2123-0 params=None
+2026-01-16 11:44:22 | DEBUG    | Buscando categoria ID: 91
+2026-01-16 11:44:22 | DEBUG    | GET categories/91 params=None
+2026-01-16 11:44:22 | DEBUG    | Buscando produto SKU: 45710-0
+2026-01-16 11:44:22 | DEBUG    | GET products/45710-0 params=None
+2026-01-16 11:44:22 | DEBUG    | Buscando produto SKU: 3472-1
+2026-01-16 11:44:22 | DEBUG    | GET products/3472-1 params=None
+2026-01-16 11:44:22 | DEBUG    | Buscando produto SKU: 2110-0
+2026-01-16 11:44:22 | DEBUG    | GET products/2110-0 params=None
+2026-01-16 11:44:22 | DEBUG    | Buscando categoria ID: 18
+2026-01-16 11:44:22 | DEBUG    | GET categories/18 params=None
+2026-01-16 11:44:22 | DEBUG    | Buscando produto SKU: 2075-0
+2026-01-16 11:44:22 | DEBUG    | GET products/2075-0 params=None
+2026-01-16 11:44:22 | DEBUG    | Buscando produto SKU: 2203-0
+2026-01-16 11:44:22 | DEBUG    | GET products/2203-0 params=None
+2026-01-16 11:44:23 | DEBUG    | Buscando produto SKU: 3773-0
+2026-01-16 11:44:23 | DEBUG    | GET products/3773-0 params=None
+2026-01-16 11:44:23 | DEBUG    | Buscando produto SKU: 3449
+2026-01-16 11:44:23 | DEBUG    | GET products/3449 params=None
+2026-01-16 11:44:23 | DEBUG    | Buscando categoria ID: 139
+2026-01-16 11:44:23 | DEBUG    | GET categories/139 params=None
+2026-01-16 11:44:23 | DEBUG    | Buscando produto SKU: 3086-1
+2026-01-16 11:44:23 | DEBUG    | GET products/3086-1 params=None
+2026-01-16 11:44:23 | DEBUG    | Buscando produto SKU: 3590-0
+2026-01-16 11:44:23 | DEBUG    | GET products/3590-0 params=None
+2026-01-16 11:44:23 | DEBUG    | Buscando produto SKU: 3156-0
+2026-01-16 11:44:23 | DEBUG    | GET products/3156-0 params=None
+2026-01-16 11:44:23 | DEBUG    | Buscando categoria ID: 50
+2026-01-16 11:44:23 | DEBUG    | GET categories/50 params=None
+2026-01-16 11:44:24 | DEBUG    | Buscando categoria ID: 55
+2026-01-16 11:44:24 | DEBUG    | GET categories/55 params=None
+2026-01-16 11:44:24 | DEBUG    | Buscando produto SKU: 1959-0
+2026-01-16 11:44:24 | DEBUG    | GET products/1959-0 params=None
+2026-01-16 11:44:24 | DEBUG    | Buscando categoria ID: 105
+2026-01-16 11:44:24 | DEBUG    | GET categories/105 params=None
+2026-01-16 11:44:24 | DEBUG    | Buscando produto SKU: 3707-1
+2026-01-16 11:44:24 | DEBUG    | GET products/3707-1 params=None
+2026-01-16 11:44:24 | DEBUG    | Buscando categoria ID: 42
+2026-01-16 11:44:24 | DEBUG    | GET categories/42 params=None
+2026-01-16 11:44:24 | DEBUG    | Buscando categoria ID: 44
+2026-01-16 11:44:24 | DEBUG    | GET categories/44 params=None
+2026-01-16 11:44:25 | DEBUG    | Buscando categoria ID: 59
+2026-01-16 11:44:25 | DEBUG    | GET categories/59 params=None
+2026-01-16 11:44:25 | DEBUG    | Buscando produto SKU: 3353-0
+2026-01-16 11:44:25 | DEBUG    | GET products/3353-0 params=None
+2026-01-16 11:44:25 | DEBUG    | Buscando produto SKU: 1687-0
+2026-01-16 11:44:25 | DEBUG    | GET products/1687-0 params=None
+2026-01-16 11:44:25 | DEBUG    | Buscando produto SKU: 3313-1
+2026-01-16 11:44:25 | DEBUG    | GET products/3313-1 params=None
+2026-01-16 11:44:25 | DEBUG    | Buscando categoria ID: 33
+2026-01-16 11:44:25 | DEBUG    | GET categories/33 params=None
+2026-01-16 11:44:25 | DEBUG    | Buscando produto SKU: 1447-0
+2026-01-16 11:44:25 | DEBUG    | GET products/1447-0 params=None
+2026-01-16 11:44:25 | DEBUG    | Buscando produto SKU: 2478-0
+2026-01-16 11:44:25 | DEBUG    | GET products/2478-0 params=None
+2026-01-16 11:44:26 | DEBUG    | Buscando produto SKU: DP714-0
+2026-01-16 11:44:26 | DEBUG    | GET products/DP714-0 params=None
+2026-01-16 11:44:26 | DEBUG    | Buscando produto SKU: 2562-0
+2026-01-16 11:44:26 | DEBUG    | GET products/2562-0 params=None
+2026-01-16 11:44:26 | DEBUG    | Buscando produto SKU: 3265-2
+2026-01-16 11:44:26 | DEBUG    | GET products/3265-2 params=None
+2026-01-16 11:44:26 | DEBUG    | Buscando produto SKU: 996-00
+2026-01-16 11:44:26 | DEBUG    | GET products/996-00 params=None
+2026-01-16 11:44:26 | DEBUG    | Buscando categoria ID: 19
+2026-01-16 11:44:26 | DEBUG    | GET categories/19 params=None
+2026-01-16 11:44:26 | DEBUG    | Buscando produto SKU: 2553-0
+2026-01-16 11:44:26 | DEBUG    | GET products/2553-0 params=None
+2026-01-16 11:44:26 | DEBUG    | Buscando produto SKU: 3297-1
+2026-01-16 11:44:26 | DEBUG    | GET products/3297-1 params=None
+2026-01-16 11:44:27 | DEBUG    | Buscando categoria ID: 83
+2026-01-16 11:44:27 | DEBUG    | GET categories/83 params=None
+2026-01-16 11:44:27 | DEBUG    | Buscando produto SKU: 3131-1
+2026-01-16 11:44:27 | DEBUG    | GET products/3131-1 params=None
+2026-01-16 11:44:27 | DEBUG    | Buscando produto SKU: 3294-0-2
+2026-01-16 11:44:27 | DEBUG    | GET products/3294-0-2 params=None
+2026-01-16 11:44:27 | DEBUG    | Buscando produto SKU: 2730-0
+2026-01-16 11:44:27 | DEBUG    | GET products/2730-0 params=None
+2026-01-16 11:44:27 | DEBUG    | Buscando produto SKU: 51259 -1259-A
+2026-01-16 11:44:27 | DEBUG    | GET products/51259%20-1259-A params=None
+2026-01-16 11:44:27 | DEBUG    | Buscando produto SKU: 3130-2
+2026-01-16 11:44:27 | DEBUG    | GET products/3130-2 params=None
+2026-01-16 11:44:28 | DEBUG    | Buscando produto SKU: 3219-0
+2026-01-16 11:44:28 | DEBUG    | GET products/3219-0 params=None
+2026-01-16 11:44:28 | DEBUG    | Buscando produto SKU: 68170-0
+2026-01-16 11:44:28 | DEBUG    | GET products/68170-0 params=None
+2026-01-16 11:44:28 | DEBUG    | Buscando produto SKU: 3519
+2026-01-16 11:44:28 | DEBUG    | GET products/3519 params=None
+2026-01-16 11:44:28 | DEBUG    | Buscando produto SKU: 50048_0
+2026-01-16 11:44:28 | DEBUG    | GET products/50048_0 params=None
+2026-01-16 11:44:28 | DEBUG    | Buscando produto SKU: 3629-0
+2026-01-16 11:44:28 | DEBUG    | GET products/3629-0 params=None
+2026-01-16 11:44:28 | DEBUG    | Buscando categoria ID: 129
+2026-01-16 11:44:28 | DEBUG    | GET categories/129 params=None
+2026-01-16 11:44:29 | DEBUG    | Buscando produto SKU: 2638-0
+2026-01-16 11:44:29 | DEBUG    | GET products/2638-0 params=None
+2026-01-16 11:44:29 | DEBUG    | Buscando categoria ID: 70
+2026-01-16 11:44:29 | DEBUG    | GET categories/70 params=None
+2026-01-16 11:44:29 | DEBUG    | Buscando produto SKU: 36184-H
+2026-01-16 11:44:29 | DEBUG    | GET products/36184-H params=None
+2026-01-16 11:44:29 | DEBUG    | Buscando categoria ID: 69
+2026-01-16 11:44:29 | DEBUG    | GET categories/69 params=None
+2026-01-16 11:44:29 | DEBUG    | Buscando produto SKU: 1843-0
+2026-01-16 11:44:29 | DEBUG    | GET products/1843-0 params=None
+2026-01-16 11:44:29 | DEBUG    | Buscando categoria ID: 45
+2026-01-16 11:44:29 | DEBUG    | GET categories/45 params=None
+2026-01-16 11:44:29 | DEBUG    | Buscando produto SKU: 38702
+2026-01-16 11:44:29 | DEBUG    | GET products/38702 params=None
+2026-01-16 11:44:30 | DEBUG    | Buscando produto SKU: 15374
+2026-01-16 11:44:30 | DEBUG    | GET products/15374 params=None
+2026-01-16 11:44:30 | DEBUG    | Buscando produto SKU: 6339
+2026-01-16 11:44:30 | DEBUG    | GET products/6339 params=None
+2026-01-16 11:44:30 | DEBUG    | Buscando produto SKU: 51476-0
+2026-01-16 11:44:30 | DEBUG    | GET products/51476-0 params=None
+2026-01-16 11:44:30 | DEBUG    | Buscando produto SKU: 57627-0
+2026-01-16 11:44:30 | DEBUG    | GET products/57627-0 params=None
+2026-01-16 11:44:30 | DEBUG    | Buscando produto SKU: 2566-1
+2026-01-16 11:44:30 | DEBUG    | GET products/2566-1 params=None
+2026-01-16 11:44:30 | DEBUG    | Buscando produto SKU: 3866-1
+2026-01-16 11:44:30 | DEBUG    | GET products/3866-1 params=None
+2026-01-16 11:44:31 | DEBUG    | Buscando categoria ID: 17
+2026-01-16 11:44:31 | DEBUG    | GET categories/17 params=None
+2026-01-16 11:44:31 | DEBUG    | Buscando produto SKU: 2290-0
+2026-01-16 11:44:31 | DEBUG    | GET products/2290-0 params=None
+2026-01-16 11:44:31 | DEBUG    | Buscando produto SKU: 3406-0
+2026-01-16 11:44:31 | DEBUG    | GET products/3406-0 params=None
+2026-01-16 11:44:31 | DEBUG    | Buscando produto SKU: CVTE01
+2026-01-16 11:44:31 | DEBUG    | GET products/CVTE01 params=None
+2026-01-16 11:44:31 | DEBUG    | Buscando produto SKU: 2458-0
+2026-01-16 11:44:31 | DEBUG    | GET products/2458-0 params=None
+2026-01-16 11:44:31 | DEBUG    | Buscando produto SKU: 1321-0
+2026-01-16 11:44:31 | DEBUG    | GET products/1321-0 params=None
+2026-01-16 11:44:31 | DEBUG    | Buscando produto SKU: 1212-0
+2026-01-16 11:44:31 | DEBUG    | GET products/1212-0 params=None
+2026-01-16 11:44:32 | DEBUG    | Buscando produto SKU: 43544-0
+2026-01-16 11:44:32 | DEBUG    | GET products/43544-0 params=None
+2026-01-16 11:44:32 | DEBUG    | Buscando produto SKU: 4403-1
+2026-01-16 11:44:32 | DEBUG    | GET products/4403-1 params=None
+2026-01-16 11:44:32 | DEBUG    | Buscando produto SKU: 59432-0
+2026-01-16 11:44:32 | DEBUG    | GET products/59432-0 params=None
+2026-01-16 11:44:32 | DEBUG    | Buscando produto SKU: 1297
+2026-01-16 11:44:32 | DEBUG    | GET products/1297 params=None
+2026-01-16 11:44:32 | DEBUG    | Buscando produto SKU: 3177-0
+2026-01-16 11:44:32 | DEBUG    | GET products/3177-0 params=None
+2026-01-16 11:44:32 | DEBUG    | Buscando categoria ID: 87
+2026-01-16 11:44:32 | DEBUG    | GET categories/87 params=None
+2026-01-16 11:44:33 | DEBUG    | Buscando produto SKU: 3346-0
+2026-01-16 11:44:33 | DEBUG    | GET products/3346-0 params=None
+2026-01-16 11:44:33 | DEBUG    | Buscando produto SKU: 7113
+2026-01-16 11:44:33 | DEBUG    | GET products/7113 params=None
+2026-01-16 11:44:33 | DEBUG    | Buscando produto SKU: testfar3265
+2026-01-16 11:44:33 | DEBUG    | GET products/testfar3265 params=None
+2026-01-16 11:44:33 | DEBUG    | Buscando produto SKU: 2468-1
+2026-01-16 11:44:33 | DEBUG    | GET products/2468-1 params=None
+2026-01-16 11:44:33 | DEBUG    | Buscando produto SKU: 1749-0
+2026-01-16 11:44:33 | DEBUG    | GET products/1749-0 params=None
+2026-01-16 11:44:33 | DEBUG    | Buscando produto SKU: FTPM06
+2026-01-16 11:44:33 | DEBUG    | GET products/FTPM06 params=None
+2026-01-16 11:44:34 | DEBUG    | Buscando produto SKU: 3906-1
+2026-01-16 11:44:34 | DEBUG    | GET products/3906-1 params=None
+2026-01-16 11:44:34 | DEBUG    | Buscando categoria ID: 52
+2026-01-16 11:44:34 | DEBUG    | GET categories/52 params=None
+2026-01-16 11:44:34 | DEBUG    | Buscando categoria ID: 56
+2026-01-16 11:44:34 | DEBUG    | GET categories/56 params=None
+2026-01-16 11:44:34 | DEBUG    | Buscando categoria ID: 58
+2026-01-16 11:44:34 | DEBUG    | GET categories/58 params=None
+2026-01-16 11:44:34 | DEBUG    | Buscando categoria ID: 123
+2026-01-16 11:44:34 | DEBUG    | GET categories/123 params=None
+2026-01-16 11:44:34 | DEBUG    | Buscando produto SKU: 1890-0
+2026-01-16 11:44:34 | DEBUG    | GET products/1890-0 params=None
+2026-01-16 11:44:34 | DEBUG    | Buscando categoria ID: 21
+2026-01-16 11:44:34 | DEBUG    | GET categories/21 params=None
+2026-01-16 11:44:34 | DEBUG    | Buscando produto SKU: 2036-0-2
+2026-01-16 11:44:34 | DEBUG    | GET products/2036-0-2 params=None
+2026-01-16 11:44:35 | DEBUG    | Buscando produto SKU: 50022-0
+2026-01-16 11:44:35 | DEBUG    | GET products/50022-0 params=None
+2026-01-16 11:44:35 | DEBUG    | Buscando categoria ID: 86
+2026-01-16 11:44:35 | DEBUG    | GET categories/86 params=None
+2026-01-16 11:44:35 | DEBUG    | Buscando produto SKU: 3323-1
+2026-01-16 11:44:35 | DEBUG    | GET products/3323-1 params=None
+2026-01-16 11:44:35 | DEBUG    | Buscando produto SKU: 59109-0
+2026-01-16 11:44:35 | DEBUG    | GET products/59109-0 params=None
+2026-01-16 11:44:35 | DEBUG    | Buscando produto SKU: 49068-0
+2026-01-16 11:44:35 | DEBUG    | GET products/49068-0 params=None
+2026-01-16 11:44:35 | DEBUG    | Buscando produto SKU: 3349-0
+2026-01-16 11:44:35 | DEBUG    | GET products/3349-0 params=None
+2026-01-16 11:44:36 | DEBUG    | Buscando categoria ID: 85
+2026-01-16 11:44:36 | DEBUG    | GET categories/85 params=None
+2026-01-16 11:44:36 | DEBUG    | Buscando produto SKU: 2559-0-2-1
+2026-01-16 11:44:36 | DEBUG    | GET products/2559-0-2-1 params=None
+2026-01-16 11:44:36 | DEBUG    | Buscando produto SKU: 58333-0
+2026-01-16 11:44:36 | DEBUG    | GET products/58333-0 params=None
+2026-01-16 11:44:36 | DEBUG    | Buscando categoria ID: 107
+2026-01-16 11:44:36 | DEBUG    | GET categories/107 params=None
+2026-01-16 11:44:36 | DEBUG    | Buscando produto SKU: 282-0
+2026-01-16 11:44:36 | DEBUG    | GET products/282-0 params=None
+2026-01-16 11:44:36 | DEBUG    | Buscando produto SKU: 1295-0
+2026-01-16 11:44:36 | DEBUG    | GET products/1295-0 params=None
+2026-01-16 11:44:36 | DEBUG    | Buscando produto SKU: 1836-0-1
+2026-01-16 11:44:36 | DEBUG    | GET products/1836-0-1 params=None
+2026-01-16 11:44:37 | DEBUG    | Buscando produto SKU: 2200-0
+2026-01-16 11:44:37 | DEBUG    | GET products/2200-0 params=None
+2026-01-16 11:44:37 | DEBUG    | Buscando produto SKU: 1389
+2026-01-16 11:44:37 | DEBUG    | GET products/1389 params=None
+2026-01-16 11:44:37 | DEBUG    | Buscando produto SKU: 1676-0
+2026-01-16 11:44:37 | DEBUG    | GET products/1676-0 params=None
+2026-01-16 11:44:37 | DEBUG    | Buscando categoria ID: 15
+2026-01-16 11:44:37 | DEBUG    | GET categories/15 params=None
+2026-01-16 11:44:37 | DEBUG    | Buscando produto SKU: 266-0-ioimbi
+2026-01-16 11:44:37 | DEBUG    | GET products/266-0-ioimbi params=None
+2026-01-16 11:44:37 | DEBUG    | Buscando produto SKU: 3784-0_2468-0-2
+2026-01-16 11:44:37 | DEBUG    | GET products/3784-0_2468-0-2 params=None
+2026-01-16 11:44:38 | DEBUG    | Buscando produto SKU: especialmenteparaGabrielSchuffnergw
+2026-01-16 11:44:38 | DEBUG    | GET products/especialmenteparaGabrielSchuffnergw params=None
+2026-01-16 11:44:38 | DEBUG    | Buscando produto SKU: 3321-2
+2026-01-16 11:44:38 | DEBUG    | GET products/3321-2 params=None
+2026-01-16 11:44:38 | DEBUG    | Buscando produto SKU: 957-1-2-1
+2026-01-16 11:44:38 | DEBUG    | GET products/957-1-2-1 params=None
+2026-01-16 11:44:38 | DEBUG    | Buscando produto SKU: 45264-0
+2026-01-16 11:44:38 | DEBUG    | GET products/45264-0 params=None
+2026-01-16 11:44:38 | DEBUG    | Buscando categoria ID: 80
+2026-01-16 11:44:38 | DEBUG    | GET categories/80 params=None
+2026-01-16 11:44:38 | DEBUG    | Buscando produto SKU: TS3332-0
+2026-01-16 11:44:38 | DEBUG    | GET products/TS3332-0 params=None
+2026-01-16 11:44:39 | DEBUG    | Buscando produto SKU: 71737-0
+2026-01-16 11:44:39 | DEBUG    | GET products/71737-0 params=None
+2026-01-16 11:44:39 | DEBUG    | Buscando produto SKU: 1383-0-2
+2026-01-16 11:44:39 | DEBUG    | GET products/1383-0-2 params=None
+2026-01-16 11:44:39 | DEBUG    | Buscando produto SKU: 45277-0
+2026-01-16 11:44:39 | DEBUG    | GET products/45277-0 params=None
+2026-01-16 11:44:39 | DEBUG    | Buscando produto SKU: teste1815-2
+2026-01-16 11:44:39 | DEBUG    | GET products/teste1815-2 params=None
+2026-01-16 11:44:39 | DEBUG    | Buscando produto SKU: 2613-1
+2026-01-16 11:44:39 | DEBUG    | GET products/2613-1 params=None
+2026-01-16 11:44:39 | DEBUG    | Buscando produto SKU: 3132-2
+2026-01-16 11:44:39 | DEBUG    | GET products/3132-2 params=None
+2026-01-16 11:44:39 | DEBUG    | Buscando produto SKU: 3580-1
+2026-01-16 11:44:39 | DEBUG    | GET products/3580-1 params=None
+2026-01-16 11:44:40 | DEBUG    | Buscando produto SKU: 850175-3
+2026-01-16 11:44:40 | DEBUG    | GET products/850175-3 params=None
+2026-01-16 11:44:40 | DEBUG    | Buscando produto SKU: 3407-0
+2026-01-16 11:44:40 | DEBUG    | GET products/3407-0 params=None
+2026-01-16 11:44:40 | DEBUG    | Buscando produto SKU: 2142-0
+2026-01-16 11:44:40 | DEBUG    | GET products/2142-0 params=None
+2026-01-16 11:44:40 | DEBUG    | Buscando produto SKU: 1881-0
+2026-01-16 11:44:40 | DEBUG    | GET products/1881-0 params=None
+2026-01-16 11:44:40 | DEBUG    | Buscando produto SKU: 1023-0_1695-0_1021-0-2
+2026-01-16 11:44:40 | DEBUG    | GET products/1023-0_1695-0_1021-0-2 params=None
+2026-01-16 11:44:40 | DEBUG    | Buscando produto SKU: 2530-0
+2026-01-16 11:44:40 | DEBUG    | GET products/2530-0 params=None
+2026-01-16 11:44:41 | DEBUG    | Buscando produto SKU: 2609-0
+2026-01-16 11:44:41 | DEBUG    | GET products/2609-0 params=None
+2026-01-16 11:44:41 | DEBUG    | Buscando produto SKU: 1753-0
+2026-01-16 11:44:41 | DEBUG    | GET products/1753-0 params=None
+2026-01-16 11:44:41 | DEBUG    | Buscando produto SKU: 2195-0
+2026-01-16 11:44:41 | DEBUG    | GET products/2195-0 params=None
+2026-01-16 11:44:41 | DEBUG    | Buscando produto SKU: 2576-0
+2026-01-16 11:44:41 | DEBUG    | GET products/2576-0 params=None
+2026-01-16 11:44:41 | DEBUG    | Buscando produto SKU: CRAR01
+2026-01-16 11:44:41 | DEBUG    | GET products/CRAR01 params=None
+2026-01-16 11:44:41 | DEBUG    | Buscando produto SKU: 3032-0
+2026-01-16 11:44:41 | DEBUG    | GET products/3032-0 params=None
+2026-01-16 11:44:42 | DEBUG    | Buscando categoria ID: 66
+2026-01-16 11:44:42 | DEBUG    | GET categories/66 params=None
+2026-01-16 11:44:42 | DEBUG    | Buscando produto SKU: 54768-A
+2026-01-16 11:44:42 | DEBUG    | GET products/54768-A params=None
+2026-01-16 11:44:42 | DEBUG    | Buscando produto SKU: 3918-2
+2026-01-16 11:44:42 | DEBUG    | GET products/3918-2 params=None
+2026-01-16 11:44:42 | DEBUG    | Buscando produto SKU: 2181-0
+2026-01-16 11:44:42 | DEBUG    | GET products/2181-0 params=None
+2026-01-16 11:44:42 | DEBUG    | Buscando produto SKU: 1288-0
+2026-01-16 11:44:42 | DEBUG    | GET products/1288-0 params=None
+2026-01-16 11:44:42 | DEBUG    | Buscando produto SKU: 89B
+2026-01-16 11:44:42 | DEBUG    | GET products/89B params=None
+2026-01-16 11:44:42 | DEBUG    | Buscando produto SKU: 2297-0
+2026-01-16 11:44:42 | DEBUG    | GET products/2297-0 params=None
+2026-01-16 11:44:43 | DEBUG    | Buscando produto SKU: ts3702-0-1
+2026-01-16 11:44:43 | DEBUG    | GET products/ts3702-0-1 params=None
+2026-01-16 11:44:43 | DEBUG    | Buscando produto SKU: 1845-0
+2026-01-16 11:44:43 | DEBUG    | GET products/1845-0 params=None
+2026-01-16 11:44:43 | DEBUG    | Buscando produto SKU: 42628-0_42628-1
+2026-01-16 11:44:43 | DEBUG    | GET products/42628-0_42628-1 params=None
+2026-01-16 11:44:43 | DEBUG    | Buscando categoria ID: 98
+2026-01-16 11:44:43 | DEBUG    | GET categories/98 params=None
+2026-01-16 11:44:43 | DEBUG    | Buscando produto SKU: 2082-2
+2026-01-16 11:44:43 | DEBUG    | GET products/2082-2 params=None
+2026-01-16 11:44:43 | DEBUG    | Buscando produto SKU: 49370_0
+2026-01-16 11:44:43 | DEBUG    | GET products/49370_0 params=None
+2026-01-16 11:44:43 | DEBUG    | Buscando produto SKU: teste-587-0_1023-0_589-0
+2026-01-16 11:44:43 | DEBUG    | GET products/teste-587-0_1023-0_589-0 params=None
+2026-01-16 11:44:44 | DEBUG    | Buscando produto SKU: 3078-0
+2026-01-16 11:44:44 | DEBUG    | GET products/3078-0 params=None
+2026-01-16 11:44:44 | DEBUG    | Buscando produto SKU: 1290-0
+2026-01-16 11:44:44 | DEBUG    | GET products/1290-0 params=None
+2026-01-16 11:44:44 | DEBUG    | Buscando produto SKU: 3294-0
+2026-01-16 11:44:44 | DEBUG    | GET products/3294-0 params=None
+2026-01-16 11:44:44 | DEBUG    | Buscando produto SKU: 3784-0_2468-0-novo
+2026-01-16 11:44:44 | DEBUG    | GET products/3784-0_2468-0-novo params=None
+2026-01-16 11:44:44 | DEBUG    | Buscando produto SKU: TS1761-0
+2026-01-16 11:44:44 | DEBUG    | GET products/TS1761-0 params=None
+2026-01-16 11:44:45 | DEBUG    | Buscando produto SKU: 319-0
+2026-01-16 11:44:45 | DEBUG    | GET products/319-0 params=None
+2026-01-16 11:44:45 | DEBUG    | Buscando produto SKU: 532-0
+2026-01-16 11:44:45 | DEBUG    | GET products/532-0 params=None
+2026-01-16 11:44:45 | DEBUG    | Buscando produto SKU: 152-0-
+2026-01-16 11:44:45 | DEBUG    | GET products/152-0- params=None
+2026-01-16 11:44:45 | DEBUG    | Buscando produto SKU: 1013-0-2
+2026-01-16 11:44:45 | DEBUG    | GET products/1013-0-2 params=None
+2026-01-16 11:44:45 | DEBUG    | Buscando produto SKU: 3134-1
+2026-01-16 11:44:45 | DEBUG    | GET products/3134-1 params=None
+2026-01-16 11:44:45 | DEBUG    | Buscando produto SKU: 2529-0
+2026-01-16 11:44:45 | DEBUG    | GET products/2529-0 params=None
+2026-01-16 11:44:45 | DEBUG    | Buscando categoria ID: 77
+2026-01-16 11:44:45 | DEBUG    | GET categories/77 params=None
+2026-01-16 11:44:46 | DEBUG    | Buscando produto SKU: 2383-0
+2026-01-16 11:44:46 | DEBUG    | GET products/2383-0 params=None
+2026-01-16 11:44:46 | DEBUG    | Buscando produto SKU: 36182-O
+2026-01-16 11:44:46 | DEBUG    | GET products/36182-O params=None
+2026-01-16 11:44:46 | DEBUG    | Buscando produto SKU: 1487-0
+2026-01-16 11:44:46 | DEBUG    | GET products/1487-0 params=None
+2026-01-16 11:44:46 | DEBUG    | Buscando produto SKU: 2696-0
+2026-01-16 11:44:46 | DEBUG    | GET products/2696-0 params=None
+2026-01-16 11:44:46 | DEBUG    | Buscando produto SKU: 22676
+2026-01-16 11:44:46 | DEBUG    | GET products/22676 params=None
+2026-01-16 11:44:46 | DEBUG    | Buscando produto SKU: 2696-1
+2026-01-16 11:44:46 | DEBUG    | GET products/2696-1 params=None
+2026-01-16 11:44:47 | DEBUG    | Buscando produto SKU: TS1675-0
+2026-01-16 11:44:47 | DEBUG    | GET products/TS1675-0 params=None
+2026-01-16 11:44:47 | DEBUG    | Buscando produto SKU: 2126-0
+2026-01-16 11:44:47 | DEBUG    | GET products/2126-0 params=None
+2026-01-16 11:44:47 | DEBUG    | Buscando categoria ID: 34
+2026-01-16 11:44:47 | DEBUG    | GET categories/34 params=None
+2026-01-16 11:44:47 | DEBUG    | Buscando produto SKU: 2288-0
+2026-01-16 11:44:47 | DEBUG    | GET products/2288-0 params=None
+2026-01-16 11:44:47 | DEBUG    | Buscando produto SKU: 64288-0
+2026-01-16 11:44:47 | DEBUG    | GET products/64288-0 params=None
+2026-01-16 11:44:47 | DEBUG    | Buscando categoria ID: 26
+2026-01-16 11:44:47 | DEBUG    | GET categories/26 params=None
+2026-01-16 11:44:48 | DEBUG    | Buscando produto SKU: 1883-0
+2026-01-16 11:44:48 | DEBUG    | GET products/1883-0 params=None
+2026-01-16 11:44:48 | DEBUG    | Buscando produto SKU: 438-0
+2026-01-16 11:44:48 | DEBUG    | GET products/438-0 params=None
+2026-01-16 11:44:48 | DEBUG    | Buscando produto SKU: 2458-0-1
+2026-01-16 11:44:48 | DEBUG    | GET products/2458-0-1 params=None
+2026-01-16 11:44:48 | DEBUG    | Buscando produto SKU: 1866-0
+2026-01-16 11:44:48 | DEBUG    | GET products/1866-0 params=None
+2026-01-16 11:44:48 | DEBUG    | Buscando produto SKU: 3550
+2026-01-16 11:44:48 | DEBUG    | GET products/3550 params=None
+2026-01-16 11:44:48 | DEBUG    | Buscando produto SKU: 48600-0
+2026-01-16 11:44:48 | DEBUG    | GET products/48600-0 params=None
+2026-01-16 11:44:49 | DEBUG    | Buscando produto SKU: 55700
+2026-01-16 11:44:49 | DEBUG    | GET products/55700 params=None
+2026-01-16 11:44:49 | DEBUG    | Buscando produto SKU: 2116-0
+2026-01-16 11:44:49 | DEBUG    | GET products/2116-0 params=None
+2026-01-16 11:44:49 | DEBUG    | Buscando produto SKU: 46315-0
+2026-01-16 11:44:49 | DEBUG    | GET products/46315-0 params=None
+2026-01-16 11:44:49 | DEBUG    | Buscando produto SKU: 1461-0
+2026-01-16 11:44:49 | DEBUG    | GET products/1461-0 params=None
+2026-01-16 11:44:49 | DEBUG    | Buscando produto SKU: 2035-0
+2026-01-16 11:44:49 | DEBUG    | GET products/2035-0 params=None
+2026-01-16 11:44:49 | DEBUG    | Buscando produto SKU: 2146-0
+2026-01-16 11:44:49 | DEBUG    | GET products/2146-0 params=None
+2026-01-16 11:44:49 | DEBUG    | Buscando produto SKU: 49566-0
+2026-01-16 11:44:49 | DEBUG    | GET products/49566-0 params=None
+2026-01-16 11:44:50 | DEBUG    | Buscando produto SKU: 1973-0
+2026-01-16 11:44:50 | DEBUG    | GET products/1973-0 params=None
+2026-01-16 11:44:50 | DEBUG    | Buscando produto SKU: teste-1441-0
+2026-01-16 11:44:50 | DEBUG    | GET products/teste-1441-0 params=None
+2026-01-16 11:44:50 | DEBUG    | Buscando produto SKU: 1963-0
+2026-01-16 11:44:50 | DEBUG    | GET products/1963-0 params=None
+2026-01-16 11:44:50 | DEBUG    | Buscando produto SKU: 64088-0
+2026-01-16 11:44:50 | DEBUG    | GET products/64088-0 params=None
+2026-01-16 11:44:50 | DEBUG    | Buscando produto SKU: 1958-0
+2026-01-16 11:44:50 | DEBUG    | GET products/1958-0 params=None
+2026-01-16 11:44:51 | DEBUG    | Buscando categoria ID: 61
+2026-01-16 11:44:51 | DEBUG    | GET categories/61 params=None
+2026-01-16 11:44:51 | DEBUG    | Buscando produto SKU: 2074-0
+2026-01-16 11:44:51 | DEBUG    | GET products/2074-0 params=None
+2026-01-16 11:44:51 | DEBUG    | Buscando produto SKU: 37363-0_37363-1_37363-2_37363-3-C
+2026-01-16 11:44:51 | DEBUG    | GET products/37363-0_37363-1_37363-2_37363-3-C params=None
+2026-01-16 11:44:51 | DEBUG    | Buscando produto SKU: 2611-0
+2026-01-16 11:44:51 | DEBUG    | GET products/2611-0 params=None
+2026-01-16 11:44:51 | DEBUG    | Buscando categoria ID: 51
+2026-01-16 11:44:51 | DEBUG    | GET categories/51 params=None
+2026-01-16 11:44:51 | DEBUG    | Buscando produto SKU: 2551-0
+2026-01-16 11:44:51 | DEBUG    | GET products/2551-0 params=None
+2026-01-16 11:44:51 | DEBUG    | Buscando produto SKU: 3455-1
+2026-01-16 11:44:51 | DEBUG    | GET products/3455-1 params=None
+2026-01-16 11:44:52 | DEBUG    | Buscando produto SKU: 6908
+2026-01-16 11:44:52 | DEBUG    | GET products/6908 params=None
+2026-01-16 11:44:52 | DEBUG    | Buscando produto SKU: 1703-0
+2026-01-16 11:44:52 | DEBUG    | GET products/1703-0 params=None
+2026-01-16 11:44:52 | DEBUG    | Buscando produto SKU: 519
+2026-01-16 11:44:52 | DEBUG    | GET products/519 params=None
+2026-01-16 11:44:52 | DEBUG    | Buscando produto SKU: 2549-0
+2026-01-16 11:44:52 | DEBUG    | GET products/2549-0 params=None
+2026-01-16 11:44:52 | DEBUG    | Buscando produto SKU: 3295-0
+2026-01-16 11:44:52 | DEBUG    | GET products/3295-0 params=None
+2026-01-16 11:44:52 | DEBUG    | Buscando produto SKU: 2958-4
+2026-01-16 11:44:52 | DEBUG    | GET products/2958-4 params=None
+2026-01-16 11:44:53 | DEBUG    | Buscando produto SKU: 3096-0
+2026-01-16 11:44:53 | DEBUG    | GET products/3096-0 params=None
+2026-01-16 11:44:53 | DEBUG    | Buscando produto SKU: 391-0-espinh
+2026-01-16 11:44:53 | DEBUG    | GET products/391-0-espinh params=None
+2026-01-16 11:44:53 | DEBUG    | Buscando categoria ID: 54
+2026-01-16 11:44:53 | DEBUG    | GET categories/54 params=None
+2026-01-16 11:44:53 | DEBUG    | Buscando produto SKU: 539-0
+2026-01-16 11:44:53 | DEBUG    | GET products/539-0 params=None
+2026-01-16 11:44:53 | DEBUG    | Buscando categoria ID: 89
+2026-01-16 11:44:53 | DEBUG    | GET categories/89 params=None
+2026-01-16 11:44:53 | DEBUG    | Buscando produto SKU: 42628-3
+2026-01-16 11:44:53 | DEBUG    | GET products/42628-3 params=None
+2026-01-16 11:44:53 | DEBUG    | Buscando produto SKU: 3603-0
+2026-01-16 11:44:53 | DEBUG    | GET products/3603-0 params=None
+2026-01-16 11:44:54 | DEBUG    | Buscando produto SKU: 1973-1
+2026-01-16 11:44:54 | DEBUG    | GET products/1973-1 params=None
+2026-01-16 11:44:54 | DEBUG    | Buscando produto SKU: 261-0
+2026-01-16 11:44:54 | DEBUG    | GET products/261-0 params=None
+2026-01-16 11:44:54 | DEBUG    | Buscando produto SKU: 23190
+2026-01-16 11:44:54 | DEBUG    | GET products/23190 params=None
+2026-01-16 11:44:54 | DEBUG    | Buscando produto SKU: 498-0
+2026-01-16 11:44:54 | DEBUG    | GET products/498-0 params=None
+2026-01-16 11:44:54 | DEBUG    | Buscando produto SKU: 815-0
+2026-01-16 11:44:54 | DEBUG    | GET products/815-0 params=None
+2026-01-16 11:44:55 | DEBUG    | Buscando produto SKU: 1101-E
+2026-01-16 11:44:55 | DEBUG    | GET products/1101-E params=None
+2026-01-16 11:44:55 | DEBUG    | Buscando produto SKU: 2561-0
+2026-01-16 11:44:55 | DEBUG    | GET products/2561-0 params=None
+2026-01-16 11:44:55 | DEBUG    | Buscando produto SKU: 3726-1
+2026-01-16 11:44:55 | DEBUG    | GET products/3726-1 params=None
+2026-01-16 11:44:55 | DEBUG    | Buscando categoria ID: 2
+2026-01-16 11:44:55 | DEBUG    | GET categories/2 params=None
+2026-01-16 11:44:55 | DEBUG    | Buscando produto SKU: 2569-0-2
+2026-01-16 11:44:55 | DEBUG    | GET products/2569-0-2 params=None
+2026-01-16 11:44:55 | DEBUG    | Buscando produto SKU: 5847
+2026-01-16 11:44:55 | DEBUG    | GET products/5847 params=None
+2026-01-16 11:44:55 | DEBUG    | Buscando produto SKU: 3905-0
+2026-01-16 11:44:55 | DEBUG    | GET products/3905-0 params=None
+2026-01-16 11:44:56 | DEBUG    | Buscando categoria ID: 138
+2026-01-16 11:44:56 | DEBUG    | GET categories/138 params=None
+2026-01-16 11:44:56 | DEBUG    | Buscando produto SKU: 2986-0
+2026-01-16 11:44:56 | DEBUG    | GET products/2986-0 params=None
+2026-01-16 11:44:56 | DEBUG    | Buscando produto SKU: 1901-0
+2026-01-16 11:44:56 | DEBUG    | GET products/1901-0 params=None
+2026-01-16 11:44:56 | DEBUG    | Buscando produto SKU: 1755-0
+2026-01-16 11:44:56 | DEBUG    | GET products/1755-0 params=None
+2026-01-16 11:44:56 | DEBUG    | Buscando produto SKU: 48733-0
+2026-01-16 11:44:56 | DEBUG    | GET products/48733-0 params=None
+2026-01-16 11:44:56 | DEBUG    | Buscando produto SKU: 3310-0
+2026-01-16 11:44:56 | DEBUG    | GET products/3310-0 params=None
+2026-01-16 11:44:57 | DEBUG    | Buscando produto SKU: 1737-0
+2026-01-16 11:44:57 | DEBUG    | GET products/1737-0 params=None
+2026-01-16 11:44:57 | DEBUG    | Buscando produto SKU: 3579-0
+2026-01-16 11:44:57 | DEBUG    | GET products/3579-0 params=None
+2026-01-16 11:44:57 | DEBUG    | Buscando produto SKU: 64657-0
+2026-01-16 11:44:57 | DEBUG    | GET products/64657-0 params=None
+2026-01-16 11:44:57 | DEBUG    | Buscando produto SKU: 51416-0
+2026-01-16 11:44:57 | DEBUG    | GET products/51416-0 params=None
+2026-01-16 11:44:57 | DEBUG    | Buscando produto SKU: 1519-1
+2026-01-16 11:44:57 | DEBUG    | GET products/1519-1 params=None
+2026-01-16 11:44:57 | DEBUG    | Buscando produto SKU: 2603-0
+2026-01-16 11:44:57 | DEBUG    | GET products/2603-0 params=None
+2026-01-16 11:44:58 | DEBUG    | Buscando produto SKU: 2007-0-
+2026-01-16 11:44:58 | DEBUG    | GET products/2007-0- params=None
+2026-01-16 11:44:58 | DEBUG    | Buscando produto SKU: DP1177-0
+2026-01-16 11:44:58 | DEBUG    | GET products/DP1177-0 params=None
+2026-01-16 11:44:58 | DEBUG    | Buscando produto SKU: 3176-0
+2026-01-16 11:44:58 | DEBUG    | GET products/3176-0 params=None
+2026-01-16 11:44:58 | DEBUG    | Buscando produto SKU: 2412-0
+2026-01-16 11:44:58 | DEBUG    | GET products/2412-0 params=None
+2026-01-16 11:44:58 | DEBUG    | Buscando produto SKU: 1824-0
+2026-01-16 11:44:58 | DEBUG    | GET products/1824-0 params=None
+2026-01-16 11:44:58 | DEBUG    | Buscando categoria ID: 38
+2026-01-16 11:44:58 | DEBUG    | GET categories/38 params=None
+2026-01-16 11:44:59 | DEBUG    | Buscando produto SKU: 3580-0
+2026-01-16 11:44:59 | DEBUG    | GET products/3580-0 params=None
+2026-01-16 11:44:59 | DEBUG    | Buscando produto SKU: 3295-2
+2026-01-16 11:44:59 | DEBUG    | GET products/3295-2 params=None
+2026-01-16 11:44:59 | DEBUG    | Buscando produto SKU: 1672-0
+2026-01-16 11:44:59 | DEBUG    | GET products/1672-0 params=None
+2026-01-16 11:44:59 | DEBUG    | Buscando produto SKU: Especialmente para Nati 99939 CP
+2026-01-16 11:44:59 | DEBUG    | GET products/Especialmente%20para%20Nati%2099939%20CP params=None
+2026-01-16 11:44:59 | DEBUG    | Buscando produto SKU: 1314-0
+2026-01-16 11:44:59 | DEBUG    | GET products/1314-0 params=None
+2026-01-16 11:44:59 | DEBUG    | Buscando produto SKU: 3313-0
+2026-01-16 11:44:59 | DEBUG    | GET products/3313-0 params=None
+2026-01-16 11:45:00 | DEBUG    | Buscando produto SKU: 3481
+2026-01-16 11:45:00 | DEBUG    | GET products/3481 params=None
+2026-01-16 11:45:00 | DEBUG    | Buscando produto SKU: 438-1
+2026-01-16 11:45:00 | DEBUG    | GET products/438-1 params=None
+2026-01-16 11:45:00 | DEBUG    | Buscando produto SKU: 3586-0
+2026-01-16 11:45:00 | DEBUG    | GET products/3586-0 params=None
+2026-01-16 11:45:00 | DEBUG    | Buscando produto SKU: 3099-0
+2026-01-16 11:45:00 | DEBUG    | GET products/3099-0 params=None
+2026-01-16 11:45:00 | DEBUG    | Buscando produto SKU: 2074-1
+2026-01-16 11:45:00 | DEBUG    | GET products/2074-1 params=None
+2026-01-16 11:45:00 | DEBUG    | Buscando produto SKU: 49519-0
+2026-01-16 11:45:00 | DEBUG    | GET products/49519-0 params=None
+2026-01-16 11:45:00 | DEBUG    | Buscando produto SKU: Especialmente para Igor100635GB
+2026-01-16 11:45:00 | DEBUG    | GET products/Especialmente%20para%20Igor100635GB params=None
+2026-01-16 11:45:01 | DEBUG    | Buscando produto SKU: 1061-1_2583-0
+2026-01-16 11:45:01 | DEBUG    | GET products/1061-1_2583-0 params=None
+2026-01-16 11:45:01 | DEBUG    | Buscando produto SKU: ES3296-0
+2026-01-16 11:45:01 | DEBUG    | GET products/ES3296-0 params=None
+2026-01-16 11:45:01 | DEBUG    | Buscando produto SKU: 1519-0
+2026-01-16 11:45:01 | DEBUG    | GET products/1519-0 params=None
+2026-01-16 11:45:01 | DEBUG    | Buscando produto SKU: 3502
+2026-01-16 11:45:01 | DEBUG    | GET products/3502 params=None
+2026-01-16 11:45:01 | DEBUG    | Buscando produto SKU: 58481-0
+2026-01-16 11:45:01 | DEBUG    | GET products/58481-0 params=None
+2026-01-16 11:45:01 | DEBUG    | Buscando produto SKU: 2314-0
+2026-01-16 11:45:01 | DEBUG    | GET products/2314-0 params=None
+2026-01-16 11:45:02 | DEBUG    | Buscando produto SKU: 3540-0
+2026-01-16 11:45:02 | DEBUG    | GET products/3540-0 params=None
+2026-01-16 11:45:02 | DEBUG    | Buscando produto SKU: 54723-0
+2026-01-16 11:45:02 | DEBUG    | GET products/54723-0 params=None
+2026-01-16 11:45:02 | DEBUG    | Buscando produto SKU: Especialmente para Nati 100678 CP
+2026-01-16 11:45:02 | DEBUG    | GET products/Especialmente%20para%20Nati%20100678%20CP params=None
+2026-01-16 11:45:02 | DEBUG    | Buscando produto SKU: 49370-0
+2026-01-16 11:45:02 | DEBUG    | GET products/49370-0 params=None
+2026-01-16 11:45:02 | DEBUG    | Buscando produto SKU: 47983-0
+2026-01-16 11:45:02 | DEBUG    | GET products/47983-0 params=None
+2026-01-16 11:45:02 | DEBUG    | Buscando produto SKU: 1719-0
+2026-01-16 11:45:02 | DEBUG    | GET products/1719-0 params=None
+2026-01-16 11:45:03 | DEBUG    | Buscando produto SKU: 1761-0
+2026-01-16 11:45:03 | DEBUG    | GET products/1761-0 params=None
+2026-01-16 11:45:03 | DEBUG    | Buscando produto SKU: 45246-0
+2026-01-16 11:45:03 | DEBUG    | GET products/45246-0 params=None
+2026-01-16 11:45:03 | DEBUG    | Buscando produto SKU: 3918-1
+2026-01-16 11:45:03 | DEBUG    | GET products/3918-1 params=None
+2026-01-16 11:45:03 | DEBUG    | Buscando produto SKU: 2036-0
+2026-01-16 11:45:03 | DEBUG    | GET products/2036-0 params=None
+2026-01-16 11:45:03 | DEBUG    | Buscando categoria ID: 132
+2026-01-16 11:45:03 | DEBUG    | GET categories/132 params=None
+2026-01-16 11:45:03 | DEBUG    | Buscando produto SKU: 3324-0
+2026-01-16 11:45:03 | DEBUG    | GET products/3324-0 params=None
+2026-01-16 11:45:03 | DEBUG    | Buscando produto SKU: 1842-0
+2026-01-16 11:45:03 | DEBUG    | GET products/1842-0 params=None
+2026-01-16 11:45:04 | DEBUG    | Buscando produto SKU: 3305-0
+2026-01-16 11:45:04 | DEBUG    | GET products/3305-0 params=None
+2026-01-16 11:45:04 | DEBUG    | Buscando produto SKU: 3109-0
+2026-01-16 11:45:04 | DEBUG    | GET products/3109-0 params=None
+2026-01-16 11:45:04 | DEBUG    | Buscando produto SKU: 52711
+2026-01-16 11:45:04 | DEBUG    | GET products/52711 params=None
+2026-01-16 11:45:04 | DEBUG    | Buscando produto SKU: 1312-1_67-1
+2026-01-16 11:45:04 | DEBUG    | GET products/1312-1_67-1 params=None
+2026-01-16 11:45:05 | DEBUG    | Buscando produto SKU: 2215-0
+2026-01-16 11:45:05 | DEBUG    | GET products/2215-0 params=None
+2026-01-16 11:45:05 | DEBUG    | Buscando categoria ID: 36
+2026-01-16 11:45:05 | DEBUG    | GET categories/36 params=None
+2026-01-16 11:45:05 | DEBUG    | Buscando produto SKU: 3180-0
+2026-01-16 11:45:05 | DEBUG    | GET products/3180-0 params=None
+2026-01-16 11:45:05 | DEBUG    | Buscando produto SKU: 3908-0
+2026-01-16 11:45:05 | DEBUG    | GET products/3908-0 params=None
+2026-01-16 11:45:05 | DEBUG    | Buscando produto SKU: 43383-0
+2026-01-16 11:45:05 | DEBUG    | GET products/43383-0 params=None
+2026-01-16 11:45:05 | DEBUG    | Buscando produto SKU: 145c
+2026-01-16 11:45:05 | DEBUG    | GET products/145c params=None
+2026-01-16 11:45:05 | DEBUG    | Buscando produto SKU: 2181-1
+2026-01-16 11:45:05 | DEBUG    | GET products/2181-1 params=None
+2026-01-16 11:45:06 | DEBUG    | Buscando produto SKU: 2479-2
+2026-01-16 11:45:06 | DEBUG    | GET products/2479-2 params=None
+2026-01-16 11:45:06 | DEBUG    | Buscando produto SKU: 1893-0
+2026-01-16 11:45:06 | DEBUG    | GET products/1893-0 params=None
+2026-01-16 11:45:06 | DEBUG    | Buscando produto SKU: 2537-0
+2026-01-16 11:45:06 | DEBUG    | GET products/2537-0 params=None
+2026-01-16 11:45:06 | DEBUG    | Buscando produto SKU: 3927-0
+2026-01-16 11:45:06 | DEBUG    | GET products/3927-0 params=None
+2026-01-16 11:45:06 | DEBUG    | Buscando produto SKU: TS36184-H
+2026-01-16 11:45:06 | DEBUG    | GET products/TS36184-H params=None
+2026-01-16 11:45:06 | DEBUG    | Buscando produto SKU: 2570-0-2
+2026-01-16 11:45:06 | DEBUG    | GET products/2570-0-2 params=None
+2026-01-16 11:45:07 | DEBUG    | Buscando produto SKU: 3137-1
+2026-01-16 11:45:07 | DEBUG    | GET products/3137-1 params=None
+2026-01-16 11:45:07 | DEBUG    | Buscando produto SKU: 3397
+2026-01-16 11:45:07 | DEBUG    | GET products/3397 params=None
+2026-01-16 11:45:07 | DEBUG    | Buscando produto SKU: 3136-1
+2026-01-16 11:45:07 | DEBUG    | GET products/3136-1 params=None
+2026-01-16 11:45:07 | DEBUG    | Buscando produto SKU: 1101-I
+2026-01-16 11:45:07 | DEBUG    | GET products/1101-I params=None
+2026-01-16 11:45:07 | DEBUG    | Buscando produto SKU: P806-0
+2026-01-16 11:45:07 | DEBUG    | GET products/P806-0 params=None
+2026-01-16 11:45:07 | DEBUG    | Buscando produto SKU: 3216-1
+2026-01-16 11:45:07 | DEBUG    | GET products/3216-1 params=None
+2026-01-16 11:45:08 | DEBUG    | Buscando categoria ID: 121
+2026-01-16 11:45:08 | DEBUG    | GET categories/121 params=None
+2026-01-16 11:45:08 | DEBUG    | Buscando produto SKU: 3119-0
+2026-01-16 11:45:08 | DEBUG    | GET products/3119-0 params=None
+2026-01-16 11:45:08 | DEBUG    | Buscando produto SKU: 1027-0
+2026-01-16 11:45:08 | DEBUG    | GET products/1027-0 params=None
+2026-01-16 11:45:08 | DEBUG    | Buscando produto SKU: 2090-0
+2026-01-16 11:45:08 | DEBUG    | GET products/2090-0 params=None
+2026-01-16 11:45:08 | DEBUG    | Buscando produto SKU: 64104-0
+2026-01-16 11:45:08 | DEBUG    | GET products/64104-0 params=None
+2026-01-16 11:45:09 | DEBUG    | Buscando produto SKU: 3726-0_3726-1_3726-2_3726-3_3727-0
+2026-01-16 11:45:09 | DEBUG    | GET products/3726-0_3726-1_3726-2_3726-3_3727-0 params=None
+2026-01-16 11:45:09 | DEBUG    | Buscando produto SKU: t3265-0
+2026-01-16 11:45:09 | DEBUG    | GET products/t3265-0 params=None
+2026-01-16 11:45:09 | DEBUG    | Buscando produto SKU: 2111-0
+2026-01-16 11:45:09 | DEBUG    | GET products/2111-0 params=None
+2026-01-16 11:45:09 | DEBUG    | Buscando produto SKU: 45246-0-A
+2026-01-16 11:45:09 | DEBUG    | GET products/45246-0-A params=None
+2026-01-16 11:45:09 | DEBUG    | Buscando produto SKU: 36151-6
+2026-01-16 11:45:09 | DEBUG    | GET products/36151-6 params=None
+2026-01-16 11:45:09 | DEBUG    | Buscando produto SKU: 50409_0
+2026-01-16 11:45:09 | DEBUG    | GET products/50409_0 params=None
+2026-01-16 11:45:10 | DEBUG    | Buscando produto SKU: 55300-0
+2026-01-16 11:45:10 | DEBUG    | GET products/55300-0 params=None
+2026-01-16 11:45:10 | DEBUG    | Buscando produto SKU: DP3265-2
+2026-01-16 11:45:10 | DEBUG    | GET products/DP3265-2 params=None
+2026-01-16 11:45:10 | DEBUG    | Buscando produto SKU: 2074-0-1
+2026-01-16 11:45:10 | DEBUG    | GET products/2074-0-1 params=None
+2026-01-16 11:45:10 | DEBUG    | Buscando produto SKU: 3897-0
+2026-01-16 11:45:10 | DEBUG    | GET products/3897-0 params=None
+2026-01-16 11:45:10 | DEBUG    | Buscando produto SKU: 3621
+2026-01-16 11:45:10 | DEBUG    | GET products/3621 params=None
+2026-01-16 11:45:10 | DEBUG    | Buscando produto SKU: pmc
+2026-01-16 11:45:10 | DEBUG    | GET products/pmc params=None
+2026-01-16 11:45:10 | DEBUG    | Buscando produto SKU: 42444-0
+2026-01-16 11:45:10 | DEBUG    | GET products/42444-0 params=None
+2026-01-16 11:45:11 | DEBUG    | Buscando produto SKU: 2544-0
+2026-01-16 11:45:11 | DEBUG    | GET products/2544-0 params=None
+2026-01-16 11:45:11 | DEBUG    | Buscando produto SKU: 2811-1
+2026-01-16 11:45:11 | DEBUG    | GET products/2811-1 params=None
+2026-01-16 11:45:11 | DEBUG    | Buscando produto SKU: 1101-B
+2026-01-16 11:45:11 | DEBUG    | GET products/1101-B params=None
+2026-01-16 11:45:11 | DEBUG    | Buscando produto SKU: 2504-0
+2026-01-16 11:45:11 | DEBUG    | GET products/2504-0 params=None
+2026-01-16 11:45:11 | DEBUG    | Buscando produto SKU: 1964-0
+2026-01-16 11:45:11 | DEBUG    | GET products/1964-0 params=None
+2026-01-16 11:45:11 | DEBUG    | Buscando produto SKU: 2717-0
+2026-01-16 11:45:11 | DEBUG    | GET products/2717-0 params=None
+2026-01-16 11:45:12 | DEBUG    | Buscando produto SKU: 3455-2
+2026-01-16 11:45:12 | DEBUG    | GET products/3455-2 params=None
+2026-01-16 11:45:12 | DEBUG    | Buscando produto SKU: 1217-0
+2026-01-16 11:45:12 | DEBUG    | GET products/1217-0 params=None
+2026-01-16 11:45:12 | DEBUG    | Buscando produto SKU: 3297-0
+2026-01-16 11:45:12 | DEBUG    | GET products/3297-0 params=None
+2026-01-16 11:45:12 | DEBUG    | Buscando produto SKU: 54932-0_54932-1
+2026-01-16 11:45:12 | DEBUG    | GET products/54932-0_54932-1 params=None
+2026-01-16 11:45:12 | DEBUG    | Buscando produto SKU: 1101-G
+2026-01-16 11:45:12 | DEBUG    | GET products/1101-G params=None
+2026-01-16 11:45:12 | DEBUG    | Buscando produto SKU: 3529-0
+2026-01-16 11:45:12 | DEBUG    | GET products/3529-0 params=None
+2026-01-16 11:45:13 | DEBUG    | Buscando produto SKU: 3295-1
+2026-01-16 11:45:13 | DEBUG    | GET products/3295-1 params=None
+2026-01-16 11:45:13 | DEBUG    | Buscando produto SKU: 46801-0
+2026-01-16 11:45:13 | DEBUG    | GET products/46801-0 params=None
+2026-01-16 11:45:13 | DEBUG    | Buscando produto SKU: 1962-0
+2026-01-16 11:45:13 | DEBUG    | GET products/1962-0 params=None
+2026-01-16 11:45:13 | DEBUG    | Buscando produto SKU: 6004
+2026-01-16 11:45:13 | DEBUG    | GET products/6004 params=None
+2026-01-16 11:45:13 | DEBUG    | Buscando produto SKU: TS2086-0
+2026-01-16 11:45:13 | DEBUG    | GET products/TS2086-0 params=None
+2026-01-16 11:45:13 | DEBUG    | Buscando produto SKU: 3346-1
+2026-01-16 11:45:13 | DEBUG    | GET products/3346-1 params=None
+2026-01-16 11:45:14 | DEBUG    | Buscando produto SKU: 1177-2-1
+2026-01-16 11:45:14 | DEBUG    | GET products/1177-2-1 params=None
+2026-01-16 11:45:14 | DEBUG    | Buscando produto SKU: 3662-1-A
+2026-01-16 11:45:14 | DEBUG    | GET products/3662-1-A params=None
+2026-01-16 11:45:14 | DEBUG    | Buscando produto SKU: 3867-1
+2026-01-16 11:45:14 | DEBUG    | GET products/3867-1 params=None
+2026-01-16 11:45:14 | DEBUG    | Buscando categoria ID: 140
+2026-01-16 11:45:14 | DEBUG    | GET categories/140 params=None
+2026-01-16 11:45:14 | DEBUG    | Buscando produto SKU: 59110-0
+2026-01-16 11:45:14 | DEBUG    | GET products/59110-0 params=None
+2026-01-16 11:45:14 | DEBUG    | Buscando produto SKU: 4221-1
+2026-01-16 11:45:14 | DEBUG    | GET products/4221-1 params=None
+2026-01-16 11:45:14 | DEBUG    | Buscando produto SKU: 1767-i
+2026-01-16 11:45:14 | DEBUG    | GET products/1767-i params=None
+2026-01-16 11:45:15 | DEBUG    | Buscando produto SKU: 51214-0
+2026-01-16 11:45:15 | DEBUG    | GET products/51214-0 params=None
+2026-01-16 11:45:15 | DEBUG    | Buscando produto SKU: 473-0_472-0_691-0
+2026-01-16 11:45:15 | DEBUG    | GET products/473-0_472-0_691-0 params=None
+2026-01-16 11:45:15 | DEBUG    | Buscando produto SKU: 1649-0
+2026-01-16 11:45:15 | DEBUG    | GET products/1649-0 params=None
+2026-01-16 11:45:15 | DEBUG    | Buscando produto SKU: 3496
+2026-01-16 11:45:15 | DEBUG    | GET products/3496 params=None
+2026-01-16 11:45:15 | DEBUG    | Buscando produto SKU: 1391
+2026-01-16 11:45:15 | DEBUG    | GET products/1391 params=None
+2026-01-16 11:45:15 | DEBUG    | Buscando produto SKU: 1711-0
+2026-01-16 11:45:15 | DEBUG    | GET products/1711-0 params=None
+2026-01-16 11:45:16 | DEBUG    | Buscando produto SKU: 3344-1
+2026-01-16 11:45:16 | DEBUG    | GET products/3344-1 params=None
+2026-01-16 11:45:16 | DEBUG    | Buscando produto SKU: 2116-0-novo
+2026-01-16 11:45:16 | DEBUG    | GET products/2116-0-novo params=None
+2026-01-16 11:45:16 | DEBUG    | Buscando produto SKU: 36933-0
+2026-01-16 11:45:16 | DEBUG    | GET products/36933-0 params=None
+2026-01-16 11:45:16 | DEBUG    | Buscando produto SKU: 50659
+2026-01-16 11:45:16 | DEBUG    | GET products/50659 params=None
+2026-01-16 11:45:16 | DEBUG    | Buscando produto SKU: TERPOW6
+2026-01-16 11:45:16 | DEBUG    | GET products/TERPOW6 params=None
+2026-01-16 11:45:16 | DEBUG    | Buscando produto SKU: 3843-0
+2026-01-16 11:45:16 | DEBUG    | GET products/3843-0 params=None
+2026-01-16 11:45:16 | DEBUG    | Buscando produto SKU: 3837-0
+2026-01-16 11:45:16 | DEBUG    | GET products/3837-0 params=None
+2026-01-16 11:45:17 | DEBUG    | Buscando produto SKU: 2655-0-2
+2026-01-16 11:45:17 | DEBUG    | GET products/2655-0-2 params=None
+2026-01-16 11:45:17 | DEBUG    | Buscando produto SKU: 3217-0
+2026-01-16 11:45:17 | DEBUG    | GET products/3217-0 params=None
+2026-01-16 11:45:17 | DEBUG    | Buscando produto SKU: teste-988-0
+2026-01-16 11:45:17 | DEBUG    | GET products/teste-988-0 params=None
+2026-01-16 11:45:17 | DEBUG    | Buscando produto SKU: 1177-0
+2026-01-16 11:45:17 | DEBUG    | GET products/1177-0 params=None
+2026-01-16 11:45:17 | DEBUG    | Buscando produto SKU: 1205-0
+2026-01-16 11:45:17 | DEBUG    | GET products/1205-0 params=None
+2026-01-16 11:45:17 | DEBUG    | Buscando produto SKU: 3432-0
+2026-01-16 11:45:17 | DEBUG    | GET products/3432-0 params=None
+2026-01-16 11:45:18 | DEBUG    | Buscando produto SKU: MAUHAL
+2026-01-16 11:45:18 | DEBUG    | GET products/MAUHAL params=None
+2026-01-16 11:45:18 | DEBUG    | Buscando produto SKU: 3229-0
+2026-01-16 11:45:18 | DEBUG    | GET products/3229-0 params=None
+2026-01-16 11:45:18 | DEBUG    | Buscando produto SKU: 2811-2
+2026-01-16 11:45:18 | DEBUG    | GET products/2811-2 params=None
+2026-01-16 11:45:18 | DEBUG    | Buscando produto SKU: 3155-0
+2026-01-16 11:45:18 | DEBUG    | GET products/3155-0 params=None
+2026-01-16 11:45:18 | DEBUG    | Buscando categoria ID: 9
+2026-01-16 11:45:18 | DEBUG    | GET categories/9 params=None
+2026-01-16 11:45:18 | DEBUG    | Buscando produto SKU: 2187-0
+2026-01-16 11:45:18 | DEBUG    | GET products/2187-0 params=None
+2026-01-16 11:45:19 | DEBUG    | Buscando produto SKU: 3581-0
+2026-01-16 11:45:19 | DEBUG    | GET products/3581-0 params=None
+2026-01-16 11:45:19 | DEBUG    | Buscando produto SKU: PFES
+2026-01-16 11:45:19 | DEBUG    | GET products/PFES params=None
+2026-01-16 11:45:19 | DEBUG    | Buscando produto SKU: TS1057-0-1
+2026-01-16 11:45:19 | DEBUG    | GET products/TS1057-0-1 params=None
+2026-01-16 11:45:19 | DEBUG    | Buscando produto SKU: Especialmente para Danilo 87601 CP
+2026-01-16 11:45:19 | DEBUG    | GET products/Especialmente%20para%20Danilo%2087601%20CP params=None
+2026-01-16 11:45:19 | DEBUG    | Buscando produto SKU: 1961-0
+2026-01-16 11:45:19 | DEBUG    | GET products/1961-0 params=None
+2026-01-16 11:45:19 | DEBUG    | Buscando produto SKU: 36175-T
+2026-01-16 11:45:19 | DEBUG    | GET products/36175-T params=None
+2026-01-16 11:45:20 | DEBUG    | Buscando produto SKU: 3314-1
+2026-01-16 11:45:20 | DEBUG    | GET products/3314-1 params=None
+2026-01-16 11:45:20 | DEBUG    | Buscando produto SKU: teste-3310-1
+2026-01-16 11:45:20 | DEBUG    | GET products/teste-3310-1 params=None
+2026-01-16 11:45:20 | DEBUG    | Buscando produto SKU: 1269-0-
+2026-01-16 11:45:20 | DEBUG    | GET products/1269-0- params=None
+2026-01-16 11:45:20 | DEBUG    | Buscando produto SKU: 50919-0
+2026-01-16 11:45:20 | DEBUG    | GET products/50919-0 params=None
+2026-01-16 11:45:20 | DEBUG    | Buscando produto SKU: 3296-0
+2026-01-16 11:45:20 | DEBUG    | GET products/3296-0 params=None
+2026-01-16 11:45:20 | DEBUG    | Buscando produto SKU: 1736-0
+2026-01-16 11:45:20 | DEBUG    | GET products/1736-0 params=None
+2026-01-16 11:45:20 | DEBUG    | Buscando produto SKU: 3436-6
+2026-01-16 11:45:20 | DEBUG    | GET products/3436-6 params=None
+2026-01-16 11:45:21 | DEBUG    | Buscando produto SKU: 1705-0
+2026-01-16 11:45:21 | DEBUG    | GET products/1705-0 params=None
+2026-01-16 11:45:21 | DEBUG    | Buscando produto SKU: 3286-0
+2026-01-16 11:45:21 | DEBUG    | GET products/3286-0 params=None
+2026-01-16 11:45:21 | DEBUG    | Buscando produto SKU: 2067-0
+2026-01-16 11:45:21 | DEBUG    | GET products/2067-0 params=None
+2026-01-16 11:45:21 | DEBUG    | Buscando produto SKU: 2130-2
+2026-01-16 11:45:21 | DEBUG    | GET products/2130-2 params=None
+2026-01-16 11:45:21 | DEBUG    | Buscando produto SKU: 72904
+2026-01-16 11:45:21 | DEBUG    | GET products/72904 params=None
+2026-01-16 11:45:21 | DEBUG    | Buscando produto SKU: 54402-0
+2026-01-16 11:45:21 | DEBUG    | GET products/54402-0 params=None
+2026-01-16 11:45:22 | DEBUG    | Buscando produto SKU: 21661
+2026-01-16 11:45:22 | DEBUG    | GET products/21661 params=None
+2026-01-16 11:45:22 | DEBUG    | Buscando produto SKU: 1182
+2026-01-16 11:45:22 | DEBUG    | GET products/1182 params=None
+2026-01-16 11:45:22 | DEBUG    | Buscando produto SKU: 3058-0
+2026-01-16 11:45:22 | DEBUG    | GET products/3058-0 params=None
+2026-01-16 11:45:22 | DEBUG    | Buscando produto SKU: 7278
+2026-01-16 11:45:22 | DEBUG    | GET products/7278 params=None
+2026-01-16 11:45:22 | DEBUG    | Buscando produto SKU: 3267-0
+2026-01-16 11:45:22 | DEBUG    | GET products/3267-0 params=None
+2026-01-16 11:45:22 | DEBUG    | Buscando produto SKU: 3272-0
+2026-01-16 11:45:22 | DEBUG    | GET products/3272-0 params=None
+2026-01-16 11:45:23 | DEBUG    | Buscando categoria ID: 53
+2026-01-16 11:45:23 | DEBUG    | GET categories/53 params=None
+2026-01-16 11:45:23 | DEBUG    | Buscando produto SKU: 3576-0
+2026-01-16 11:45:23 | DEBUG    | GET products/3576-0 params=None
+2026-01-16 11:45:23 | DEBUG    | Buscando produto SKU: 1675-0
+2026-01-16 11:45:23 | DEBUG    | GET products/1675-0 params=None
+2026-01-16 11:45:23 | DEBUG    | Buscando produto SKU: 433-1
+2026-01-16 11:45:23 | DEBUG    | GET products/433-1 params=None
+2026-01-16 11:45:23 | DEBUG    | Buscando produto SKU: 3113-0
+2026-01-16 11:45:23 | DEBUG    | GET products/3113-0 params=None
+2026-01-16 11:45:23 | DEBUG    | Buscando produto SKU: 7402
+2026-01-16 11:45:23 | DEBUG    | GET products/7402 params=None
+2026-01-16 11:45:24 | DEBUG    | Buscando produto SKU: 3726-0
+2026-01-16 11:45:24 | DEBUG    | GET products/3726-0 params=None
+2026-01-16 11:45:24 | DEBUG    | Buscando produto SKU: SEBA
+2026-01-16 11:45:24 | DEBUG    | GET products/SEBA params=None
+2026-01-16 11:45:24 | DEBUG    | Buscando produto SKU: 1013-0
+2026-01-16 11:45:24 | DEBUG    | GET products/1013-0 params=None
+2026-01-16 11:45:24 | DEBUG    | Buscando produto SKU: teste1021-0
+2026-01-16 11:45:24 | DEBUG    | GET products/teste1021-0 params=None
+2026-01-16 11:45:24 | DEBUG    | Buscando produto SKU: 404-0
+2026-01-16 11:45:24 | DEBUG    | GET products/404-0 params=None
+2026-01-16 11:45:24 | DEBUG    | Buscando produto SKU: 1806-0
+2026-01-16 11:45:24 | DEBUG    | GET products/1806-0 params=None
+2026-01-16 11:45:25 | DEBUG    | Buscando categoria ID: 108
+2026-01-16 11:45:25 | DEBUG    | GET categories/108 params=None
+2026-01-16 11:45:25 | DEBUG    | Buscando categoria ID: 110
+2026-01-16 11:45:25 | DEBUG    | GET categories/110 params=None
+2026-01-16 11:45:25 | DEBUG    | Buscando produto SKU: 3433-0
+2026-01-16 11:45:25 | DEBUG    | GET products/3433-0 params=None
+2026-01-16 11:45:25 | DEBUG    | Buscando produto SKU: 2728-0
+2026-01-16 11:45:25 | DEBUG    | GET products/2728-0 params=None
+2026-01-16 11:45:25 | DEBUG    | Buscando produto SKU: 1740-0
+2026-01-16 11:45:25 | DEBUG    | GET products/1740-0 params=None
+2026-01-16 11:45:25 | DEBUG    | Buscando produto SKU: 3359-0
+2026-01-16 11:45:25 | DEBUG    | GET products/3359-0 params=None
+2026-01-16 11:45:25 | DEBUG    | Buscando produto SKU: 3364-2
+2026-01-16 11:45:25 | DEBUG    | GET products/3364-2 params=None
+2026-01-16 11:45:26 | DEBUG    | Buscando produto SKU: 2189-0
+2026-01-16 11:45:26 | DEBUG    | GET products/2189-0 params=None
+2026-01-16 11:45:26 | DEBUG    | Buscando produto SKU: 3818-0
+2026-01-16 11:45:26 | DEBUG    | GET products/3818-0 params=None
+2026-01-16 11:45:26 | DEBUG    | Buscando produto SKU: 680
+2026-01-16 11:45:26 | DEBUG    | GET products/680 params=None
+2026-01-16 11:45:26 | DEBUG    | Buscando produto SKU: 2985-M
+2026-01-16 11:45:26 | DEBUG    | GET products/2985-M params=None
+2026-01-16 11:45:26 | DEBUG    | Buscando produto SKU: 53954-0
+2026-01-16 11:45:26 | DEBUG    | GET products/53954-0 params=None
+2026-01-16 11:45:27 | DEBUG    | Buscando produto SKU: 1333-0
+2026-01-16 11:45:27 | DEBUG    | GET products/1333-0 params=None
+2026-01-16 11:45:27 | DEBUG    | Buscando produto SKU: 1483-0
+2026-01-16 11:45:27 | DEBUG    | GET products/1483-0 params=None
+2026-01-16 11:45:27 | DEBUG    | Buscando produto SKU: 3611
+2026-01-16 11:45:27 | DEBUG    | GET products/3611 params=None
+2026-01-16 11:45:27 | DEBUG    | Buscando produto SKU: 2121-0
+2026-01-16 11:45:27 | DEBUG    | GET products/2121-0 params=None
+2026-01-16 11:45:27 | DEBUG    | Buscando produto SKU: 1213-0
+2026-01-16 11:45:27 | DEBUG    | GET products/1213-0 params=None
+2026-01-16 11:45:27 | DEBUG    | Buscando produto SKU: 7898965762797
+2026-01-16 11:45:27 | DEBUG    | GET products/7898965762797 params=None
+2026-01-16 11:45:28 | DEBUG    | Buscando categoria ID: 74
+2026-01-16 11:45:28 | DEBUG    | GET categories/74 params=None
+2026-01-16 11:45:28 | DEBUG    | Buscando produto SKU: 3405
+2026-01-16 11:45:28 | DEBUG    | GET products/3405 params=None
+2026-01-16 11:45:28 | DEBUG    | Buscando produto SKU: 2807-0
+2026-01-16 11:45:28 | DEBUG    | GET products/2807-0 params=None
+2026-01-16 11:45:28 | DEBUG    | Buscando produto SKU: 1882-0
+2026-01-16 11:45:28 | DEBUG    | GET products/1882-0 params=None
+2026-01-16 11:45:28 | DEBUG    | Buscando produto SKU: 1202
+2026-01-16 11:45:28 | DEBUG    | GET products/1202 params=None
+2026-01-16 11:45:28 | DEBUG    | Buscando produto SKU: 1702-1
+2026-01-16 11:45:28 | DEBUG    | GET products/1702-1 params=None
+2026-01-16 11:45:29 | DEBUG    | Buscando produto SKU: 3269-0
+2026-01-16 11:45:29 | DEBUG    | GET products/3269-0 params=None
+2026-01-16 11:45:29 | DEBUG    | Buscando categoria ID: 35
+2026-01-16 11:45:29 | DEBUG    | GET categories/35 params=None
+2026-01-16 11:45:29 | DEBUG    | Buscando categoria ID: 12
+2026-01-16 11:45:29 | DEBUG    | GET categories/12 params=None
+2026-01-16 11:45:29 | DEBUG    | Buscando produto SKU: 3906-0
+2026-01-16 11:45:29 | DEBUG    | GET products/3906-0 params=None
+2026-01-16 11:45:29 | DEBUG    | Buscando produto SKU: 2550-0
+2026-01-16 11:45:29 | DEBUG    | GET products/2550-0 params=None
+2026-01-16 11:45:29 | DEBUG    | Buscando produto SKU: 2573-0
+2026-01-16 11:45:29 | DEBUG    | GET products/2573-0 params=None
+2026-01-16 11:45:30 | DEBUG    | Buscando produto SKU: 962-0
+2026-01-16 11:45:30 | DEBUG    | GET products/962-0 params=None
+2026-01-16 11:45:30 | DEBUG    | Buscando produto SKU: 2538-0
+2026-01-16 11:45:30 | DEBUG    | GET products/2538-0 params=None
+2026-01-16 11:45:30 | DEBUG    | Buscando produto SKU: Especialmente para Cristiane10149GB
+2026-01-16 11:45:30 | DEBUG    | GET products/Especialmente%20para%20Cristiane10149GB params=None
+2026-01-16 11:45:30 | DEBUG    | Buscando produto SKU: 3421
+2026-01-16 11:45:30 | DEBUG    | GET products/3421 params=None
+2026-01-16 11:45:30 | DEBUG    | Buscando produto SKU: 1229-0
+2026-01-16 11:45:30 | DEBUG    | GET products/1229-0 params=None
+2026-01-16 11:45:31 | DEBUG    | Buscando produto SKU: 2046-2
+2026-01-16 11:45:31 | DEBUG    | GET products/2046-2 params=None
+2026-01-16 11:45:31 | DEBUG    | Buscando produto SKU: TADALAFILA
+2026-01-16 11:45:31 | DEBUG    | GET products/TADALAFILA params=None
+2026-01-16 11:45:31 | DEBUG    | Buscando produto SKU: 3360-1
+2026-01-16 11:45:31 | DEBUG    | GET products/3360-1 params=None
+2026-01-16 11:45:31 | DEBUG    | Buscando produto SKU: 2705-1
+2026-01-16 11:45:31 | DEBUG    | GET products/2705-1 params=None
+2026-01-16 11:45:31 | DEBUG    | Buscando produto SKU: 3173-0
+2026-01-16 11:45:31 | DEBUG    | GET products/3173-0 params=None
+2026-01-16 11:45:31 | DEBUG    | Buscando produto SKU: 1823-0
+2026-01-16 11:45:31 | DEBUG    | GET products/1823-0 params=None
+2026-01-16 11:45:32 | DEBUG    | Buscando produto SKU: 5974-novo
+2026-01-16 11:45:32 | DEBUG    | GET products/5974-novo params=None
+2026-01-16 11:45:32 | DEBUG    | Buscando produto SKU: 2119-0
+2026-01-16 11:45:32 | DEBUG    | GET products/2119-0 params=None
+2026-01-16 11:45:32 | DEBUG    | Buscando produto SKU: 1982-0
+2026-01-16 11:45:32 | DEBUG    | GET products/1982-0 params=None
+2026-01-16 11:45:32 | DEBUG    | Buscando produto SKU: TS1290-0
+2026-01-16 11:45:32 | DEBUG    | GET products/TS1290-0 params=None
+2026-01-16 11:45:32 | DEBUG    | Buscando produto SKU: 69528-0
+2026-01-16 11:45:32 | DEBUG    | GET products/69528-0 params=None
+2026-01-16 11:45:32 | DEBUG    | Buscando produto SKU: 1021-0
+2026-01-16 11:45:32 | DEBUG    | GET products/1021-0 params=None
+2026-01-16 11:45:32 | DEBUG    | Buscando produto SKU: 1742-0
+2026-01-16 11:45:32 | DEBUG    | GET products/1742-0 params=None
+2026-01-16 11:45:33 | DEBUG    | Buscando produto SKU: 45171-0
+2026-01-16 11:45:33 | DEBUG    | GET products/45171-0 params=None
+2026-01-16 11:45:33 | DEBUG    | Buscando produto SKU: 69131-0
+2026-01-16 11:45:33 | DEBUG    | GET products/69131-0 params=None
+2026-01-16 11:45:33 | DEBUG    | Buscando produto SKU: 3150-0
+2026-01-16 11:45:33 | DEBUG    | GET products/3150-0 params=None
+2026-01-16 11:45:33 | DEBUG    | Buscando produto SKU: 3149-0
+2026-01-16 11:45:33 | DEBUG    | GET products/3149-0 params=None
+2026-01-16 11:45:33 | DEBUG    | Buscando produto SKU: 5218
+2026-01-16 11:45:33 | DEBUG    | GET products/5218 params=None
+2026-01-16 11:45:33 | DEBUG    | Buscando produto SKU: 31240
+2026-01-16 11:45:33 | DEBUG    | GET products/31240 params=None
+2026-01-16 11:45:34 | DEBUG    | Buscando produto SKU: 2070-0
+2026-01-16 11:45:34 | DEBUG    | GET products/2070-0 params=None
+2026-01-16 11:45:34 | DEBUG    | Buscando produto SKU: 2479-1
+2026-01-16 11:45:34 | DEBUG    | GET products/2479-1 params=None
+2026-01-16 11:45:34 | DEBUG    | Buscando produto SKU: 2072-1
+2026-01-16 11:45:34 | DEBUG    | GET products/2072-1 params=None
+2026-01-16 11:45:34 | DEBUG    | Buscando produto SKU: TS3266-1
+2026-01-16 11:45:34 | DEBUG    | GET products/TS3266-1 params=None
+2026-01-16 11:45:34 | DEBUG    | Buscando categoria ID: 11
+2026-01-16 11:45:34 | DEBUG    | GET categories/11 params=None
+2026-01-16 11:45:34 | DEBUG    | Buscando produto SKU: 3838-0
+2026-01-16 11:45:34 | DEBUG    | GET products/3838-0 params=None
+2026-01-16 11:45:35 | DEBUG    | Buscando produto SKU: 2307-0
+2026-01-16 11:45:35 | DEBUG    | GET products/2307-0 params=None
+2026-01-16 11:45:35 | DEBUG    | Buscando produto SKU: 36168-H
+2026-01-16 11:45:35 | DEBUG    | GET products/36168-H params=None
+2026-01-16 11:45:35 | DEBUG    | Buscando produto SKU: 1461
+2026-01-16 11:45:35 | DEBUG    | GET products/1461 params=None
+2026-01-16 11:45:35 | DEBUG    | Buscando produto SKU: 2583-0_2584-0
+2026-01-16 11:45:35 | DEBUG    | GET products/2583-0_2584-0 params=None
+2026-01-16 11:45:35 | DEBUG    | Buscando produto SKU: 41194-0
+2026-01-16 11:45:35 | DEBUG    | GET products/41194-0 params=None
+2026-01-16 11:45:35 | DEBUG    | Buscando produto SKU: 2003-0
+2026-01-16 11:45:35 | DEBUG    | GET products/2003-0 params=None
+2026-01-16 11:45:35 | DEBUG    | Buscando produto SKU: 1967-0
+2026-01-16 11:45:35 | DEBUG    | GET products/1967-0 params=None
+2026-01-16 11:45:36 | DEBUG    | Buscando produto SKU: 2684-A
+2026-01-16 11:45:36 | DEBUG    | GET products/2684-A params=None
+2026-01-16 11:45:36 | DEBUG    | Buscando produto SKU: 35099-0
+2026-01-16 11:45:36 | DEBUG    | GET products/35099-0 params=None
+2026-01-16 11:45:36 | DEBUG    | Buscando produto SKU: 850175-9
+2026-01-16 11:45:36 | DEBUG    | GET products/850175-9 params=None
+2026-01-16 11:45:36 | DEBUG    | Buscando produto SKU: 1263-0
+2026-01-16 11:45:36 | DEBUG    | GET products/1263-0 params=None
+2026-01-16 11:45:36 | DEBUG    | Buscando produto SKU: 59897-0
+2026-01-16 11:45:36 | DEBUG    | GET products/59897-0 params=None
+2026-01-16 11:45:36 | DEBUG    | Buscando produto SKU: 46762-0
+2026-01-16 11:45:36 | DEBUG    | GET products/46762-0 params=None
+2026-01-16 11:45:37 | DEBUG    | Buscando produto SKU: 1211-0
+2026-01-16 11:45:37 | DEBUG    | GET products/1211-0 params=None
+2026-01-16 11:45:37 | DEBUG    | Buscando produto SKU: 419-2
+2026-01-16 11:45:37 | DEBUG    | GET products/419-2 params=None
+2026-01-16 11:45:37 | DEBUG    | Buscando produto SKU: 49539-0
+2026-01-16 11:45:37 | DEBUG    | GET products/49539-0 params=None
+2026-01-16 11:45:37 | DEBUG    | Buscando produto SKU: 2034-0
+2026-01-16 11:45:37 | DEBUG    | GET products/2034-0 params=None
+2026-01-16 11:45:37 | DEBUG    | Buscando produto SKU: 3520
+2026-01-16 11:45:37 | DEBUG    | GET products/3520 params=None
+2026-01-16 11:45:37 | DEBUG    | Buscando produto SKU: 3793-1
+2026-01-16 11:45:37 | DEBUG    | GET products/3793-1 params=None
+2026-01-16 11:45:37 | DEBUG    | Buscando produto SKU: 1898-0
+2026-01-16 11:45:37 | DEBUG    | GET products/1898-0 params=None
+2026-01-16 11:45:38 | DEBUG    | Buscando produto SKU: TS1482-0
+2026-01-16 11:45:38 | DEBUG    | GET products/TS1482-0 params=None
+2026-01-16 11:45:38 | DEBUG    | Buscando produto SKU: 2571-1
+2026-01-16 11:45:38 | DEBUG    | GET products/2571-1 params=None
+2026-01-16 11:45:38 | DEBUG    | Buscando produto SKU: 1702-0
+2026-01-16 11:45:38 | DEBUG    | GET products/1702-0 params=None
+2026-01-16 11:45:38 | DEBUG    | Buscando produto SKU: 58598-0
+2026-01-16 11:45:38 | DEBUG    | GET products/58598-0 params=None
+2026-01-16 11:45:38 | DEBUG    | Buscando produto SKU: 2004-2
+2026-01-16 11:45:38 | DEBUG    | GET products/2004-2 params=None
+2026-01-16 11:45:38 | DEBUG    | Buscando produto SKU: 3204-0
+2026-01-16 11:45:38 | DEBUG    | GET products/3204-0 params=None
+2026-01-16 11:45:39 | DEBUG    | Buscando produto SKU: 3365-2
+2026-01-16 11:45:39 | DEBUG    | GET products/3365-2 params=None
+2026-01-16 11:45:39 | DEBUG    | Buscando produto SKU: 3493
+2026-01-16 11:45:39 | DEBUG    | GET products/3493 params=None
+2026-01-16 11:45:39 | DEBUG    | Buscando produto SKU: 1088-1
+2026-01-16 11:45:39 | DEBUG    | GET products/1088-1 params=None
+2026-01-16 11:45:39 | DEBUG    | Buscando produto SKU: 2479-0
+2026-01-16 11:45:39 | DEBUG    | GET products/2479-0 params=None
+2026-01-16 11:45:40 | DEBUG    | Buscando produto SKU: 53666-0
+2026-01-16 11:45:40 | DEBUG    | GET products/53666-0 params=None
+2026-01-16 11:45:40 | DEBUG    | Buscando produto SKU: 3582
+2026-01-16 11:45:40 | DEBUG    | GET products/3582 params=None
+2026-01-16 11:45:40 | DEBUG    | Buscando produto SKU: 2993-0
+2026-01-16 11:45:40 | DEBUG    | GET products/2993-0 params=None
+2026-01-16 11:45:40 | DEBUG    | Buscando produto SKU: espcialmente-para-mariajosesiteLN
+2026-01-16 11:45:40 | DEBUG    | GET products/espcialmente-para-mariajosesiteLN params=None
+2026-01-16 11:45:40 | DEBUG    | Buscando produto SKU: 3548
+2026-01-16 11:45:40 | DEBUG    | GET products/3548 params=None
+2026-01-16 11:45:40 | DEBUG    | Buscando produto SKU: 3211
+2026-01-16 11:45:40 | DEBUG    | GET products/3211 params=None
+2026-01-16 11:45:40 | DEBUG    | Buscando produto SKU: 37363-0_37363-1_37363-2_37363-3-A
+2026-01-16 11:45:40 | DEBUG    | GET products/37363-0_37363-1_37363-2_37363-3-A params=None
+2026-01-16 11:45:41 | DEBUG    | Buscando produto SKU: 1212-0-mi
+2026-01-16 11:45:41 | DEBUG    | GET products/1212-0-mi params=None
+2026-01-16 11:45:41 | DEBUG    | Buscando produto SKU: 3121-0
+2026-01-16 11:45:41 | DEBUG    | GET products/3121-0 params=None
+2026-01-16 11:45:41 | DEBUG    | Buscando produto SKU: 57709-0
+2026-01-16 11:45:41 | DEBUG    | GET products/57709-0 params=None
+2026-01-16 11:45:41 | DEBUG    | Buscando produto SKU: 7319
+2026-01-16 11:45:41 | DEBUG    | GET products/7319 params=None
+2026-01-16 11:45:41 | DEBUG    | Buscando produto SKU: 1734-0
+2026-01-16 11:45:41 | DEBUG    | GET products/1734-0 params=None
+2026-01-16 11:45:41 | DEBUG    | Buscando produto SKU: 2161-1-2
+2026-01-16 11:45:41 | DEBUG    | GET products/2161-1-2 params=None
+2026-01-16 11:45:42 | DEBUG    | Buscando produto SKU: 51273-0
+2026-01-16 11:45:42 | DEBUG    | GET products/51273-0 params=None
+2026-01-16 11:45:42 | DEBUG    | Buscando produto SKU: 3730-0
+2026-01-16 11:45:42 | DEBUG    | GET products/3730-0 params=None
+2026-01-16 11:45:42 | DEBUG    | Buscando produto SKU: 2440-0
+2026-01-16 11:45:42 | DEBUG    | GET products/2440-0 params=None
+2026-01-16 11:45:42 | DEBUG    | Buscando produto SKU: 2802-0
+2026-01-16 11:45:42 | DEBUG    | GET products/2802-0 params=None
+2026-01-16 11:45:42 | DEBUG    | Buscando produto SKU: 3436-3
+2026-01-16 11:45:42 | DEBUG    | GET products/3436-3 params=None
+2026-01-16 11:45:42 | DEBUG    | Buscando produto SKU: 3076-0
+2026-01-16 11:45:42 | DEBUG    | GET products/3076-0 params=None
+2026-01-16 11:45:42 | DEBUG    | Buscando produto SKU: 3728-0
+2026-01-16 11:45:42 | DEBUG    | GET products/3728-0 params=None
+2026-01-16 11:45:43 | DEBUG    | Buscando categoria ID: 128
+2026-01-16 11:45:43 | DEBUG    | GET categories/128 params=None
+2026-01-16 11:45:43 | DEBUG    | Buscando produto SKU: AA03
+2026-01-16 11:45:43 | DEBUG    | GET products/AA03 params=None
+2026-01-16 11:45:43 | DEBUG    | Buscando produto SKU: 42376-0
+2026-01-16 11:45:43 | DEBUG    | GET products/42376-0 params=None
+2026-01-16 11:45:43 | DEBUG    | Buscando produto SKU: 50867-0_50867-1-A
+2026-01-16 11:45:43 | DEBUG    | GET products/50867-0_50867-1-A params=None
+2026-01-16 11:45:43 | DEBUG    | Buscando produto SKU: teste-3453
+2026-01-16 11:45:43 | DEBUG    | GET products/teste-3453 params=None
+2026-01-16 11:45:43 | DEBUG    | Buscando produto SKU: 46497-0_46497-1
+2026-01-16 11:45:43 | DEBUG    | GET products/46497-0_46497-1 params=None
+2026-01-16 11:45:44 | DEBUG    | Buscando produto SKU: 2811-0
+2026-01-16 11:45:44 | DEBUG    | GET products/2811-0 params=None
+2026-01-16 11:45:44 | DEBUG    | Buscando produto SKU: 2192-0
+2026-01-16 11:45:44 | DEBUG    | GET products/2192-0 params=None
+2026-01-16 11:45:44 | DEBUG    | Buscando produto SKU: 46355-0
+2026-01-16 11:45:44 | DEBUG    | GET products/46355-0 params=None
+2026-01-16 11:45:44 | DEBUG    | Buscando produto SKU: Especialmente para Angela 09/01 CP
+2026-01-16 11:45:44 | DEBUG    | GET products/Especialmente%20para%20Angela%2009%2F01%20CP params=None
+2026-01-16 11:45:44 | ERROR    | Erro 401: {"message":"The signature is invalid. Verify and try again."}
+2026-01-16 11:45:44 | WARNING  | Produto SKU 'Especialmente para Angela 09/01 CP' não encontrado: 401 Client Error: Unauthorized for url: https://www.farmaciaeficacia.com.br/rest/default/V1/products/Especialmente%20para%20Angela%2009%2F01%20CP
+2026-01-16 11:45:44 | DEBUG    | Buscando produto SKU: 59131-0
+2026-01-16 11:45:44 | DEBUG    | GET products/59131-0 params=None
+2026-01-16 11:45:44 | DEBUG    | Buscando produto SKU: 2973
+2026-01-16 11:45:44 | DEBUG    | GET products/2973 params=None
+2026-01-16 11:45:44 | DEBUG    | Buscando produto SKU: viagra
+2026-01-16 11:45:44 | DEBUG    | GET products/viagra params=None
+2026-01-16 11:45:45 | DEBUG    | Buscando produto SKU: 2615-0
+2026-01-16 11:45:45 | DEBUG    | GET products/2615-0 params=None
+2026-01-16 11:45:45 | DEBUG    | Buscando produto SKU: 49370
+2026-01-16 11:45:45 | DEBUG    | GET products/49370 params=None
+2026-01-16 11:45:45 | DEBUG    | Buscando produto SKU: 3655
+2026-01-16 11:45:45 | DEBUG    | GET products/3655 params=None
+2026-01-16 11:45:45 | DEBUG    | Buscando produto SKU: 2213-0
+2026-01-16 11:45:45 | DEBUG    | GET products/2213-0 params=None
+2026-01-16 11:45:45 | DEBUG    | Buscando produto SKU: 58896-0
+2026-01-16 11:45:45 | DEBUG    | GET products/58896-0 params=None
+2026-01-16 11:45:45 | DEBUG    | Buscando produto SKU: 1794
+2026-01-16 11:45:45 | DEBUG    | GET products/1794 params=None
+2026-01-16 11:45:46 | DEBUG    | Buscando produto SKU: 53723-0
+2026-01-16 11:45:46 | DEBUG    | GET products/53723-0 params=None
+2026-01-16 11:45:46 | DEBUG    | Buscando produto SKU: P3660-0
+2026-01-16 11:45:46 | DEBUG    | GET products/P3660-0 params=None
+2026-01-16 11:45:46 | DEBUG    | Buscando produto SKU: 1755-1
+2026-01-16 11:45:46 | DEBUG    | GET products/1755-1 params=None
+2026-01-16 11:45:46 | DEBUG    | Buscando produto SKU: FPR
+2026-01-16 11:45:46 | DEBUG    | GET products/FPR params=None
+2026-01-16 11:45:46 | DEBUG    | Buscando produto SKU: 3690
+2026-01-16 11:45:46 | DEBUG    | GET products/3690 params=None
+2026-01-16 11:45:46 | DEBUG    | Buscando produto SKU: 2948-k
+2026-01-16 11:45:46 | DEBUG    | GET products/2948-k params=None
+2026-01-16 11:45:47 | DEBUG    | Buscando produto SKU: DP3702-0
+2026-01-16 11:45:47 | DEBUG    | GET products/DP3702-0 params=None
+2026-01-16 11:45:47 | DEBUG    | Buscando produto SKU: 58716-0
+2026-01-16 11:45:47 | DEBUG    | GET products/58716-0 params=None
+2026-01-16 11:45:47 | DEBUG    | Buscando produto SKU: 52931-0
+2026-01-16 11:45:47 | DEBUG    | GET products/52931-0 params=None
+2026-01-16 11:45:47 | DEBUG    | Buscando produto SKU: 2086-0
+2026-01-16 11:45:47 | DEBUG    | GET products/2086-0 params=None
+2026-01-16 11:45:47 | DEBUG    | Buscando produto SKU: 1633
+2026-01-16 11:45:47 | DEBUG    | GET products/1633 params=None
+2026-01-16 11:45:47 | DEBUG    | Buscando produto SKU: DP1675-0
+2026-01-16 11:45:47 | DEBUG    | GET products/DP1675-0 params=None
+2026-01-16 11:45:47 | DEBUG    | Buscando produto SKU: 48376-0
+2026-01-16 11:45:47 | DEBUG    | GET products/48376-0 params=None
+2026-01-16 11:45:48 | DEBUG    | Buscando produto SKU: DP714-0-1
+2026-01-16 11:45:48 | DEBUG    | GET products/DP714-0-1 params=None
+2026-01-16 11:45:48 | DEBUG    | Buscando produto SKU: 3130-0
+2026-01-16 11:45:48 | DEBUG    | GET products/3130-0 params=None
+2026-01-16 11:45:48 | DEBUG    | Buscando produto SKU: 1402-0
+2026-01-16 11:45:48 | DEBUG    | GET products/1402-0 params=None
+2026-01-16 11:45:48 | DEBUG    | Buscando produto SKU: 2148-2
+2026-01-16 11:45:48 | DEBUG    | GET products/2148-2 params=None
+2026-01-16 11:45:48 | DEBUG    | Buscando produto SKU: 1312-0
+2026-01-16 11:45:48 | DEBUG    | GET products/1312-0 params=None
+2026-01-16 11:45:48 | DEBUG    | Buscando produto SKU: 2037-0
+2026-01-16 11:45:48 | DEBUG    | GET products/2037-0 params=None
+2026-01-16 11:45:49 | DEBUG    | Buscando produto SKU: 54150
+2026-01-16 11:45:49 | DEBUG    | GET products/54150 params=None
+2026-01-16 11:45:49 | DEBUG    | Buscando produto SKU: 3116-0
+2026-01-16 11:45:49 | DEBUG    | GET products/3116-0 params=None
+2026-01-16 11:45:49 | DEBUG    | Buscando produto SKU: 2957-C
+2026-01-16 11:45:49 | DEBUG    | GET products/2957-C params=None
+2026-01-16 11:45:49 | DEBUG    | Buscando produto SKU: 2300-0
+2026-01-16 11:45:49 | DEBUG    | GET products/2300-0 params=None
+2026-01-16 11:45:49 | DEBUG    | Buscando produto SKU: 1874-1
+2026-01-16 11:45:49 | DEBUG    | GET products/1874-1 params=None
+2026-01-16 11:45:49 | DEBUG    | Buscando produto SKU: 70864-0
+2026-01-16 11:45:49 | DEBUG    | GET products/70864-0 params=None
+2026-01-16 11:45:50 | DEBUG    | Buscando produto SKU: 1760-0
+2026-01-16 11:45:50 | DEBUG    | GET products/1760-0 params=None
+2026-01-16 11:45:50 | DEBUG    | Buscando categoria ID: 43
+2026-01-16 11:45:50 | DEBUG    | GET categories/43 params=None
+2026-01-16 11:45:50 | DEBUG    | Buscando produto SKU: 36165-D
+2026-01-16 11:45:50 | DEBUG    | GET products/36165-D params=None
+2026-01-16 11:45:50 | DEBUG    | Buscando produto SKU: TS3843-1
+2026-01-16 11:45:50 | DEBUG    | GET products/TS3843-1 params=None
+2026-01-16 11:45:50 | DEBUG    | Buscando produto SKU: 3365-1
+2026-01-16 11:45:50 | DEBUG    | GET products/3365-1 params=None
+2026-01-16 11:45:50 | DEBUG    | Buscando produto SKU: 1324-0
+2026-01-16 11:45:50 | DEBUG    | GET products/1324-0 params=None
+2026-01-16 11:45:50 | DEBUG    | Buscando produto SKU: 1802-0
+2026-01-16 11:45:50 | DEBUG    | GET products/1802-0 params=None
+2026-01-16 11:45:51 | DEBUG    | Buscando produto SKU: 1913-0
+2026-01-16 11:45:51 | DEBUG    | GET products/1913-0 params=None
+2026-01-16 11:45:51 | DEBUG    | Buscando produto SKU: 2597-1
+2026-01-16 11:45:51 | DEBUG    | GET products/2597-1 params=None
+2026-01-16 11:45:51 | DEBUG    | Buscando produto SKU: 47488-0-A
+2026-01-16 11:45:51 | DEBUG    | GET products/47488-0-A params=None
+2026-01-16 11:45:51 | DEBUG    | Buscando produto SKU: 2717-1
+2026-01-16 11:45:51 | DEBUG    | GET products/2717-1 params=None
+2026-01-16 11:45:51 | DEBUG    | Buscando produto SKU: 3774-1
+2026-01-16 11:45:51 | DEBUG    | GET products/3774-1 params=None
+2026-01-16 11:45:51 | DEBUG    | Buscando produto SKU: 3352
+2026-01-16 11:45:51 | DEBUG    | GET products/3352 params=None
+2026-01-16 11:45:52 | DEBUG    | Buscando produto SKU: 1101-F
+2026-01-16 11:45:52 | DEBUG    | GET products/1101-F params=None
+2026-01-16 11:45:52 | DEBUG    | Buscando produto SKU: 2353-0
+2026-01-16 11:45:52 | DEBUG    | GET products/2353-0 params=None
+2026-01-16 11:45:52 | DEBUG    | Buscando produto SKU: 1409-0
+2026-01-16 11:45:52 | DEBUG    | GET products/1409-0 params=None
+2026-01-16 11:45:52 | DEBUG    | Buscando produto SKU: 3136-0
+2026-01-16 11:45:52 | DEBUG    | GET products/3136-0 params=None
+2026-01-16 11:45:52 | DEBUG    | Buscando produto SKU: DP2086-0
+2026-01-16 11:45:52 | DEBUG    | GET products/DP2086-0 params=None
+2026-01-16 11:45:52 | DEBUG    | Buscando produto SKU: 4221-1_4231-0_
+2026-01-16 11:45:52 | DEBUG    | GET products/4221-1_4231-0_ params=None
+2026-01-16 11:45:52 | DEBUG    | Buscando produto SKU: 49177-0
+2026-01-16 11:45:52 | DEBUG    | GET products/49177-0 params=None
+2026-01-16 11:45:53 | DEBUG    | Buscando produto SKU: SI10
+2026-01-16 11:45:53 | DEBUG    | GET products/SI10 params=None
+2026-01-16 11:45:53 | DEBUG    | Buscando produto SKU: 1873-0
+2026-01-16 11:45:53 | DEBUG    | GET products/1873-0 params=None
+2026-01-16 11:45:53 | DEBUG    | Buscando categoria ID: 23
+2026-01-16 11:45:53 | DEBUG    | GET categories/23 params=None
+2026-01-16 11:45:53 | DEBUG    | Buscando produto SKU: 2534-0
+2026-01-16 11:45:53 | DEBUG    | GET products/2534-0 params=None
+2026-01-16 11:45:53 | DEBUG    | Buscando produto SKU: 34961-0
+2026-01-16 11:45:53 | DEBUG    | GET products/34961-0 params=None
+2026-01-16 11:45:53 | DEBUG    | Buscando produto SKU: 3352-0
+2026-01-16 11:45:53 | DEBUG    | GET products/3352-0 params=None
+2026-01-16 11:45:54 | DEBUG    | Buscando produto SKU: 2743-0
+2026-01-16 11:45:54 | DEBUG    | GET products/2743-0 params=None
+2026-01-16 11:45:54 | DEBUG    | Buscando produto SKU: 1455-0
+2026-01-16 11:45:54 | DEBUG    | GET products/1455-0 params=None
+2026-01-16 11:45:54 | DEBUG    | Buscando produto SKU: 6692
+2026-01-16 11:45:54 | DEBUG    | GET products/6692 params=None
+2026-01-16 11:45:54 | DEBUG    | Buscando produto SKU: 3853-s
+2026-01-16 11:45:54 | DEBUG    | GET products/3853-s params=None
+2026-01-16 11:45:54 | DEBUG    | Buscando produto SKU: 1677-0
+2026-01-16 11:45:54 | DEBUG    | GET products/1677-0 params=None
+2026-01-16 11:45:54 | DEBUG    | Buscando produto SKU: 3703-0
+2026-01-16 11:45:54 | DEBUG    | GET products/3703-0 params=None
+2026-01-16 11:45:55 | DEBUG    | Buscando produto SKU: 3900-0
+2026-01-16 11:45:55 | DEBUG    | GET products/3900-0 params=None
+2026-01-16 11:45:55 | DEBUG    | Buscando produto SKU: 3817-0
+2026-01-16 11:45:55 | DEBUG    | GET products/3817-0 params=None
+2026-01-16 11:45:55 | DEBUG    | Buscando produto SKU: FAR3265-1
+2026-01-16 11:45:55 | DEBUG    | GET products/FAR3265-1 params=None
+2026-01-16 11:45:55 | DEBUG    | Buscando produto SKU: DM02
+2026-01-16 11:45:55 | DEBUG    | GET products/DM02 params=None
+2026-01-16 11:45:55 | DEBUG    | Buscando produto SKU: 2524-0
+2026-01-16 11:45:55 | DEBUG    | GET products/2524-0 params=None
+2026-01-16 11:45:55 | DEBUG    | Buscando produto SKU: teste2458-0
+2026-01-16 11:45:55 | DEBUG    | GET products/teste2458-0 params=None
+2026-01-16 11:45:56 | DEBUG    | Buscando produto SKU: 2563-0
+2026-01-16 11:45:56 | DEBUG    | GET products/2563-0 params=None
+2026-01-16 11:45:56 | DEBUG    | Buscando produto SKU: DP1420-0
+2026-01-16 11:45:56 | DEBUG    | GET products/DP1420-0 params=None
+2026-01-16 11:45:56 | DEBUG    | Buscando produto SKU: 3206-0
+2026-01-16 11:45:56 | DEBUG    | GET products/3206-0 params=None
+2026-01-16 11:45:56 | DEBUG    | Buscando produto SKU: 1895-0
+2026-01-16 11:45:56 | DEBUG    | GET products/1895-0 params=None
+2026-01-16 11:45:56 | DEBUG    | Buscando produto SKU: 2183-0
+2026-01-16 11:45:56 | DEBUG    | GET products/2183-0 params=None
+2026-01-16 11:45:56 | DEBUG    | Buscando produto SKU: 3322-0
+2026-01-16 11:45:56 | DEBUG    | GET products/3322-0 params=None
+2026-01-16 11:45:56 | DEBUG    | Buscando produto SKU: DP1702-1
+2026-01-16 11:45:56 | DEBUG    | GET products/DP1702-1 params=None
+2026-01-16 11:45:57 | DEBUG    | Buscando produto SKU: teste3576-0
+2026-01-16 11:45:57 | DEBUG    | GET products/teste3576-0 params=None
+2026-01-16 11:45:57 | DEBUG    | Buscando produto SKU: 2565-0
+2026-01-16 11:45:57 | DEBUG    | GET products/2565-0 params=None
+2026-01-16 11:45:57 | DEBUG    | Buscando produto SKU: 2186-0
+2026-01-16 11:45:57 | DEBUG    | GET products/2186-0 params=None
+2026-01-16 11:45:57 | DEBUG    | Buscando produto SKU: 3727-0
+2026-01-16 11:45:57 | DEBUG    | GET products/3727-0 params=None
+2026-01-16 11:45:57 | DEBUG    | Buscando produto SKU: 3975-1
+2026-01-16 11:45:57 | DEBUG    | GET products/3975-1 params=None
+2026-01-16 11:45:57 | DEBUG    | Buscando produto SKU: 35010-7
+2026-01-16 11:45:57 | DEBUG    | GET products/35010-7 params=None
+2026-01-16 11:45:58 | DEBUG    | Buscando produto SKU: 46497-0_46497-1-A
+2026-01-16 11:45:58 | DEBUG    | GET products/46497-0_46497-1-A params=None
+2026-01-16 11:45:58 | DEBUG    | Buscando produto SKU: 1976-0
+2026-01-16 11:45:58 | DEBUG    | GET products/1976-0 params=None
+2026-01-16 11:45:58 | DEBUG    | Buscando produto SKU: 3981-1
+2026-01-16 11:45:58 | DEBUG    | GET products/3981-1 params=None
+2026-01-16 11:45:58 | DEBUG    | Buscando produto SKU: 1692-0-2
+2026-01-16 11:45:58 | DEBUG    | GET products/1692-0-2 params=None
+2026-01-16 11:45:58 | DEBUG    | Buscando produto SKU: 3260-2
+2026-01-16 11:45:58 | DEBUG    | GET products/3260-2 params=None
+2026-01-16 11:45:58 | DEBUG    | Buscando produto SKU: 3205-0
+2026-01-16 11:45:58 | DEBUG    | GET products/3205-0 params=None
+2026-01-16 11:45:58 | DEBUG    | Buscando produto SKU: 2344-0
+2026-01-16 11:45:58 | DEBUG    | GET products/2344-0 params=None
+2026-01-16 11:45:59 | DEBUG    | Buscando produto SKU: 3135-1
+2026-01-16 11:45:59 | DEBUG    | GET products/3135-1 params=None
+2026-01-16 11:45:59 | DEBUG    | Buscando produto SKU: 2905
+2026-01-16 11:45:59 | DEBUG    | GET products/2905 params=None
+2026-01-16 11:45:59 | DEBUG    | Buscando produto SKU: 3152-0
+2026-01-16 11:45:59 | DEBUG    | GET products/3152-0 params=None
+2026-01-16 11:45:59 | DEBUG    | Buscando categoria ID: 24
+2026-01-16 11:45:59 | DEBUG    | GET categories/24 params=None
+2026-01-16 11:45:59 | DEBUG    | Buscando produto SKU: 51425-0
+2026-01-16 11:45:59 | DEBUG    | GET products/51425-0 params=None
+2026-01-16 11:45:59 | DEBUG    | Buscando produto SKU: 3774-2
+2026-01-16 11:45:59 | DEBUG    | GET products/3774-2 params=None
+2026-01-16 11:46:00 | DEBUG    | Buscando produto SKU: TS2769-0
+2026-01-16 11:46:00 | DEBUG    | GET products/TS2769-0 params=None
+2026-01-16 11:46:00 | DEBUG    | Buscando produto SKU: P2116-0
+2026-01-16 11:46:00 | DEBUG    | GET products/P2116-0 params=None
+2026-01-16 11:46:00 | DEBUG    | Buscando produto SKU: 50878
+2026-01-16 11:46:00 | DEBUG    | GET products/50878 params=None
+2026-01-16 11:46:00 | DEBUG    | Buscando produto SKU: 37091-0
+2026-01-16 11:46:00 | DEBUG    | GET products/37091-0 params=None
+2026-01-16 11:46:00 | DEBUG    | Buscando produto SKU: 2190-0
+2026-01-16 11:46:00 | DEBUG    | GET products/2190-0 params=None
+2026-01-16 11:46:00 | DEBUG    | Buscando produto SKU: 51664
+2026-01-16 11:46:00 | DEBUG    | GET products/51664 params=None
+2026-01-16 11:46:01 | DEBUG    | Buscando produto SKU: 7188
+2026-01-16 11:46:01 | DEBUG    | GET products/7188 params=None
+2026-01-16 11:46:01 | DEBUG    | Buscando produto SKU: 988-1
+2026-01-16 11:46:01 | DEBUG    | GET products/988-1 params=None
+2026-01-16 11:46:01 | DEBUG    | Buscando produto SKU: especialmenteparajaircostajunior
+2026-01-16 11:46:01 | DEBUG    | GET products/especialmenteparajaircostajunior params=None
+2026-01-16 11:46:01 | DEBUG    | Buscando produto SKU: Especialmente para Anderson 102211 CP
+2026-01-16 11:46:01 | DEBUG    | GET products/Especialmente%20para%20Anderson%20102211%20CP params=None
+2026-01-16 11:46:01 | DEBUG    | Buscando produto SKU: 48902-0
+2026-01-16 11:46:01 | DEBUG    | GET products/48902-0 params=None
+2026-01-16 11:46:01 | DEBUG    | Buscando produto SKU: 3249-1
+2026-01-16 11:46:01 | DEBUG    | GET products/3249-1 params=None
+2026-01-16 11:46:02 | DEBUG    | Buscando produto SKU: 52955-0
+2026-01-16 11:46:02 | DEBUG    | GET products/52955-0 params=None
+2026-01-16 11:46:02 | DEBUG    | Buscando produto SKU: 7132
+2026-01-16 11:46:02 | DEBUG    | GET products/7132 params=None
+2026-01-16 11:46:02 | DEBUG    | Buscando produto SKU: 3276-0
+2026-01-16 11:46:02 | DEBUG    | GET products/3276-0 params=None
+2026-01-16 11:46:02 | DEBUG    | Buscando produto SKU: 50748-0
+2026-01-16 11:46:02 | DEBUG    | GET products/50748-0 params=None
+2026-01-16 11:46:03 | DEBUG    | Buscando produto SKU: 3323-0
+2026-01-16 11:46:03 | DEBUG    | GET products/3323-0 params=None
+2026-01-16 11:46:03 | DEBUG    | Buscando produto SKU: 5978
+2026-01-16 11:46:03 | DEBUG    | GET products/5978 params=None
+2026-01-16 11:46:03 | DEBUG    | Buscando produto SKU: 3679-1
+2026-01-16 11:46:03 | DEBUG    | GET products/3679-1 params=None
+2026-01-16 11:46:03 | DEBUG    | Buscando produto SKU: 36166-7
+2026-01-16 11:46:03 | DEBUG    | GET products/36166-7 params=None
+2026-01-16 11:46:03 | DEBUG    | Buscando produto SKU: 6713
+2026-01-16 11:46:03 | DEBUG    | GET products/6713 params=None
+2026-01-16 11:46:03 | DEBUG    | Buscando produto SKU: 1406-0
+2026-01-16 11:46:03 | DEBUG    | GET products/1406-0 params=None
+2026-01-16 11:46:04 | DEBUG    | Buscando produto SKU: 618
+2026-01-16 11:46:04 | DEBUG    | GET products/618 params=None
+2026-01-16 11:46:04 | DEBUG    | Buscando produto SKU: Especialmente para Andra 101892 CP
+2026-01-16 11:46:04 | DEBUG    | GET products/Especialmente%20para%20Andra%20101892%20CP params=None
+2026-01-16 11:46:04 | DEBUG    | Buscando produto SKU: 4946glo
+2026-01-16 11:46:04 | DEBUG    | GET products/4946glo params=None
+2026-01-16 11:46:04 | DEBUG    | Buscando produto SKU: teste-574-0
+2026-01-16 11:46:04 | DEBUG    | GET products/teste-574-0 params=None
+2026-01-16 11:46:04 | DEBUG    | Buscando produto SKU: 3015-1
+2026-01-16 11:46:04 | DEBUG    | GET products/3015-1 params=None
+2026-01-16 11:46:04 | DEBUG    | Buscando produto SKU: 2948-A
+2026-01-16 11:46:04 | DEBUG    | GET products/2948-A params=None
+2026-01-16 11:46:05 | DEBUG    | Buscando produto SKU: DP2181-0
+2026-01-16 11:46:05 | DEBUG    | GET products/DP2181-0 params=None
+2026-01-16 11:46:05 | DEBUG    | Buscando produto SKU: 267
+2026-01-16 11:46:05 | DEBUG    | GET products/267 params=None
+2026-01-16 11:46:05 | DEBUG    | Buscando produto SKU: 23150
+2026-01-16 11:46:05 | DEBUG    | GET products/23150 params=None
+2026-01-16 11:46:05 | DEBUG    | Buscando produto SKU: TS824-0
+2026-01-16 11:46:05 | DEBUG    | GET products/TS824-0 params=None
+2026-01-16 11:46:05 | DEBUG    | Buscando produto SKU: 42521-0
+2026-01-16 11:46:05 | DEBUG    | GET products/42521-0 params=None
+2026-01-16 11:46:05 | DEBUG    | Buscando categoria ID: 103
+2026-01-16 11:46:05 | DEBUG    | GET categories/103 params=None
+2026-01-16 11:46:06 | DEBUG    | Buscando produto SKU: 1813-0
+2026-01-16 11:46:06 | DEBUG    | GET products/1813-0 params=None
+2026-01-16 11:46:06 | DEBUG    | Buscando produto SKU: 2PWMXCMais
+2026-01-16 11:46:06 | DEBUG    | GET products/2PWMXCMais params=None
+2026-01-16 11:46:06 | DEBUG    | Buscando produto SKU: 3348-1
+2026-01-16 11:46:06 | DEBUG    | GET products/3348-1 params=None
+2026-01-16 11:46:06 | DEBUG    | Buscando produto SKU: 2280-0
+2026-01-16 11:46:06 | DEBUG    | GET products/2280-0 params=None
+2026-01-16 11:46:06 | DEBUG    | Buscando produto SKU: 2684-0
+2026-01-16 11:46:06 | DEBUG    | GET products/2684-0 params=None
+2026-01-16 11:46:06 | DEBUG    | Buscando produto SKU: 2666-0
+2026-01-16 11:46:06 | DEBUG    | GET products/2666-0 params=None
+2026-01-16 11:46:07 | DEBUG    | Buscando produto SKU: 2283-0
+2026-01-16 11:46:07 | DEBUG    | GET products/2283-0 params=None
+2026-01-16 11:46:07 | DEBUG    | Buscando produto SKU: 1101-A
+2026-01-16 11:46:07 | DEBUG    | GET products/1101-A params=None
+2026-01-16 11:46:07 | DEBUG    | Buscando produto SKU: 709-1
+2026-01-16 11:46:07 | DEBUG    | GET products/709-1 params=None
+2026-01-16 11:46:07 | DEBUG    | Buscando produto SKU: 3938-0
+2026-01-16 11:46:07 | DEBUG    | GET products/3938-0 params=None
+2026-01-16 11:46:07 | DEBUG    | Buscando produto SKU: 3651-1
+2026-01-16 11:46:07 | DEBUG    | GET products/3651-1 params=None
+2026-01-16 11:46:07 | DEBUG    | Buscando produto SKU: 2612-0
+2026-01-16 11:46:07 | DEBUG    | GET products/2612-0 params=None
+2026-01-16 11:46:07 | DEBUG    | Buscando produto SKU: 88D
+2026-01-16 11:46:07 | DEBUG    | GET products/88D params=None
+2026-01-16 11:46:08 | DEBUG    | Buscando produto SKU: SOLCPS
+2026-01-16 11:46:08 | DEBUG    | GET products/SOLCPS params=None
+2026-01-16 11:46:08 | DEBUG    | Buscando produto SKU: 1401-0
+2026-01-16 11:46:08 | DEBUG    | GET products/1401-0 params=None
+2026-01-16 11:46:08 | DEBUG    | Buscando produto SKU: 2564-0
+2026-01-16 11:46:08 | DEBUG    | GET products/2564-0 params=None
+2026-01-16 11:46:08 | DEBUG    | Buscando produto SKU: 2613-0
+2026-01-16 11:46:08 | DEBUG    | GET products/2613-0 params=None
+2026-01-16 11:46:08 | DEBUG    | Buscando produto SKU: 13080
+2026-01-16 11:46:08 | DEBUG    | GET products/13080 params=None
+2026-01-16 11:46:08 | DEBUG    | Buscando produto SKU: 3588
+2026-01-16 11:46:08 | DEBUG    | GET products/3588 params=None
+2026-01-16 11:46:09 | DEBUG    | Buscando produto SKU: Especialmente para Rosangela 101677 CP
+2026-01-16 11:46:09 | DEBUG    | GET products/Especialmente%20para%20Rosangela%20101677%20CP params=None
+2026-01-16 11:46:09 | DEBUG    | Buscando produto SKU: 3902-0
+2026-01-16 11:46:09 | DEBUG    | GET products/3902-0 params=None
+2026-01-16 11:46:09 | DEBUG    | Buscando produto SKU: 1315-0
+2026-01-16 11:46:09 | DEBUG    | GET products/1315-0 params=None
+2026-01-16 11:46:09 | DEBUG    | Buscando produto SKU: TS1177-0
+2026-01-16 11:46:09 | DEBUG    | GET products/TS1177-0 params=None
+2026-01-16 11:46:09 | DEBUG    | Buscando produto SKU: 3106-0
+2026-01-16 11:46:09 | DEBUG    | GET products/3106-0 params=None
+2026-01-16 11:46:09 | DEBUG    | Buscando produto SKU: 979-0
+2026-01-16 11:46:09 | DEBUG    | GET products/979-0 params=None
+2026-01-16 11:46:10 | DEBUG    | Buscando produto SKU: 57083-B
+2026-01-16 11:46:10 | DEBUG    | GET products/57083-B params=None
+2026-01-16 11:46:10 | DEBUG    | Buscando produto SKU: 824-0
+2026-01-16 11:46:10 | DEBUG    | GET products/824-0 params=None
+2026-01-16 11:46:10 | DEBUG    | Buscando produto SKU: 2006-0
+2026-01-16 11:46:10 | DEBUG    | GET products/2006-0 params=None
+2026-01-16 11:46:10 | DEBUG    | Buscando produto SKU: 51229-0
+2026-01-16 11:46:10 | DEBUG    | GET products/51229-0 params=None
+2026-01-16 11:46:10 | DEBUG    | Buscando produto SKU: 1088-0-2
+2026-01-16 11:46:10 | DEBUG    | GET products/1088-0-2 params=None
+2026-01-16 11:46:10 | DEBUG    | Buscando produto SKU: 419-1
+2026-01-16 11:46:10 | DEBUG    | GET products/419-1 params=None
+2026-01-16 11:46:11 | DEBUG    | Buscando produto SKU: 3506
+2026-01-16 11:46:11 | DEBUG    | GET products/3506 params=None
+2026-01-16 11:46:11 | DEBUG    | Buscando produto SKU: 2323-0
+2026-01-16 11:46:11 | DEBUG    | GET products/2323-0 params=None
+2026-01-16 11:46:11 | DEBUG    | Buscando produto SKU: 55280-0
+2026-01-16 11:46:11 | DEBUG    | GET products/55280-0 params=None
+2026-01-16 11:46:11 | DEBUG    | Buscando produto SKU: 3396
+2026-01-16 11:46:11 | DEBUG    | GET products/3396 params=None
+2026-01-16 11:46:11 | DEBUG    | Buscando produto SKU: 3330-1
+2026-01-16 11:46:11 | DEBUG    | GET products/3330-1 params=None
+2026-01-16 11:46:11 | DEBUG    | Buscando produto SKU: 52344-0
+2026-01-16 11:46:11 | DEBUG    | GET products/52344-0 params=None
+2026-01-16 11:46:12 | DEBUG    | Buscando produto SKU: 3455
+2026-01-16 11:46:12 | DEBUG    | GET products/3455 params=None
+2026-01-16 11:46:12 | DEBUG    | Buscando produto SKU: 246-1
+2026-01-16 11:46:12 | DEBUG    | GET products/246-1 params=None
+2026-01-16 11:46:12 | DEBUG    | Buscando produto SKU: 393
+2026-01-16 11:46:12 | DEBUG    | GET products/393 params=None
+2026-01-16 11:46:12 | DEBUG    | Buscando produto SKU: 25975
+2026-01-16 11:46:12 | DEBUG    | GET products/25975 params=None
+2026-01-16 11:46:12 | DEBUG    | Buscando produto SKU: 59598-0
+2026-01-16 11:46:12 | DEBUG    | GET products/59598-0 params=None
+2026-01-16 11:46:12 | DEBUG    | Buscando produto SKU: 3471-5
+2026-01-16 11:46:12 | DEBUG    | GET products/3471-5 params=None
+2026-01-16 11:46:12 | DEBUG    | Buscando produto SKU: 53254-0
+2026-01-16 11:46:12 | DEBUG    | GET products/53254-0 params=None
+2026-01-16 11:46:13 | DEBUG    | Buscando produto SKU: 3359-2-2
+2026-01-16 11:46:13 | DEBUG    | GET products/3359-2-2 params=None
+2026-01-16 11:46:13 | DEBUG    | Buscando produto SKU: 1101-H
+2026-01-16 11:46:13 | DEBUG    | GET products/1101-H params=None
+2026-01-16 11:46:13 | DEBUG    | Buscando produto SKU: 3539-0
+2026-01-16 11:46:13 | DEBUG    | GET products/3539-0 params=None
+2026-01-16 11:46:13 | DEBUG    | Buscando produto SKU: 3142-1
+2026-01-16 11:46:13 | DEBUG    | GET products/3142-1 params=None
+2026-01-16 11:46:13 | DEBUG    | Buscando produto SKU: 2124-0
+2026-01-16 11:46:13 | DEBUG    | GET products/2124-0 params=None
+2026-01-16 11:46:13 | DEBUG    | Buscando produto SKU: DP2116-0
+2026-01-16 11:46:13 | DEBUG    | GET products/DP2116-0 params=None
+2026-01-16 11:46:14 | DEBUG    | Buscando produto SKU: 1214-0
+2026-01-16 11:46:14 | DEBUG    | GET products/1214-0 params=None
+2026-01-16 11:46:14 | DEBUG    | Buscando produto SKU: 59394-0
+2026-01-16 11:46:14 | DEBUG    | GET products/59394-0 params=None
+2026-01-16 11:46:14 | DEBUG    | Buscando produto SKU: 3054-0
+2026-01-16 11:46:14 | DEBUG    | GET products/3054-0 params=None
+2026-01-16 11:46:14 | DEBUG    | Buscando produto SKU: 3916-0
+2026-01-16 11:46:14 | DEBUG    | GET products/3916-0 params=None
+2026-01-16 11:46:14 | DEBUG    | Buscando produto SKU: 1894-0
+2026-01-16 11:46:14 | DEBUG    | GET products/1894-0 params=None
+2026-01-16 11:46:14 | DEBUG    | Buscando produto SKU: 1663-3
+2026-01-16 11:46:14 | DEBUG    | GET products/1663-3 params=None
+2026-01-16 11:46:15 | DEBUG    | Buscando produto SKU: 1656-0
+2026-01-16 11:46:15 | DEBUG    | GET products/1656-0 params=None
+2026-01-16 11:46:15 | DEBUG    | Buscando produto SKU: 1057-0
+2026-01-16 11:46:15 | DEBUG    | GET products/1057-0 params=None
+2026-01-16 11:46:15 | DEBUG    | Buscando produto SKU: 1752-0
+2026-01-16 11:46:15 | DEBUG    | GET products/1752-0 params=None
+2026-01-16 11:46:15 | DEBUG    | Buscando produto SKU: 2169-0
+2026-01-16 11:46:15 | DEBUG    | GET products/2169-0 params=None
+2026-01-16 11:46:15 | DEBUG    | Buscando produto SKU: 3055-0
+2026-01-16 11:46:15 | DEBUG    | GET products/3055-0 params=None
+2026-01-16 11:46:15 | DEBUG    | Buscando produto SKU: 34761-7
+2026-01-16 11:46:15 | DEBUG    | GET products/34761-7 params=None
+2026-01-16 11:46:16 | DEBUG    | Buscando produto SKU: 2585-0
+2026-01-16 11:46:16 | DEBUG    | GET products/2585-0 params=None
+2026-01-16 11:46:16 | DEBUG    | Buscando produto SKU: 55570-0-novo
+2026-01-16 11:46:16 | DEBUG    | GET products/55570-0-novo params=None
+2026-01-16 11:46:16 | DEBUG    | Buscando produto SKU: TS2788-0
+2026-01-16 11:46:16 | DEBUG    | GET products/TS2788-0 params=None
+2026-01-16 11:46:16 | DEBUG    | Buscando produto SKU: 1939-0
+2026-01-16 11:46:16 | DEBUG    | GET products/1939-0 params=None
+2026-01-16 11:46:16 | DEBUG    | Buscando produto SKU: 1323-0
+2026-01-16 11:46:16 | DEBUG    | GET products/1323-0 params=None
+2026-01-16 11:46:16 | DEBUG    | Buscando produto SKU: 1668-0
+2026-01-16 11:46:16 | DEBUG    | GET products/1668-0 params=None
+2026-01-16 11:46:17 | DEBUG    | Buscando produto SKU: 42747-0
+2026-01-16 11:46:17 | DEBUG    | GET products/42747-0 params=None
+2026-01-16 11:46:17 | DEBUG    | Buscando produto SKU: 850175-8
+2026-01-16 11:46:17 | DEBUG    | GET products/850175-8 params=None
+2026-01-16 11:46:17 | DEBUG    | Buscando produto SKU: 2046-1
+2026-01-16 11:46:17 | DEBUG    | GET products/2046-1 params=None
+2026-01-16 11:46:17 | DEBUG    | Buscando produto SKU: 2154-0
+2026-01-16 11:46:17 | DEBUG    | GET products/2154-0 params=None
+2026-01-16 11:46:17 | DEBUG    | Buscando produto SKU: TS3423-0
+2026-01-16 11:46:17 | DEBUG    | GET products/TS3423-0 params=None
+2026-01-16 11:46:17 | DEBUG    | Buscando produto SKU: 3723-0
+2026-01-16 11:46:17 | DEBUG    | GET products/3723-0 params=None
+2026-01-16 11:46:18 | DEBUG    | Buscando produto SKU: 3784-0
+2026-01-16 11:46:18 | DEBUG    | GET products/3784-0 params=None
+2026-01-16 11:46:18 | DEBUG    | Buscando produto SKU: 1264-0
+2026-01-16 11:46:18 | DEBUG    | GET products/1264-0 params=None
+2026-01-16 11:46:18 | DEBUG    | Buscando produto SKU: 3774-3
+2026-01-16 11:46:18 | DEBUG    | GET products/3774-3 params=None
+2026-01-16 11:46:18 | DEBUG    | Buscando produto SKU: 3357-1
+2026-01-16 11:46:18 | DEBUG    | GET products/3357-1 params=None
+2026-01-16 11:46:18 | DEBUG    | Buscando produto SKU: 2112-0
+2026-01-16 11:46:18 | DEBUG    | GET products/2112-0 params=None
+2026-01-16 11:46:18 | DEBUG    | Buscando produto SKU: 38468-0
+2026-01-16 11:46:18 | DEBUG    | GET products/38468-0 params=None
+2026-01-16 11:46:18 | DEBUG    | Buscando produto SKU: 2570-0
+2026-01-16 11:46:18 | DEBUG    | GET products/2570-0 params=None
+2026-01-16 11:46:19 | DEBUG    | Buscando produto SKU: 3184-0
+2026-01-16 11:46:19 | DEBUG    | GET products/3184-0 params=None
+2026-01-16 11:46:19 | DEBUG    | Buscando produto SKU: FAR1019-0
+2026-01-16 11:46:19 | DEBUG    | GET products/FAR1019-0 params=None
+2026-01-16 11:46:19 | DEBUG    | Buscando produto SKU: 1942-0-1
+2026-01-16 11:46:19 | DEBUG    | GET products/1942-0-1 params=None
+2026-01-16 11:46:19 | DEBUG    | Buscando produto SKU: 3855-0
+2026-01-16 11:46:19 | DEBUG    | GET products/3855-0 params=None
+2026-01-16 11:46:19 | DEBUG    | Buscando categoria ID: 31
+2026-01-16 11:46:19 | DEBUG    | GET categories/31 params=None
+2026-01-16 11:46:20 | DEBUG    | Buscando produto SKU: 2048-0
+2026-01-16 11:46:20 | DEBUG    | GET products/2048-0 params=None
+2026-01-16 11:46:20 | DEBUG    | Buscando produto SKU: 1848
+2026-01-16 11:46:20 | DEBUG    | GET products/1848 params=None
+2026-01-16 11:46:20 | DEBUG    | Buscando produto SKU: teste-1961-0
+2026-01-16 11:46:20 | DEBUG    | GET products/teste-1961-0 params=None
+2026-01-16 11:46:20 | DEBUG    | Buscando produto SKU: 3369-0 e 3369-1
+2026-01-16 11:46:20 | DEBUG    | GET products/3369-0%20e%203369-1 params=None
+2026-01-16 11:46:20 | DEBUG    | Buscando produto SKU: TS2142-0
+2026-01-16 11:46:20 | DEBUG    | GET products/TS2142-0 params=None
+2026-01-16 11:46:20 | DEBUG    | Buscando produto SKU: 3483-0
+2026-01-16 11:46:20 | DEBUG    | GET products/3483-0 params=None
+2026-01-16 11:46:21 | DEBUG    | Buscando produto SKU: 34961-C
+2026-01-16 11:46:21 | DEBUG    | GET products/34961-C params=None
+2026-01-16 11:46:21 | DEBUG    | Buscando produto SKU: TS3265-2
+2026-01-16 11:46:21 | DEBUG    | GET products/TS3265-2 params=None
+2026-01-16 11:46:21 | INFO     | Total de linhas geradas: 1760
+2026-01-16 11:46:21 | INFO     | Escrevendo CSV: /Users/gustavolemos/farm-dash/reports/relatorio_vendas_2026-01-01_2026-01-16.csv
+2026-01-16 11:46:21 | INFO     | CSV salvo com 1760 linhas
+2026-01-16 11:46:21 | INFO     | ============================================================
+2026-01-16 11:46:21 | INFO     | CONCLUÍDO! Arquivo: /Users/gustavolemos/farm-dash/reports/relatorio_vendas_2026-01-01_2026-01-16.csv
+2026-01-16 11:46:21 | INFO     | ============================================================
