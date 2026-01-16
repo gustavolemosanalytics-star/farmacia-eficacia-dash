@@ -121,8 +121,8 @@ function SidebarHeader() {
                 <Zap className="h-5 w-5 text-white" />
             </div>
             <div>
-                <h1 className="text-lg font-bold text-zinc-900 dark:text-white">War Room</h1>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-500">Dashboard Executivo</p>
+                <h1 className="text-lg font-bold text-zinc-900 dark:text-white">Plataforma BI</h1>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-500">Farmácia Eficácia</p>
             </div>
         </div>
     );

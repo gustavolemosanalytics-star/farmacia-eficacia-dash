@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "War Room - Dashboard Executivo",
+  title: "Plataforma BI - Farmácia Eficácia",
   description: "Dashboard de diagnóstico para queda de receita e-commerce",
 };
 
