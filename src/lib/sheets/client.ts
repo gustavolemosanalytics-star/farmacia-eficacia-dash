@@ -263,6 +263,7 @@ export const fetchMagData = async () => {
 
     if (data.length < 2) return [];
 
+    // BD Mag has headers in row 1 (index 0)
     const headers = data[0];
     const rows = data.slice(1);
 
@@ -320,6 +321,7 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
         d.status?.toLowerCase().includes('completo') ||
         d.status?.toLowerCase().includes('pago') ||
         d.status?.toLowerCase().includes('enviado') ||
+        d.status?.toLowerCase().includes('faturado') ||
         !d.status // Include if no status
     );
 

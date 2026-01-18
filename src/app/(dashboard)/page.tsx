@@ -44,6 +44,7 @@ export default function HomeExecutiva() {
             d.status?.toLowerCase().includes('completo') ||
             d.status?.toLowerCase().includes('pago') ||
             d.status?.toLowerCase().includes('enviado') ||
+            d.status?.toLowerCase().includes('faturado') ||
             !d.status
         );
 
