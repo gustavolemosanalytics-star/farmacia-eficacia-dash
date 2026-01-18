@@ -11,7 +11,7 @@ export async function GET(request: Request) {
         const endDateStr = searchParams.get('endDate');
 
         const cacheKey = `crm_${startDateStr || 'all'}_${endDateStr || 'all'}`;
-        const cached = getCachedData(cacheKey);
+        const cached = await getCachedData(cacheKey);
 
         if (cached) {
             return NextResponse.json({ success: true, data: cached, source: 'cache' });
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
         const data = await aggregateCRMKPIs(startDate, endDate);
 
-        setCachedData(cacheKey, data);
+        await setCachedData(cacheKey, data);
 
         return NextResponse.json({ success: true, data, source: 'api' });
     } catch (error) {

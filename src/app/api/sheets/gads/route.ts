@@ -10,7 +10,7 @@ export async function GET(request: Request) {
         const endDateStr = searchParams.get('endDate');
 
         const cacheKey = `gads_${aggregated ? 'agg' : 'raw'}_${startDateStr || 'all'}_${endDateStr || 'all'}`;
-        const cached = getCachedData(cacheKey);
+        const cached = await getCachedData(cacheKey);
 
         if (cached) {
             return NextResponse.json({ success: true, data: cached, count: Array.isArray(cached) ? cached.length : undefined, source: 'cache' });
@@ -26,9 +26,9 @@ export async function GET(request: Request) {
             data = await fetchGoogleAdsData();
         }
 
-        setCachedData(cacheKey, data);
+        await setCachedData(cacheKey, data);
 
-        return NextResponse.json({ success: true, data, count: Array.isArray(data) ? data.length : undefined, source: 'api' });
+        return NextResponse.json({ success: true, data, source: 'api' });
     } catch (error: any) {
         console.error('Error in Google Ads API:', error);
         return NextResponse.json(
