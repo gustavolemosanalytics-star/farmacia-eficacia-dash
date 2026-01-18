@@ -1,15 +1,15 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageHeader } from '@/components/ui/MockDataBadge';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { useGoogleAdsKPIs, useCatalogoData } from '@/hooks/useSheetData';
-import { TrendingUp, TrendingDown, Trophy, DollarSign, Target, BarChart3, Activity, MousePointer } from 'lucide-react';
+import { TrendingUp, Trophy, DollarSign, Target, BarChart3, Activity, MousePointer } from 'lucide-react';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    AreaChart, Area, Legend, Cell
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
@@ -21,9 +21,69 @@ export default function MidiaPagaPage() {
 
     const loading = loadingGads || loadingCatalogo;
 
-    // Calculate ROAS using Google Ads attributed revenue from Magento
-    const receitaGoogleAds = catalogoData?.byAtribuicao?.find((a: any) => a.name === 'Google_Ads')?.value || 0;
+    // Filter states
+    const [filterOrigem, setFilterOrigem] = useState<string | null>(null);
+    const [filterMidia, setFilterMidia] = useState<string | null>(null);
+    const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
+    const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
+
+    // Filter options from data
+    const filterOptions = catalogoData?.filterOptions || {
+        origens: [],
+        midias: [],
+        categorias: [],
+        atribuicoes: [],
+    };
+
+    // Filtered data based on selected filters
+    const filteredData = useMemo(() => {
+        if (!catalogoData?.rawData) return null;
+
+        let filtered = catalogoData.rawData.filter((d: any) =>
+            d.status?.toLowerCase().includes('complete') ||
+            d.status?.toLowerCase().includes('completo') ||
+            d.status?.toLowerCase().includes('pago') ||
+            d.status?.toLowerCase().includes('enviado') ||
+            d.status?.toLowerCase().includes('faturado') ||
+            !d.status
+        );
+
+        if (filterOrigem) filtered = filtered.filter((d: any) => d.origem === filterOrigem);
+        if (filterMidia) filtered = filtered.filter((d: any) => d.midia === filterMidia);
+        if (filterCategoria) filtered = filtered.filter((d: any) => d.categoria?.includes(filterCategoria));
+        if (filterAtribuicao) filtered = filtered.filter((d: any) => d.atribuicao === filterAtribuicao);
+
+        // Revenue from Google Ads attribution
+        const receitaGoogleAds = filtered
+            .filter((d: any) => d.atribuicao === 'Google_Ads')
+            .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+
+        // Revenue by Atribuição for chart
+        const atribuicaoRevenue: { [key: string]: number } = {};
+        filtered.forEach((d: any) => {
+            const atrib = d.atribuicao || 'Não identificado';
+            atribuicaoRevenue[atrib] = (atribuicaoRevenue[atrib] || 0) + (d.receitaProduto || 0);
+        });
+        const byAtribuicao = Object.entries(atribuicaoRevenue)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+
+        return {
+            receitaGoogleAds,
+            byAtribuicao,
+        };
+    }, [catalogoData, filterOrigem, filterMidia, filterCategoria, filterAtribuicao]);
+
+    // Calculate ROAS using Google Ads attributed revenue from filtered data
+    const receitaGoogleAds = filteredData?.receitaGoogleAds ||
+        catalogoData?.byAtribuicao?.find((a: any) => a.name === 'Google_Ads')?.value || 0;
     const roas = receitaGoogleAds > 0 && gadsKpis?.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
+
+    // Attributed revenue by channel from filtered data
+    const atribuicaoData = (filteredData?.byAtribuicao || catalogoData?.byAtribuicao)?.slice(0, 6).map((item: any, index: number) => ({
+        ...item,
+        color: COLORS[index % COLORS.length]
+    })) || [];
 
     // KPIs from Google Ads
     const kpis = gadsKpis ? [
@@ -86,23 +146,6 @@ export default function MidiaPagaPage() {
         },
     ] : [];
 
-    // ROAS KPI (calculated from Magento attributed revenue)
-    const roasKpi = roas > 0 ? {
-        id: 'roas',
-        titulo: 'ROAS (Magento)',
-        valor: roas,
-        valorFormatado: `${roas.toFixed(2)}x`,
-        variacao: 4.2,
-        tendencia: roas >= 1 ? 'up' as const : 'down' as const,
-        sparklineData: [roas * 0.85, roas * 0.9, roas * 0.95, roas * 0.98, roas],
-    } : null;
-
-    // Attributed revenue by channel from Magento
-    const atribuicaoData = catalogoData?.byAtribuicao?.slice(0, 6).map((item: any, index: number) => ({
-        ...item,
-        color: COLORS[index % COLORS.length]
-    })) || [];
-
     return (
         <div className="space-y-6">
             {/* Header with Date Picker */}
@@ -123,6 +166,38 @@ export default function MidiaPagaPage() {
                         <p className="text-muted-foreground">Carregando dados...</p>
                     </div>
                 </div>
+            )}
+
+            {/* Filters */}
+            {!loading && catalogoData && (
+                <section className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 p-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <FilterDropdown
+                            label="Origem"
+                            options={filterOptions.origens}
+                            value={filterOrigem}
+                            onChange={setFilterOrigem}
+                        />
+                        <FilterDropdown
+                            label="Mídia"
+                            options={filterOptions.midias}
+                            value={filterMidia}
+                            onChange={setFilterMidia}
+                        />
+                        <FilterDropdown
+                            label="Categoria"
+                            options={filterOptions.categorias?.slice(0, 50) || []}
+                            value={filterCategoria}
+                            onChange={setFilterCategoria}
+                        />
+                        <FilterDropdown
+                            label="Atribuição"
+                            options={filterOptions.atribuicoes}
+                            value={filterAtribuicao}
+                            onChange={setFilterAtribuicao}
+                        />
+                    </div>
+                </section>
             )}
 
             {/* KPIs Google Ads */}
@@ -233,7 +308,6 @@ export default function MidiaPagaPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {/* CTR */}
                                 <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
                                     <div className="flex items-center gap-3">
                                         <MousePointer className="h-5 w-5 text-blue-500" />
@@ -241,7 +315,6 @@ export default function MidiaPagaPage() {
                                     </div>
                                     <span className="text-lg font-bold">{gadsKpis?.ctr_formatted}</span>
                                 </div>
-                                {/* CPC */}
                                 <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
                                     <div className="flex items-center gap-3">
                                         <DollarSign className="h-5 w-5 text-yellow-500" />
@@ -249,7 +322,6 @@ export default function MidiaPagaPage() {
                                     </div>
                                     <span className="text-lg font-bold">R$ {gadsKpis?.cpc.toFixed(2)}</span>
                                 </div>
-                                {/* CPA */}
                                 <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
                                     <div className="flex items-center gap-3">
                                         <Target className="h-5 w-5 text-red-500" />
@@ -257,7 +329,6 @@ export default function MidiaPagaPage() {
                                     </div>
                                     <span className="text-lg font-bold">R$ {gadsKpis?.costPerConversion.toFixed(2)}</span>
                                 </div>
-                                {/* Conversions */}
                                 <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
                                     <div className="flex items-center gap-3">
                                         <Trophy className="h-5 w-5 text-green-500" />

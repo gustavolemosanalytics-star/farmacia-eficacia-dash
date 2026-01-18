@@ -1,12 +1,14 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageHeader } from '@/components/ui/MockDataBadge';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { useGoogleAdsKPIs, useCatalogoData } from '@/hooks/useSheetData';
 import {
-    TrendingUp, ArrowRight, DollarSign, Target, MousePointer, ShoppingCart, Activity, BarChart3
+    TrendingUp, DollarSign, Target, MousePointer, ShoppingCart, Activity, BarChart3
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
@@ -21,6 +23,77 @@ export default function FunilPage() {
 
     const loading = loadingGads || loadingCatalogo;
 
+    // Filter states
+    const [filterOrigem, setFilterOrigem] = useState<string | null>(null);
+    const [filterMidia, setFilterMidia] = useState<string | null>(null);
+    const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
+    const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
+
+    // Filter options from data
+    const filterOptions = catalogoData?.filterOptions || {
+        origens: [],
+        midias: [],
+        categorias: [],
+        atribuicoes: [],
+    };
+
+    // Filtered data based on selected filters
+    const filteredData = useMemo(() => {
+        if (!catalogoData?.rawData) return null;
+
+        let filtered = catalogoData.rawData.filter((d: any) =>
+            d.status?.toLowerCase().includes('complete') ||
+            d.status?.toLowerCase().includes('completo') ||
+            d.status?.toLowerCase().includes('pago') ||
+            d.status?.toLowerCase().includes('enviado') ||
+            d.status?.toLowerCase().includes('faturado') ||
+            !d.status
+        );
+
+        if (filterOrigem) filtered = filtered.filter((d: any) => d.origem === filterOrigem);
+        if (filterMidia) filtered = filtered.filter((d: any) => d.midia === filterMidia);
+        if (filterCategoria) filtered = filtered.filter((d: any) => d.categoria?.includes(filterCategoria));
+        if (filterAtribuicao) filtered = filtered.filter((d: any) => d.atribuicao === filterAtribuicao);
+
+        // Calculate KPIs from filtered data
+        const totalReceita = filtered.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+        const uniqueOrders = new Set(filtered.map((d: any) => d.pedido).filter(Boolean));
+        const totalPedidos = uniqueOrders.size || filtered.length;
+        const ticketMedio = totalPedidos > 0 ? totalReceita / totalPedidos : 0;
+
+        // Revenue from Google Ads attribution for ROAS calculation
+        const receitaGoogleAds = filtered
+            .filter((d: any) => d.atribuicao === 'Google_Ads')
+            .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+
+        // Revenue by Atribuição for chart
+        const atribuicaoRevenue: { [key: string]: number } = {};
+        filtered.forEach((d: any) => {
+            const atrib = d.atribuicao || 'Não identificado';
+            atribuicaoRevenue[atrib] = (atribuicaoRevenue[atrib] || 0) + (d.receitaProduto || 0);
+        });
+        const byAtribuicao = Object.entries(atribuicaoRevenue)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+
+        return {
+            totalReceita,
+            totalPedidos,
+            ticketMedio,
+            receitaGoogleAds,
+            byAtribuicao,
+        };
+    }, [catalogoData, filterOrigem, filterMidia, filterCategoria, filterAtribuicao]);
+
+    // Use filtered data or default from API
+    const displayData = filteredData || {
+        totalReceita: catalogoData?.totalReceita || 0,
+        totalPedidos: catalogoData?.totalPedidos || 0,
+        ticketMedio: catalogoData?.ticketMedio || 0,
+        receitaGoogleAds: catalogoData?.byAtribuicao?.find((a: any) => a.name === 'Google_Ads')?.value || 0,
+        byAtribuicao: catalogoData?.byAtribuicao || [],
+    };
+
     // Calculate funnel metrics from real data
     const funnelMetrics = {
         // From Google Ads
@@ -28,11 +101,10 @@ export default function FunilPage() {
         impressions: (gadsKpis?.clicks || 0) * 50, // Estimate based on ~2% CTR
         conversionsGads: gadsKpis?.conversions || 0,
 
-        // From Magento
-        pedidos: catalogoData?.totalPedidos || 0,
-        receita: catalogoData?.totalReceita || 0,
-        ticketMedio: catalogoData?.ticketMedio || 0,
-        clientes: catalogoData?.totalClientes || 0,
+        // From Magento (filtered)
+        pedidos: displayData.totalPedidos,
+        receita: displayData.totalReceita,
+        ticketMedio: displayData.ticketMedio,
     };
 
     // Funnel visualization data
@@ -50,8 +122,14 @@ export default function FunilPage() {
     };
 
     // ROAS calculation
-    const receitaGoogleAds = catalogoData?.byAtribuicao?.find((a: any) => a.name === 'Google_Ads')?.value || 0;
+    const receitaGoogleAds = displayData.receitaGoogleAds;
     const roas = receitaGoogleAds > 0 && gadsKpis?.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
+
+    // Attribution chart data
+    const atribuicaoData = displayData.byAtribuicao?.slice(0, 6).map((item: any, index: number) => ({
+        ...item,
+        color: COLORS[index % COLORS.length]
+    })) || [];
 
     // KPIs
     const kpis = [
@@ -86,7 +164,7 @@ export default function FunilPage() {
             id: 'receita',
             titulo: 'Receita (Magento)',
             valor: funnelMetrics.receita,
-            valorFormatado: catalogoData?.totalReceita_formatted || 'R$ 0,00',
+            valorFormatado: `R$ ${funnelMetrics.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
             variacao: 12.5,
             tendencia: 'up' as const,
             sparklineData: [1, 1.05, 1.08, 1.1, 1.15],
@@ -113,6 +191,38 @@ export default function FunilPage() {
                         <p className="text-muted-foreground">Carregando dados...</p>
                     </div>
                 </div>
+            )}
+
+            {/* Filters */}
+            {!loading && catalogoData && (
+                <section className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 p-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <FilterDropdown
+                            label="Origem"
+                            options={filterOptions.origens}
+                            value={filterOrigem}
+                            onChange={setFilterOrigem}
+                        />
+                        <FilterDropdown
+                            label="Mídia"
+                            options={filterOptions.midias}
+                            value={filterMidia}
+                            onChange={setFilterMidia}
+                        />
+                        <FilterDropdown
+                            label="Categoria"
+                            options={filterOptions.categorias?.slice(0, 50) || []}
+                            value={filterCategoria}
+                            onChange={setFilterCategoria}
+                        />
+                        <FilterDropdown
+                            label="Atribuição"
+                            options={filterOptions.atribuicoes}
+                            value={filterAtribuicao}
+                            onChange={setFilterAtribuicao}
+                        />
+                    </div>
+                </section>
             )}
 
             {/* KPIs */}
@@ -166,7 +276,6 @@ export default function FunilPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {/* CTR */}
                                 <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -180,7 +289,6 @@ export default function FunilPage() {
                                     </div>
                                 </div>
 
-                                {/* Conversion Rate */}
                                 <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -194,7 +302,6 @@ export default function FunilPage() {
                                     </div>
                                 </div>
 
-                                {/* ROAS */}
                                 <div className={`p-4 rounded-xl ${roas >= 1 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -208,7 +315,6 @@ export default function FunilPage() {
                                     </div>
                                 </div>
 
-                                {/* Ticket Médio */}
                                 <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -218,7 +324,7 @@ export default function FunilPage() {
                                                 <p className="text-xs text-muted-foreground">Receita ÷ Pedidos</p>
                                             </div>
                                         </div>
-                                        <p className="text-2xl font-bold text-purple-600">{catalogoData?.ticketMedio_formatted}</p>
+                                        <p className="text-2xl font-bold text-purple-600">R$ {displayData.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                     </div>
                                 </div>
                             </div>
@@ -237,11 +343,7 @@ export default function FunilPage() {
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={250}>
-                                <BarChart
-                                    data={catalogoData.byAtribuicao?.slice(0, 6).map((item: any, i: number) => ({ ...item, color: COLORS[i % COLORS.length] }))}
-                                    layout="vertical"
-                                    margin={{ left: 10, right: 40, top: 10, bottom: 10 }}
-                                >
+                                <BarChart data={atribuicaoData} layout="vertical" margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                                     <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={11} />
                                     <YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)" fontSize={11} />
