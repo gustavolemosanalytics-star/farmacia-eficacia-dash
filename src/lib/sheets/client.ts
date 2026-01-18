@@ -82,10 +82,11 @@ export const getSheetData = async (sheetName: string, range?: string): Promise<a
 export const fetchGoogleAdsData = async () => {
     const data = await getSheetData(SHEETS.BD_GADS);
 
-    if (data.length < 2) return [];
+    if (data.length < 3) return [];
 
-    const headers = data[0];
-    const rows = data.slice(1);
+    // Headers are in row 2 (index 1)
+    const headers = data[1];
+    const rows = data.slice(2);
 
     return rows.map(row => {
         const obj: any = {};
@@ -116,10 +117,11 @@ export const fetchGoogleAdsData = async () => {
 export const fetchGA4Data = async () => {
     const data = await getSheetData(SHEETS.BD_GA4);
 
-    if (data.length < 2) return [];
+    if (data.length < 3) return [];
 
-    const headers = data[0];
-    const rows = data.slice(1);
+    // Headers are in row 2 (index 1)
+    const headers = data[1];
+    const rows = data.slice(2);
 
     return rows.map(row => {
         const obj: any = {};
