@@ -254,61 +254,81 @@ export default function AquisicaoPage() {
                 </section>
             )}
 
-            {/* Charts Row 1: Daily Revenue + Attribution */}
+            {/* Interactive Timeline Chart */}
             {!loading && (
-                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Daily Revenue Trend */}
-                    <Card className="border-border bg-card h-full">
-                        <CardHeader className="flex flex-row items-center gap-2">
-                            <Activity className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium text-card-foreground">Receita Diária (Magento)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <AreaChart data={dailyRevenue} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorReceitaAq" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                    <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(val) => {
-                                        if (typeof val === 'string' && val.includes('/')) {
-                                            const parts = val.split('/');
-                                            if (parts.length >= 2) return `${parts[0]}/${parts[1]}`;
-                                        }
-                                        return val;
-                                    }} />
-                                    <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                                    <Tooltip
-                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
-                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    />
-                                    <Legend />
-                                    <Area type="monotone" dataKey="receita" name="Receita" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorReceitaAq)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
+                <section className="col-span-1 md:col-span-2 lg:col-span-4">
+                    <InteractiveTimelineChart displayData={displayData} ga4Kpis={ga4Kpis} />
+                </section>
+            )}
 
-                    {/* Revenue by Attribution (Magento) */}
+            {/* Revenue by Atribuição & Category */}
+            {!loading && (
+                <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card className="border-border bg-card h-full">
                         <CardHeader className="flex flex-row items-center gap-2">
-                            <BarChart3 className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Atribuição (Magento)</CardTitle>
+                            <TrendingUp className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Categoria</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={atribuicaoData} layout="vertical" margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
+                            <ResponsiveContainer width="100%" height={350}>
+                                <BarChart data={displayData.byCategory} layout="vertical" margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-                                    <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={11} />
-                                    <YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)" fontSize={11} />
+                                    <XAxis
+                                        type="number"
+                                        tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={11}
+                                    />
+                                    <YAxis
+                                        type="category"
+                                        dataKey="name"
+                                        width={120}
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={11}
+                                        tick={{ fill: 'var(--muted-foreground)' }}
+                                    />
                                     <Tooltip
                                         formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
                                         contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                     />
                                     <Bar dataKey="value" name="Receita" radius={[0, 6, 6, 0]}>
+                                        {displayData.byCategory.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-border bg-card h-full">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Canal (Atribuição)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={350}>
+                                <BarChart data={atribuicaoData} layout="vertical" margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                    <XAxis
+                                        type="number"
+                                        tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={11}
+                                    />
+                                    <YAxis
+                                        type="category"
+                                        dataKey="name"
+                                        width={100}
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={11}
+                                        tick={{ fill: 'var(--muted-foreground)' }}
+                                    />
+                                    <Tooltip
+                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Bar dataKey="value" name="Receita" radius={[0, 6, 6, 0]} >
                                         {atribuicaoData.map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={entry.color} />
                                         ))}
@@ -380,5 +400,174 @@ export default function AquisicaoPage() {
                 </section>
             )}
         </div>
+    );
+}
+
+// Sub-component for Interactive Chart to handle its own state
+function InteractiveTimelineChart({ displayData, ga4Kpis }: { displayData: any, ga4Kpis: any }) {
+    const [visibleMetrics, setVisibleMetrics] = useState({
+        receita: true,
+        pedidos: false,
+        sessoes: true
+    });
+
+    // Merge data - this logic needs to be robust to missing dates in either source
+    const mergedData = useMemo(() => {
+        const magentoData = displayData.dailyRevenue || [];
+        // GA4 dailyTrend might need better typing or check
+        const ga4Data = ga4Kpis?.dailyTrend || [];
+
+        const dataMap: { [key: string]: any } = {};
+
+        magentoData.forEach((d: any) => {
+            const dateKey = d.date;
+            if (!dataMap[dateKey]) dataMap[dateKey] = { date: dateKey };
+            dataMap[dateKey].receita = d.receita;
+            dataMap[dateKey].pedidos = d.pedidos;
+        });
+
+        ga4Data.forEach((d: any) => {
+            // Let's normalize to DD/MM/YYYY if possible
+            let dateKey = d.date;
+            if (d.date.includes('-')) {
+                const parts = d.date.split('-');
+                if (parts[0].length === 4) dateKey = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+
+            if (!dataMap[dateKey]) dataMap[dateKey] = { date: dateKey };
+            dataMap[dateKey].sessoes = d.sessions;
+        });
+
+        return Object.values(dataMap).sort((a: any, b: any) => {
+            const dateA = a.date.split('/').reverse().join('-');
+            const dateB = b.date.split('/').reverse().join('-');
+            return new Date(dateA).getTime() - new Date(dateB).getTime();
+        });
+    }, [displayData, ga4Kpis]);
+
+    return (
+        <Card className="border-border bg-card">
+            <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex flex-row items-center gap-2">
+                    <Activity className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-sm font-medium text-card-foreground">Evolução de Performance (Interativo)</CardTitle>
+                </div>
+                <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={visibleMetrics.receita}
+                            onChange={(e) => setVisibleMetrics(prev => ({ ...prev, receita: e.target.checked }))}
+                            className="accent-emerald-500 rounded w-4 h-4"
+                        />
+                        <span className="text-emerald-600 dark:text-emerald-400">Receita</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={visibleMetrics.pedidos}
+                            onChange={(e) => setVisibleMetrics(prev => ({ ...prev, pedidos: e.target.checked }))}
+                            className="accent-blue-500 rounded w-4 h-4"
+                        />
+                        <span className="text-blue-600 dark:text-blue-400">Pedidos</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={visibleMetrics.sessoes}
+                            onChange={(e) => setVisibleMetrics(prev => ({ ...prev, sessoes: e.target.checked }))}
+                            className="accent-amber-500 rounded w-4 h-4"
+                        />
+                        <span className="text-amber-600 dark:text-amber-400">Sessões</span>
+                    </label>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="h-[400px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={mergedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorSessoes" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                            <XAxis
+                                dataKey="date"
+                                stroke="var(--muted-foreground)"
+                                fontSize={11}
+                                tickFormatter={(val) => val ? val.substring(0, 5) : ''}
+                            />
+
+                            <YAxis
+                                yAxisId="left"
+                                orientation="left"
+                                stroke="#10b981"
+                                fontSize={11}
+                                tickFormatter={(val) => `R$${(val / 1000).toFixed(0)}k`}
+                                hide={!visibleMetrics.receita}
+                            />
+
+                            <YAxis
+                                yAxisId="right"
+                                orientation="right"
+                                stroke="var(--muted-foreground)"
+                                fontSize={11}
+                                hide={!visibleMetrics.pedidos && !visibleMetrics.sessoes}
+                            />
+
+                            <Tooltip
+                                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                labelStyle={{ color: 'var(--foreground)' }}
+                            />
+                            <Legend />
+
+                            {visibleMetrics.receita && (
+                                <Area
+                                    yAxisId="left"
+                                    type="monotone"
+                                    dataKey="receita"
+                                    name="Receita"
+                                    stroke="#10b981"
+                                    fillOpacity={1}
+                                    fill="url(#colorReceita)"
+                                    strokeWidth={2}
+                                />
+                            )}
+
+                            {visibleMetrics.pedidos && (
+                                <Area
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="pedidos"
+                                    name="Pedidos"
+                                    stroke="#3b82f6"
+                                    fill="transparent"
+                                    strokeWidth={2}
+                                />
+                            )}
+
+                            {visibleMetrics.sessoes && (
+                                <Area
+                                    yAxisId="right"
+                                    type="monotone"
+                                    dataKey="sessoes"
+                                    name="Sessões"
+                                    stroke="#f59e0b"
+                                    fillOpacity={1}
+                                    fill="url(#colorSessoes)"
+                                    strokeWidth={2}
+                                />
+                            )}
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </CardContent>
+        </Card>
     );
 }
