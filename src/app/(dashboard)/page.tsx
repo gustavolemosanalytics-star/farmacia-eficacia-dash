@@ -309,35 +309,40 @@ export default function HomeExecutiva() {
                         </CardContent>
                     </Card>
 
-                    {/* Receita por Atribuição */}
+                    {/* Receita por Atribuição - Horizontal Bar Chart */}
                     <Card className="border-border bg-card h-full">
                         <CardHeader className="flex flex-row items-center gap-2">
-                            <PieChart className="h-5 w-5 text-primary" />
+                            <BarChart3 className="h-5 w-5 text-primary" />
                             <CardTitle className="text-sm font-medium text-card-foreground">Receita por Canal de Origem (Atribuição)</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={350}>
-                                <RechartsPie>
-                                    <Pie
-                                        data={atribuicaoData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={80}
-                                        outerRadius={120}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                                        labelLine={false}
-                                    >
-                                        {atribuicaoData.map((entry: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
+                                <BarChart data={atribuicaoData} layout="vertical" margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                    <XAxis
+                                        type="number"
+                                        tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={11}
+                                    />
+                                    <YAxis
+                                        type="category"
+                                        dataKey="name"
+                                        width={100}
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={11}
+                                        tick={{ fill: 'var(--muted-foreground)' }}
+                                    />
                                     <Tooltip
                                         formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
                                         contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                     />
-                                </RechartsPie>
+                                    <Bar dataKey="value" name="Receita" radius={[0, 6, 6, 0]}>
+                                        {atribuicaoData.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
                             </ResponsiveContainer>
                         </CardContent>
                     </Card>
