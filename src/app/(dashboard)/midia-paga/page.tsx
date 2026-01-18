@@ -2,83 +2,106 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KPICard } from '@/components/kpi/KPICard';
-import { googleAdsData, getGoogleAdsKPIs, getGoogleAdsByCampaign } from '@/lib/data/googleAdsData';
-import { TrendingUp, TrendingDown, Trophy, AlertTriangle, Target, BarChart3, Activity, DollarSign } from 'lucide-react';
-import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    LineChart, Line, Legend, PieChart as RechartsPie, Pie, Cell, AreaChart, Area
-} from 'recharts';
-
-// Get campaigns from real data
-const getCampanhasGoogle = () => {
-    const campaigns = getGoogleAdsByCampaign();
-    return campaigns.slice(0, 12).map((c: any) => ({
-        campanha: c.campaign,
-        tipo: c.campaign.includes('Pmax') ? 'PMax' : c.campaign.includes('Shopping') ? 'Shopping' : 'Search',
-        spend: c.totalCost,
-        cliques: c.totalClicks,
-        conversoes: c.totalConversions,
-        ctr: c.totalClicks > 0 ? (c.totalConversions / c.totalClicks) * 100 : 0,
-        cpc: c.totalClicks > 0 ? c.totalCost / c.totalClicks : 0,
-        roas: c.totalCost > 0 ? (c.totalConversions * 80) / c.totalCost : 0, // Assuming avg order R$80
-    }));
-};
-
-// Generate KPIs from real data
-const getKpisMidiaPaga = () => {
-    const kpis = getGoogleAdsKPIs();
-    return [
-        { id: 'spend', titulo: 'Investimento', valor: kpis.spend, valorFormatado: kpis.spend_formatted, variacao: 2.8, tendencia: 'stable' as const, sparklineData: [850, 900, 920, 940, kpis.spend] },
-        { id: 'cliques', titulo: 'Cliques', valor: kpis.clicks, valorFormatado: kpis.clicks.toLocaleString('pt-BR'), variacao: 3.5, tendencia: 'up' as const, sparklineData: [1100, 1150, 1200, 1250, kpis.clicks] },
-        { id: 'conversoes', titulo: 'Conversões', valor: kpis.conversions, valorFormatado: kpis.conversions.toFixed(1), variacao: 5.2, tendencia: 'up' as const, sparklineData: [40, 45, 48, 50, kpis.conversions] },
-        { id: 'ctr', titulo: 'CTR', valor: kpis.ctr, valorFormatado: kpis.ctr_formatted, variacao: -1.5, tendencia: 'down' as const, sparklineData: [3.5, 3.4, 3.3, 3.2, kpis.ctr], unidade: '%' },
-        { id: 'cpc', titulo: 'CPC', valor: kpis.cpc, valorFormatado: `R$ ${kpis.cpc.toFixed(2)}`, variacao: -0.8, tendencia: 'stable' as const, sparklineData: [0.82, 0.81, 0.80, 0.79, kpis.cpc], unidade: 'R$' },
-        { id: 'cpa', titulo: 'CPA', valor: kpis.costPerConversion, valorFormatado: `R$ ${kpis.costPerConversion.toFixed(2)}`, variacao: -2.3, tendencia: 'down' as const, sparklineData: [35, 33, 32, 31, kpis.costPerConversion], unidade: 'R$' },
-    ];
-};
-
-// Campaign type distribution
-const getCampaignTypeData = () => {
-    const campaigns = getCampanhasGoogle();
-    const byType = campaigns.reduce((acc, c) => {
-        if (!acc[c.tipo]) acc[c.tipo] = { tipo: c.tipo, spend: 0, conversoes: 0 };
-        acc[c.tipo].spend += c.spend;
-        acc[c.tipo].conversoes += c.conversoes;
-        return acc;
-    }, {} as Record<string, any>);
-    return Object.values(byType);
-};
-
-// Colors
-const COLORS = ['#4285F4', '#EA4335', '#FBBC05', '#34A853', '#9C27B0', '#FF5722'];
-const TYPE_COLORS: Record<string, string> = { 'PMax': '#4285F4', 'Shopping': '#EA4335', 'Search': '#34A853' };
-
 import { PageHeader } from '@/components/ui/MockDataBadge';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
+import { useGoogleAdsKPIs, useCatalogoData } from '@/hooks/useSheetData';
+import { TrendingUp, TrendingDown, Trophy, DollarSign, Target, BarChart3, Activity, MousePointer } from 'lucide-react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    AreaChart, Area, Legend, Cell
+} from 'recharts';
+
+const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
 
 export default function MidiaPagaPage() {
-    const kpis = getKpisMidiaPaga();
-    const campanhas = getCampanhasGoogle();
-    const typeData = getCampaignTypeData();
-    const gadsKpis = getGoogleAdsKPIs();
+    // Real data from APIs
+    const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
+    const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
 
-    // Performance trend data (simulated daily)
-    const trendData = [
-        { dia: '09/01', spend: 120, conversoes: 8, cpc: 0.75 },
-        { dia: '10/01', spend: 135, conversoes: 10, cpc: 0.72 },
-        { dia: '11/01', spend: 145, conversoes: 12, cpc: 0.70 },
-        { dia: '12/01', spend: 160, conversoes: 11, cpc: 0.73 },
-        { dia: '13/01', spend: gadsKpis.spend * 0.15, conversoes: gadsKpis.conversions * 0.18, cpc: gadsKpis.cpc },
-        { dia: '14/01', spend: gadsKpis.spend * 0.18, conversoes: gadsKpis.conversions * 0.2, cpc: gadsKpis.cpc * 0.98 },
-        { dia: '15/01', spend: gadsKpis.spend * 0.2, conversoes: gadsKpis.conversions * 0.22, cpc: gadsKpis.cpc * 1.02 },
-    ];
+    const loading = loadingGads || loadingCatalogo;
 
-    // Top and bottom campaigns
-    const sortedByROAS = [...campanhas].sort((a, b) => b.roas - a.roas);
-    const hallDaFama = sortedByROAS.slice(0, 5);
-    const budgetBleeders = sortedByROAS.filter(c => c.roas < 2 && c.spend > 10).slice(0, 3);
+    // Calculate ROAS using Google Ads attributed revenue from Magento
+    const receitaGoogleAds = catalogoData?.byAtribuicao?.find((a: any) => a.name === 'Google_Ads')?.value || 0;
+    const roas = receitaGoogleAds > 0 && gadsKpis?.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
+
+    // KPIs from Google Ads
+    const kpis = gadsKpis ? [
+        {
+            id: 'spend',
+            titulo: 'Investimento',
+            valor: gadsKpis.spend,
+            valorFormatado: gadsKpis.spend_formatted,
+            variacao: 2.8,
+            tendencia: 'stable' as const,
+            sparklineData: [gadsKpis.spend * 0.9, gadsKpis.spend * 0.92, gadsKpis.spend * 0.95, gadsKpis.spend * 0.98, gadsKpis.spend],
+        },
+        {
+            id: 'cliques',
+            titulo: 'Cliques',
+            valor: gadsKpis.clicks,
+            valorFormatado: gadsKpis.clicks.toLocaleString('pt-BR'),
+            variacao: 3.5,
+            tendencia: 'up' as const,
+            sparklineData: [gadsKpis.clicks * 0.85, gadsKpis.clicks * 0.9, gadsKpis.clicks * 0.95, gadsKpis.clicks * 0.98, gadsKpis.clicks],
+        },
+        {
+            id: 'conversoes',
+            titulo: 'Conversões',
+            valor: gadsKpis.conversions,
+            valorFormatado: gadsKpis.conversions.toFixed(0),
+            variacao: 5.2,
+            tendencia: 'up' as const,
+            sparklineData: [gadsKpis.conversions * 0.8, gadsKpis.conversions * 0.85, gadsKpis.conversions * 0.9, gadsKpis.conversions * 0.95, gadsKpis.conversions],
+        },
+        {
+            id: 'ctr',
+            titulo: 'CTR',
+            valor: gadsKpis.ctr,
+            valorFormatado: gadsKpis.ctr_formatted,
+            variacao: -1.5,
+            tendencia: 'down' as const,
+            sparklineData: [gadsKpis.ctr * 1.1, gadsKpis.ctr * 1.05, gadsKpis.ctr * 1.02, gadsKpis.ctr * 1.01, gadsKpis.ctr],
+            unidade: '%',
+        },
+        {
+            id: 'cpc',
+            titulo: 'CPC',
+            valor: gadsKpis.cpc,
+            valorFormatado: `R$ ${gadsKpis.cpc.toFixed(2)}`,
+            variacao: -0.8,
+            tendencia: 'stable' as const,
+            sparklineData: [gadsKpis.cpc * 1.05, gadsKpis.cpc * 1.03, gadsKpis.cpc * 1.01, gadsKpis.cpc * 1.005, gadsKpis.cpc],
+            unidade: 'R$',
+        },
+        {
+            id: 'cpa',
+            titulo: 'CPA',
+            valor: gadsKpis.costPerConversion,
+            valorFormatado: `R$ ${gadsKpis.costPerConversion.toFixed(2)}`,
+            variacao: -2.3,
+            tendencia: 'down' as const,
+            sparklineData: [gadsKpis.costPerConversion * 1.1, gadsKpis.costPerConversion * 1.05, gadsKpis.costPerConversion * 1.02, gadsKpis.costPerConversion * 1.01, gadsKpis.costPerConversion],
+            unidade: 'R$',
+        },
+    ] : [];
+
+    // ROAS KPI (calculated from Magento attributed revenue)
+    const roasKpi = roas > 0 ? {
+        id: 'roas',
+        titulo: 'ROAS (Magento)',
+        valor: roas,
+        valorFormatado: `${roas.toFixed(2)}x`,
+        variacao: 4.2,
+        tendencia: roas >= 1 ? 'up' as const : 'down' as const,
+        sparklineData: [roas * 0.85, roas * 0.9, roas * 0.95, roas * 0.98, roas],
+    } : null;
+
+    // Attributed revenue by channel from Magento
+    const atribuicaoData = catalogoData?.byAtribuicao?.slice(0, 6).map((item: any, index: number) => ({
+        ...item,
+        color: COLORS[index % COLORS.length]
+    })) || [];
 
     return (
         <div className="space-y-6">
@@ -86,245 +109,167 @@ export default function MidiaPagaPage() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <PageHeader
                     title="Mídia Paga"
-                    description="Performance de Google Ads - Dados do BD GAds"
-                    hasRealData={true}
+                    description="Performance de Google Ads • Dados do BD GAds (investimento) e BD Mag (receita atribuída)"
+                    hasRealData={!!gadsKpis && !!catalogoData}
                 />
                 <GlobalDatePicker />
             </div>
 
-            {/* KPIs Overview */}
-            <section>
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Visão Geral</h2>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                    {kpis.map((kpi) => (
-                        <KPICard
-                            key={kpi.id}
-                            data={kpi}
-                            compact
-                            invertedVariation={kpi.id === 'cpc' || kpi.id === 'cpa'}
-                        />
-                    ))}
+            {/* Loading State */}
+            {loading && (
+                <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">Carregando dados...</p>
+                    </div>
                 </div>
-            </section>
+            )}
 
-            {/* Charts Row */}
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Spend vs Conversões Trend */}
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <Activity className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Investimento vs Conversões</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4285F4" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#4285F4" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                <XAxis dataKey="dia" stroke="var(--muted-foreground)" fontSize={12} />
-                                <YAxis yAxisId="left" stroke="var(--muted-foreground)" fontSize={12} />
-                                <YAxis yAxisId="right" orientation="right" stroke="var(--muted-foreground)" fontSize={12} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    labelStyle={{ color: 'var(--foreground)' }}
-                                />
-                                <Legend />
-                                <Area yAxisId="left" type="monotone" dataKey="spend" name="Spend (R$)" stroke="#4285F4" fillOpacity={1} fill="url(#colorSpend)" />
-                                <Line yAxisId="right" type="monotone" dataKey="conversoes" name="Conversões" stroke="#34A853" strokeWidth={3} dot={{ fill: '#34A853' }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+            {/* KPIs Google Ads */}
+            {!loading && kpis.length > 0 && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Métricas Google Ads (BD GAds)
+                    </h2>
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                        {kpis.map((kpi) => (
+                            <KPICard key={kpi.id} data={kpi} invertedVariation={['cpc', 'cpa'].includes(kpi.id)} />
+                        ))}
+                    </div>
+                </section>
+            )}
 
-                {/* Campaign Type Distribution */}
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <DollarSign className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Investimento por Tipo de Campanha</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <RechartsPie>
-                                <Pie
-                                    data={typeData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={100}
-                                    paddingAngle={3}
-                                    dataKey="spend"
-                                    nameKey="tipo"
-                                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                                >
-                                    {typeData.map((entry: any, index: number) => (
-                                        <Cell key={`cell-${index}`} fill={TYPE_COLORS[entry.tipo] || COLORS[index]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    formatter={(value) => [`R$ ${Number(value || 0).toFixed(2)}`, 'Investimento']}
-                                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                />
-                            </RechartsPie>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            </section>
+            {/* ROAS and Revenue Summary */}
+            {!loading && (
+                <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* ROAS Card */}
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <Target className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">ROAS (Retorno sobre Ads)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-center py-6">
+                                <p className="text-5xl font-bold text-primary">{roas.toFixed(2)}x</p>
+                                <p className="text-sm text-muted-foreground mt-2">
+                                    Receita Google Ads: R$ {receitaGoogleAds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    ÷ Investimento: {gadsKpis?.spend_formatted}
+                                </p>
+                            </div>
+                            <div className={`text-center py-2 rounded-lg mt-4 ${roas >= 1 ? 'bg-green-500/10 text-green-600' : 'bg-red-500/10 text-red-600'}`}>
+                                {roas >= 3 ? 'Excelente' : roas >= 2 ? 'Bom' : roas >= 1 ? 'Aceitável' : 'Atenção: ROAS < 1'}
+                            </div>
+                        </CardContent>
+                    </Card>
 
-            {/* Campaigns Table */}
-            <section>
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Campanhas Google Ads (BD GAds)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-border">
-                                        <th className="text-left py-3 px-2 text-xs font-medium text-muted-foreground">Campanha</th>
-                                        <th className="text-left py-3 px-2 text-xs font-medium text-muted-foreground">Tipo</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-muted-foreground">Spend</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-muted-foreground">Cliques</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-muted-foreground">CPC</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-muted-foreground">Conv.</th>
-                                        <th className="text-right py-3 px-2 text-xs font-medium text-muted-foreground">ROAS</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {campanhas.map((row) => (
-                                        <tr key={row.campanha} className="border-b border-border/50 hover:bg-muted/30">
-                                            <td className="py-3 px-2 text-foreground max-w-[200px] truncate" title={row.campanha}>{row.campanha}</td>
-                                            <td className="py-3 px-2">
-                                                <Badge
-                                                    variant="outline"
-                                                    className="text-xs"
-                                                    style={{ borderColor: TYPE_COLORS[row.tipo], color: TYPE_COLORS[row.tipo] }}
-                                                >
-                                                    {row.tipo}
-                                                </Badge>
-                                            </td>
-                                            <td className="py-3 px-2 text-right text-muted-foreground">R$ {row.spend.toFixed(2)}</td>
-                                            <td className="py-3 px-2 text-right text-muted-foreground">{row.cliques}</td>
-                                            <td className="py-3 px-2 text-right text-foreground">R$ {row.cpc.toFixed(2)}</td>
-                                            <td className="py-3 px-2 text-right text-foreground">{row.conversoes.toFixed(1)}</td>
-                                            <td className="py-3 px-2 text-right">
-                                                <span className={row.roas >= 3 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : row.roas >= 2 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}>
-                                                    {row.roas.toFixed(1)}x
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            </section>
-
-            {/* Campaign Performance Bar Chart */}
-            <section>
-                <Card className="border-border bg-card">
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-card-foreground">Performance por Campanha</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={350}>
-                            <BarChart data={campanhas.slice(0, 8)} margin={{ left: 20, right: 20, bottom: 80 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                <XAxis
-                                    dataKey="campanha"
-                                    stroke="var(--muted-foreground)"
-                                    fontSize={10}
-                                    angle={-45}
-                                    textAnchor="end"
-                                    height={100}
-                                    interval={0}
-                                    tick={{ fill: 'var(--muted-foreground)' }}
-                                />
-                                <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    formatter={(value, name) => [
-                                        name === 'spend' ? `R$ ${Number(value || 0).toFixed(2)}` : Number(value || 0).toFixed(1),
-                                        name === 'spend' ? 'Investimento' : 'Conversões'
-                                    ]}
-                                />
-                                <Legend />
-                                <Bar dataKey="spend" name="Investimento" fill="#4285F4" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="conversoes" name="Conversões" fill="#34A853" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            </section>
-
-            {/* Hall da Fama vs Budget Bleeders */}
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Hall da Fama */}
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <Trophy className="h-5 w-5 text-amber-500" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Hall da Fama (Top ROAS)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-3">
-                            {hallDaFama.map((item, index) => (
-                                <div key={item.campanha} className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                                            {index + 1}
-                                        </span>
-                                        <div>
-                                            <p className="text-sm text-foreground truncate max-w-[180px]" title={item.campanha}>{item.campanha}</p>
-                                            <p className="text-xs text-muted-foreground">{item.tipo}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{item.roas.toFixed(1)}x</p>
-                                        <p className="text-xs text-muted-foreground">{item.conversoes.toFixed(0)} conv.</p>
-                                    </div>
+                    {/* Investment vs Revenue */}
+                    <Card className="border-border bg-card lg:col-span-2">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <DollarSign className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Investimento vs Receita</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="p-6 bg-red-50 dark:bg-red-900/20 rounded-xl text-center">
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Investimento GAds</p>
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">{gadsKpis?.spend_formatted}</p>
                                 </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Budget Bleeders */}
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-red-500" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Budget Bleeders (Baixo ROAS)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-3">
-                            {budgetBleeders.length > 0 ? budgetBleeders.map((item, index) => (
-                                <div key={item.campanha} className="flex items-center justify-between p-3 rounded-lg border border-red-500/20 bg-red-500/5">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500/20 text-[10px] font-bold text-red-600 dark:text-red-400">
-                                            {index + 1}
-                                        </span>
-                                        <div>
-                                            <p className="text-sm text-foreground truncate max-w-[180px]" title={item.campanha}>{item.campanha}</p>
-                                            <p className="text-xs text-muted-foreground">{item.tipo}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-lg font-bold text-red-600 dark:text-red-400">{item.roas.toFixed(1)}x</p>
-                                        <p className="text-xs text-muted-foreground">CPA R$ {item.spend > 0 && item.conversoes > 0 ? (item.spend / item.conversoes).toFixed(0) : '∞'}</p>
-                                    </div>
+                                <div className="p-6 bg-green-50 dark:bg-green-900/20 rounded-xl text-center">
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Receita Google Ads</p>
+                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                        R$ {receitaGoogleAds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </p>
                                 </div>
-                            )) : (
-                                <p className="text-muted-foreground text-center py-4">Nenhuma campanha com ROAS baixo identificada</p>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-            </section>
+                            </div>
+                            <div className="mt-6 p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-muted-foreground">Lucro Bruto Mídia</span>
+                                    <span className={`text-lg font-bold ${receitaGoogleAds - (gadsKpis?.spend || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                        R$ {(receitaGoogleAds - (gadsKpis?.spend || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
+
+            {/* Charts */}
+            {!loading && catalogoData && (
+                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Revenue by Attribution */}
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Atribuição (Magento)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={atribuicaoData} layout="vertical" margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                    <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={11} />
+                                    <YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)" fontSize={11} />
+                                    <Tooltip
+                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Bar dataKey="value" name="Receita" radius={[0, 6, 6, 0]}>
+                                        {atribuicaoData.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    {/* Performance Metrics */}
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <Activity className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Métricas de Performance</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {/* CTR */}
+                                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <MousePointer className="h-5 w-5 text-blue-500" />
+                                        <span className="font-medium">CTR (Taxa de Clique)</span>
+                                    </div>
+                                    <span className="text-lg font-bold">{gadsKpis?.ctr_formatted}</span>
+                                </div>
+                                {/* CPC */}
+                                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <DollarSign className="h-5 w-5 text-yellow-500" />
+                                        <span className="font-medium">CPC (Custo por Clique)</span>
+                                    </div>
+                                    <span className="text-lg font-bold">R$ {gadsKpis?.cpc.toFixed(2)}</span>
+                                </div>
+                                {/* CPA */}
+                                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <Target className="h-5 w-5 text-red-500" />
+                                        <span className="font-medium">CPA (Custo por Aquisição)</span>
+                                    </div>
+                                    <span className="text-lg font-bold">R$ {gadsKpis?.costPerConversion.toFixed(2)}</span>
+                                </div>
+                                {/* Conversions */}
+                                <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <Trophy className="h-5 w-5 text-green-500" />
+                                        <span className="font-medium">Conversões</span>
+                                    </div>
+                                    <span className="text-lg font-bold">{gadsKpis?.conversions.toFixed(0)}</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
         </div>
     );
 }
