@@ -198,6 +198,19 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     const avgCTR = data.length > 0 ? data.reduce((sum, entry) => sum + (entry.ctr || 0), 0) / data.length : 0;
     const costPerConversion = totalConversions > 0 ? totalCost / totalConversions : 0;
 
+    // Daily Cost Aggregation
+    const dailyCostMap: { [key: string]: number } = {};
+    data.forEach(entry => {
+        const date = parseDate(entry.day || entry.data || entry.campaignStartDate);
+        if (date) {
+            const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+            dailyCostMap[dateStr] = (dailyCostMap[dateStr] || 0) + (entry.cost || 0);
+        }
+    });
+    const dailyData = Object.entries(dailyCostMap)
+        .map(([date, cost]) => ({ date, cost }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
     return {
         spend: totalCost,
         spend_formatted: `R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
@@ -207,6 +220,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         ctr_formatted: `${avgCTR.toFixed(2)}%`,
         costPerConversion,
         cpc: totalClicks > 0 ? totalCost / totalClicks : 0,
+        dailyData,
     };
 };
 
