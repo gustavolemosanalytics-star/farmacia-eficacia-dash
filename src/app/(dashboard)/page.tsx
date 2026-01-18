@@ -15,6 +15,8 @@ import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
+import { BrazilMap } from '@/components/charts/BrazilMap';
+
 export default function HomeExecutiva() {
     const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
     const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
@@ -257,14 +259,19 @@ export default function HomeExecutiva() {
                 </div>
             )}
 
-            {/* KPIs Principais */}
+            {/* KPIs Principais - 2 rows of 3 */}
             {!loading && kpis.length > 0 && (
                 <section>
                     <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                         KPIs Principais
                     </h2>
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                        {kpis.map((kpi) => (
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        {kpis.slice(0, 3).map((kpi) => (
+                            <KPICard key={kpi.id} data={kpi} />
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mt-4">
+                        {kpis.slice(3, 6).map((kpi) => (
                             <KPICard key={kpi.id} data={kpi} />
                         ))}
                     </div>
@@ -376,6 +383,13 @@ export default function HomeExecutiva() {
                             </ResponsiveContainer>
                         </CardContent>
                     </Card>
+                </section>
+            )}
+
+            {/* Geographic Map */}
+            {!loading && catalogoData && catalogoData.rawData && (
+                <section>
+                    <BrazilMap rawData={catalogoData.rawData} />
                 </section>
             )}
         </div>

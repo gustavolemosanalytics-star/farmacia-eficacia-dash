@@ -444,33 +444,33 @@ export default function CrmPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Vendas por Vendedor */}
+                        {/* Top 10 Clientes por Quantidade de Produtos */}
                         <Card className="border-border bg-card">
                             <CardHeader>
-                                <CardTitle className="text-sm font-medium text-foreground">Receita por Vendedor</CardTitle>
+                                <CardTitle className="text-sm font-medium text-foreground">Top 10 Clientes (Qtd. Produtos)</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="h-[300px] w-full">
-                                    {realData.bySeller?.length > 0 ? (
+                                    {realData.topCustomers?.length > 0 ? (
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart
-                                                data={realData.bySeller.slice(0, 8)}
+                                                data={realData.topCustomers.slice(0, 10).sort((a: any, b: any) => b.qtdPedidos - a.qtdPedidos)}
                                                 layout="vertical"
                                                 margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
                                             >
                                                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
-                                                <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
-                                                <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={11} width={80} />
+                                                <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} />
+                                                <YAxis type="category" dataKey="email" stroke="var(--muted-foreground)" fontSize={10} width={100} tickFormatter={(v) => v.length > 15 ? v.substring(0, 15) + '...' : v} />
                                                 <Tooltip
-                                                    formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                                    formatter={(value) => [value, 'Qtd. Produtos']}
                                                     contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
                                                 />
-                                                <Bar dataKey="value" name="Receita" fill="#10b981" radius={[0, 4, 4, 0]} />
+                                                <Bar dataKey="qtdPedidos" name="Qtd. Produtos" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                                             </BarChart>
                                         </ResponsiveContainer>
                                     ) : (
                                         <div className="flex items-center justify-center h-full text-muted-foreground">
-                                            Sem dados de vendedores
+                                            Sem dados de clientes
                                         </div>
                                     )}
                                 </div>
