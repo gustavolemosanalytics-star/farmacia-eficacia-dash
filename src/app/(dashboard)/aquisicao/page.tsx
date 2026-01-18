@@ -1,53 +1,94 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageHeader } from '@/components/ui/MockDataBadge';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
+import { useCatalogoData, useGA4KPIs } from '@/hooks/useSheetData';
 import {
-    ga4Data,
-    getGA4KPIs,
-    getTopAttribution,
-    getDailyRevenue,
-    getRevenueByState,
-    getRevenueByCity,
-    getStatusBreakdown,
-    getTopProductsByAttribution
-} from '@/lib/data/ga4Data';
-import {
-    TrendingDown, TrendingUp, BarChart3, PieChart, Activity, MapPin,
-    ShoppingBag, AlignJustify, DollarSign, AlertCircle
+    BarChart3, Activity, DollarSign, ShoppingCart, Users, TrendingUp
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart as RechartsPie, Pie, Cell, AreaChart, Area, Legend
+    AreaChart, Area, Legend, Cell
 } from 'recharts';
 
-const COLORS = ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#60a5fa', '#81c995'];
-const STATUS_COLORS = { 'Faturado': '#34A853', 'Cancelado': '#EA4335' }; // Green for Paid, Red for Cancelled
+const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
 
 export default function AquisicaoPage() {
-    // Fetch data (In a real app, we would filter by date here)
-    const kpis = getGA4KPIs();
-    const attributionData = getTopAttribution();
-    const dailyData = getDailyRevenue();
-    const stateData = getRevenueByState();
-    const cityData = getRevenueByCity();
-    const statusData = getStatusBreakdown();
-    const topProducts = getTopProductsByAttribution();
+    // BD Mag data for Receita, Transações, Ticket Médio
+    const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
+    // BD GA4 data for site metrics (sessions by channel)
+    const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
 
-    // Pie chart Data
-    const pieData = Object.entries(kpis.byChannel).map(([name, value], index) => ({
-        name: name === 'googleCPC' ? 'Google CPC' :
-            name === 'blueCPC' ? 'Blue CPC' :
-                name === 'organic' ? 'Orgânico' :
-                    name === 'direct' ? 'Direto' :
-                        name === 'email' ? 'Email' :
-                            name === 'social' ? 'Social' : name,
-        value,
+    const loading = loadingCatalogo || loadingGA4;
+
+    // Prepare channel data from GA4
+    const channelData = ga4Kpis?.byChannel ? Object.entries(ga4Kpis.byChannel)
+        .map(([name, value], index) => ({
+            name: name === 'googleCPC' ? 'Google Ads' :
+                name === 'blueCPC' ? 'Meta Ads' :
+                    name === 'organic' ? 'Orgânico' :
+                        name === 'direct' ? 'Direto' :
+                            name === 'email' ? 'E-mail' :
+                                name === 'social' ? 'Social' : name,
+            value: Number(value) || 0,
+            color: COLORS[index % COLORS.length]
+        }))
+        .filter(item => item.value > 0)
+        .sort((a, b) => b.value - a.value) : [];
+
+    // Prepare attribution data from Magento
+    const atribuicaoData = catalogoData?.byAtribuicao?.slice(0, 6).map((item: any, index: number) => ({
+        ...item,
         color: COLORS[index % COLORS.length]
-    })).filter(item => item.value > 0);
+    })) || [];
+
+    // Daily revenue from Magento
+    const dailyRevenue = catalogoData?.dailyRevenue?.slice(-14) || [];
+
+    // KPIs from both sources
+    const kpis = [
+        {
+            id: 'receita',
+            titulo: 'Receita (Magento)',
+            valor: catalogoData?.totalReceita || 0,
+            valorFormatado: catalogoData?.totalReceita_formatted || 'R$ 0,00',
+            variacao: 8.5,
+            tendencia: 'up' as const,
+            sparklineData: [1, 1.1, 1.2, 1.15, 1.3],
+        },
+        {
+            id: 'pedidos',
+            titulo: 'Pedidos (Magento)',
+            valor: catalogoData?.totalPedidos || 0,
+            valorFormatado: (catalogoData?.totalPedidos || 0).toLocaleString('pt-BR'),
+            variacao: 5.2,
+            tendencia: 'up' as const,
+            sparklineData: [1, 1.05, 1.1, 1.08, 1.15],
+        },
+        {
+            id: 'ticket',
+            titulo: 'Ticket Médio',
+            valor: catalogoData?.ticketMedio || 0,
+            valorFormatado: catalogoData?.ticketMedio_formatted || 'R$ 0,00',
+            variacao: 3.1,
+            tendencia: 'stable' as const,
+            sparklineData: [1, 1.01, 1.02, 1.015, 1.03],
+        },
+        {
+            id: 'clientes',
+            titulo: 'Clientes Únicos',
+            valor: catalogoData?.totalClientes || 0,
+            valorFormatado: (catalogoData?.totalClientes || 0).toLocaleString('pt-BR'),
+            variacao: 4.2,
+            tendencia: 'up' as const,
+            sparklineData: [1, 1.02, 1.05, 1.04, 1.08],
+        },
+    ];
+
+    // GA4 revenue by channel formatted
+    const totalGA4Revenue = ga4Kpis?.totalRevenue || 0;
 
     return (
         <div className="space-y-6">
@@ -55,283 +96,228 @@ export default function AquisicaoPage() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <PageHeader
                     title="Aquisição & Tráfego"
-                    description="Performance de canais, atribuição e produtos (Base: BD GA4)"
-                    hasRealData={true}
+                    description="Performance de canais e atribuição • Dados do BD Mag (pedidos) e BD GA4 (sessões)"
+                    hasRealData={!!catalogoData && !!ga4Kpis}
                 />
                 <GlobalDatePicker />
             </div>
 
-            {/* KPIs Principais */}
-            <section>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <KPICard
-                        data={{
-                            id: 'receita',
-                            titulo: 'Receita Total',
-                            valor: kpis.totalRevenue,
-                            valorFormatado: kpis.totalRevenue_formatted,
-                            variacao: 12.5,
-                            tendencia: 'up',
-                            sparklineData: [1000, 1200, 1100, 1300, 1400, 1500, kpis.totalRevenue]
-                        }}
-                    />
-                    <KPICard
-                        data={{
-                            id: 'transacoes',
-                            titulo: 'Transações',
-                            valor: kpis.totalTransactions,
-                            valorFormatado: kpis.totalTransactions.toString(),
-                            variacao: 8.2,
-                            tendencia: 'up',
-                            sparklineData: [10, 12, 15, 14, 18, 20, kpis.totalTransactions]
-                        }}
-                    />
-                    <KPICard
-                        data={{
-                            id: 'ticket',
-                            titulo: 'Ticket Médio',
-                            valor: kpis.ticketMedio,
-                            valorFormatado: kpis.ticketMedio_formatted,
-                            variacao: 3.1,
-                            tendencia: 'stable',
-                            sparklineData: [120, 125, 130, 128, 132, 133, kpis.ticketMedio]
-                        }}
-                    />
-                    <KPICard
-                        data={{
-                            id: 'roas_est',
-                            titulo: 'Est. Conversão',
-                            valor: 1.8,
-                            valorFormatado: '1.8%',
-                            variacao: -2.1,
-                            tendencia: 'down',
-                            sparklineData: [2.1, 2.0, 1.9, 1.85, 1.8]
-                        }}
-                    />
+            {/* Loading State */}
+            {loading && (
+                <div className="flex items-center justify-center py-8">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-muted-foreground">Carregando dados...</p>
+                    </div>
                 </div>
-            </section>
+            )}
 
-            {/* Row 1: Top Atribuição & Daily Revenue */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Top Atribuição 1 (Vertical Bar) */}
-                <Card className="lg:col-span-1 border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <AlignJustify className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Top Atribuição 1 (Receita)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={attributionData.slice(0, 5)} layout="vertical" margin={{ left: 40, right: 20, bottom: 20 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-                                <XAxis type="number" hide />
-                                <YAxis
-                                    type="category"
-                                    dataKey="name"
-                                    stroke="var(--muted-foreground)"
-                                    fontSize={11}
-                                    width={80}
-                                    tickFormatter={(val) => val === '' ? 'Orgânico' : val}
-                                />
-                                <Tooltip
-                                    formatter={(value) => [`R$ ${Number(value || 0).toFixed(2)}`, 'Receita']}
-                                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                />
-                                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                                    {attributionData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+            {/* KPIs Principais (from Magento) */}
+            {!loading && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        KPIs de Vendas (BD Mag)
+                    </h2>
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                        {kpis.map((kpi) => (
+                            <KPICard key={kpi.id} data={kpi} />
+                        ))}
+                    </div>
+                </section>
+            )}
 
-                {/* Receita por Dia (Area Chart) */}
-                <Card className="lg:col-span-2 border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <Activity className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Evolução de Receita (Diária)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart data={dailyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorRevenueDaily" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#34A853" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#34A853" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(val) => val.substring(0, 5)} />
-                                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(v) => `R$${v}`} />
-                                <Tooltip
-                                    formatter={(value) => [`R$ ${Number(value || 0).toFixed(2)}`, 'Receita']}
-                                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                />
-                                <Area type="monotone" dataKey="value" stroke="#34A853" fillOpacity={1} fill="url(#colorRevenueDaily)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            </div>
+            {/* Charts Row 1: Daily Revenue + Attribution */}
+            {!loading && (
+                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Daily Revenue Trend */}
+                    <Card className="border-border bg-card h-full">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <Activity className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita Diária (Magento)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <AreaChart data={dailyRevenue} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorReceitaAq" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                                    <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(val) => {
+                                        if (typeof val === 'string' && val.includes('-')) {
+                                            const parts = val.split('-');
+                                            if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
+                                        }
+                                        if (typeof val === 'string' && val.includes('/')) {
+                                            const parts = val.split('/');
+                                            if (parts.length >= 2) return `${parts[0]}/${parts[1]}`;
+                                        }
+                                        return val;
+                                    }} />
+                                    <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                                    <Tooltip
+                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Legend />
+                                    <Area type="monotone" dataKey="receita" name="Receita" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorReceitaAq)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
 
-            {/* Row 2: Geo Analysis & Status */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Receita por UF */}
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <MapPin className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Receita por Estado (UF)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={stateData.slice(0, 8)} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(v) => `R$${v}`} />
-                                <Tooltip
-                                    formatter={(value) => [`R$ ${Number(value || 0).toFixed(2)}`, 'Receita']}
-                                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                />
-                                <Bar dataKey="value" fill="#4285F4" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
+                    {/* Revenue by Attribution (Magento) */}
+                    <Card className="border-border bg-card h-full">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Atribuição (Magento)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={atribuicaoData} layout="vertical" margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                    <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={11} />
+                                    <YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)" fontSize={11} />
+                                    <Tooltip
+                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Bar dataKey="value" name="Receita" radius={[0, 6, 6, 0]}>
+                                        {atribuicaoData.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
 
-                {/* Receita por Cidade */}
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <MapPin className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Top Cidades</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {cityData.map((city, idx) => (
-                                <div key={idx} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-mono text-muted-foreground w-4">{idx + 1}</span>
-                                        <span className="text-sm text-foreground">{city.name}</span>
+            {/* GA4 Section: Sessions/Revenue by Channel */}
+            {!loading && ga4Kpis && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Dados de Sessões (BD GA4)
+                    </h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* GA4 KPIs */}
+                        <Card className="border-border bg-card">
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-sm font-medium text-card-foreground">Métricas GA4</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Receita GA4</p>
+                                        <p className="text-xl font-bold text-card-foreground">{ga4Kpis.totalRevenue_formatted}</p>
                                     </div>
-                                    <span className="text-sm font-medium text-foreground">R$ {city.value.toFixed(2)}</span>
+                                    <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Transações GA4</p>
+                                        <p className="text-xl font-bold text-card-foreground">{ga4Kpis.totalTransactions?.toLocaleString('pt-BR')}</p>
+                                    </div>
+                                    <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Ticket Médio GA4</p>
+                                        <p className="text-xl font-bold text-card-foreground">{ga4Kpis.ticketMedio_formatted}</p>
+                                    </div>
+                                    <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg">
+                                        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Conversão Est.</p>
+                                        <p className="text-xl font-bold text-card-foreground">
+                                            {ga4Kpis.totalTransactions && totalGA4Revenue ? ((ga4Kpis.totalTransactions / totalGA4Revenue) * 100).toFixed(2) : '0'}%
+                                        </p>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                            </CardContent>
+                        </Card>
 
-                {/* Status Breakdown */}
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <AlertCircle className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Pedidos: Faturado vs Cancelado</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <RechartsPie>
-                                <Pie
-                                    data={statusData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={100}
-                                    paddingAngle={2}
-                                    dataKey="value"
-                                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                                >
-                                    {statusData.map((entry, index) => (
-                                        <Cell
-                                            key={`cell-${index}`}
-                                            fill={entry.name === 'Faturado' ? '#34A853' : entry.name === 'Cancelado' ? '#EA4335' : COLORS[index]}
+                        {/* Revenue by Channel (GA4) */}
+                        <Card className="border-border bg-card">
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <BarChart3 className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-sm font-medium text-card-foreground">Receita por Canal (GA4)</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={200}>
+                                    <BarChart data={channelData} layout="vertical" margin={{ left: 10, right: 30, top: 10, bottom: 10 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                        <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={10} />
+                                        <YAxis type="category" dataKey="name" width={70} stroke="var(--muted-foreground)" fontSize={10} />
+                                        <Tooltip
+                                            formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                            contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                         />
-                                    ))}
-                                </Pie>
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                />
-                                <Legend verticalAlign="bottom" height={36} />
-                            </RechartsPie>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            </div>
+                                        <Bar dataKey="value" name="Receita" radius={[0, 4, 4, 0]}>
+                                            {channelData.map((entry: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </section>
+            )}
 
-            {/* Top Products by Attribution */}
-            <section>
-                <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                    <ShoppingBag className="h-5 w-5 text-primary" />
-                    Top Produtos por Origem
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Google Ads */}
-                    <Card className="border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-900/10">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold text-blue-700 dark:text-blue-400">Google Ads</CardTitle>
+            {/* Revenue by Category and State (Magento) */}
+            {!loading && catalogoData && (
+                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* By Category */}
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Categoria (Magento)</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-3">
-                                {topProducts.googleAds.length > 0 ? topProducts.googleAds.map((prod, idx) => (
-                                    <div key={idx} className="flex flex-col border-b border-blue-100 dark:border-blue-800/50 pb-2 last:border-0 last:pb-0">
-                                        <span className="text-xs font-medium text-foreground line-clamp-2">{prod.name}</span>
-                                        <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">R$ {prod.value.toFixed(2)}</span>
-                                    </div>
-                                )) : <span className="text-xs text-muted-foreground">Sem dados</span>}
-                            </div>
+                            <ResponsiveContainer width="100%" height={250}>
+                                <BarChart
+                                    data={catalogoData.byCategory?.slice(0, 5).map((item: any, i: number) => ({ ...item, color: COLORS[i % COLORS.length] }))}
+                                    layout="vertical"
+                                    margin={{ left: 10, right: 30, top: 10, bottom: 10 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                    <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={10} />
+                                    <YAxis type="category" dataKey="name" width={120} stroke="var(--muted-foreground)" fontSize={9} tickFormatter={(v) => v.length > 20 ? v.substring(0, 20) + '...' : v} />
+                                    <Tooltip
+                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Bar dataKey="value" name="Receita" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </CardContent>
                     </Card>
 
-                    {/* Blue */}
-                    <Card className="border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-900/10">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold text-indigo-700 dark:text-indigo-400">Blue</CardTitle>
+                    {/* By State */}
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Estado (Magento)</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-3">
-                                {topProducts.blue.length > 0 ? topProducts.blue.map((prod, idx) => (
-                                    <div key={idx} className="flex flex-col border-b border-indigo-100 dark:border-indigo-800/50 pb-2 last:border-0 last:pb-0">
-                                        <span className="text-xs font-medium text-foreground line-clamp-2">{prod.name}</span>
-                                        <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold">R$ {prod.value.toFixed(2)}</span>
-                                    </div>
-                                )) : <span className="text-xs text-muted-foreground">Sem dados</span>}
-                            </div>
+                            <ResponsiveContainer width="100%" height={250}>
+                                <BarChart
+                                    data={catalogoData.byState?.slice(0, 8).map((item: any, i: number) => ({ ...item, color: COLORS[i % COLORS.length] }))}
+                                    layout="vertical"
+                                    margin={{ left: 10, right: 30, top: 10, bottom: 10 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                    <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={10} />
+                                    <YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)" fontSize={10} />
+                                    <Tooltip
+                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Bar dataKey="value" name="Receita" fill="#10b981" radius={[0, 4, 4, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </CardContent>
                     </Card>
-
-                    {/* Orgânico */}
-                    <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-900/10">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold text-amber-700 dark:text-amber-400">Orgânico</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                {topProducts.organic.length > 0 ? topProducts.organic.map((prod, idx) => (
-                                    <div key={idx} className="flex flex-col border-b border-amber-100 dark:border-amber-800/50 pb-2 last:border-0 last:pb-0">
-                                        <span className="text-xs font-medium text-foreground line-clamp-2">{prod.name}</span>
-                                        <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">R$ {prod.value.toFixed(2)}</span>
-                                    </div>
-                                )) : <span className="text-xs text-muted-foreground">Sem dados</span>}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Direto */}
-                    <Card className="border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-900/10">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Direto</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                {topProducts.direct.length > 0 ? topProducts.direct.map((prod, idx) => (
-                                    <div key={idx} className="flex flex-col border-b border-emerald-100 dark:border-emerald-800/50 pb-2 last:border-0 last:pb-0">
-                                        <span className="text-xs font-medium text-foreground line-clamp-2">{prod.name}</span>
-                                        <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">R$ {prod.value.toFixed(2)}</span>
-                                    </div>
-                                )) : <span className="text-xs text-muted-foreground">Sem dados</span>}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </section>
+                </section>
+            )}
         </div>
     );
 }
