@@ -59,6 +59,11 @@ export default function HomeExecutiva() {
         const ticketMedio = totalPedidos > 0 ? totalReceita / totalPedidos : 0;
         const uniqueClients = new Set(filtered.map((d: any) => d.cpfCliente).filter(Boolean));
 
+        // Revenue from Google Ads attribution for ROAS calculation
+        const receitaGoogleAds = filtered
+            .filter((d: any) => d.atribuicao === 'Google_Ads')
+            .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+
         // Revenue by Atribuição for chart
         const atribuicaoRevenue: { [key: string]: number } = {};
         filtered.forEach((d: any) => {
@@ -100,6 +105,7 @@ export default function HomeExecutiva() {
             totalPedidos,
             ticketMedio,
             totalClientes: uniqueClients.size,
+            receitaGoogleAds,
             byAtribuicao,
             byCategory,
             dailyRevenue,
@@ -112,6 +118,7 @@ export default function HomeExecutiva() {
         totalPedidos: catalogoData?.totalPedidos || 0,
         ticketMedio: catalogoData?.ticketMedio || 0,
         totalClientes: catalogoData?.totalClientes || 0,
+        receitaGoogleAds: catalogoData?.byAtribuicao?.find((a: any) => a.name === 'Google_Ads')?.value || 0,
         byAtribuicao: catalogoData?.byAtribuicao || [],
         byCategory: catalogoData?.byCategory || [],
         dailyRevenue: catalogoData?.dailyRevenue || [],
@@ -166,9 +173,10 @@ export default function HomeExecutiva() {
         },
     ];
 
-    // Calculate ROAS
-    const roas = displayData.totalReceita > 0 && gadsKpis?.spend > 0
-        ? displayData.totalReceita / gadsKpis.spend
+    // Calculate ROAS using only Google Ads attributed revenue
+    const receitaGoogleAds = displayData.receitaGoogleAds || 0;
+    const roas = receitaGoogleAds > 0 && gadsKpis?.spend > 0
+        ? receitaGoogleAds / gadsKpis.spend
         : 0;
 
     if (roas > 0) {
