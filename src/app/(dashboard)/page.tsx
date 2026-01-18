@@ -1,126 +1,200 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageHeader } from '@/components/ui/MockDataBadge';
-import { TrendingUp, DollarSign, ShoppingCart, Target, Activity, BarChart3, PieChart, Package } from 'lucide-react';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
+import { TrendingUp, DollarSign, ShoppingCart, Target, Activity, BarChart3, PieChart, Package, Users } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart as RechartsPie, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
-import { useCatalogoData, useGA4KPIs, useGoogleAdsKPIs } from '@/hooks/useSheetData';
-
+import { useCatalogoData, useGoogleAdsKPIs } from '@/hooks/useSheetData';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
+
+const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
 export default function HomeExecutiva() {
     const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
-    const { loading: loadingGA4 } = useGA4KPIs();
     const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
 
-    const loading = loadingCatalogo || loadingGA4 || loadingGads;
+    // Filter states
+    const [filterOrigem, setFilterOrigem] = useState<string | null>(null);
+    const [filterMidia, setFilterMidia] = useState<string | null>(null);
+    const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
+    const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
 
-    // KPIs from Magento data (primary source for e-commerce)
-    const magentoKpis = catalogoData ? [
+    const loading = loadingCatalogo || loadingGads;
+
+    // Filter options from API
+    const filterOptions = catalogoData?.filterOptions || {
+        origens: [],
+        midias: [],
+        categorias: [],
+        atribuicoes: [],
+    };
+
+    // Filtered data based on selected filters
+    const filteredData = useMemo(() => {
+        if (!catalogoData?.rawData) return null;
+
+        let filtered = catalogoData.rawData.filter((d: any) =>
+            d.status?.toLowerCase().includes('complete') ||
+            d.status?.toLowerCase().includes('completo') ||
+            d.status?.toLowerCase().includes('pago') ||
+            d.status?.toLowerCase().includes('enviado') ||
+            !d.status
+        );
+
+        if (filterOrigem) filtered = filtered.filter((d: any) => d.origem === filterOrigem);
+        if (filterMidia) filtered = filtered.filter((d: any) => d.midia === filterMidia);
+        if (filterCategoria) filtered = filtered.filter((d: any) => d.categoria === filterCategoria);
+        if (filterAtribuicao) filtered = filtered.filter((d: any) => d.atribuicao === filterAtribuicao);
+
+        // Calculate KPIs from filtered data
+        const totalReceita = filtered.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+        const uniqueOrders = new Set(filtered.map((d: any) => d.pedido).filter(Boolean));
+        const totalPedidos = uniqueOrders.size || filtered.length;
+        const ticketMedio = totalPedidos > 0 ? totalReceita / totalPedidos : 0;
+        const uniqueClients = new Set(filtered.map((d: any) => d.cpfCliente).filter(Boolean));
+
+        // Revenue by Atribuição for chart
+        const atribuicaoRevenue: { [key: string]: number } = {};
+        filtered.forEach((d: any) => {
+            const atrib = d.atribuicao || 'Não identificado';
+            atribuicaoRevenue[atrib] = (atribuicaoRevenue[atrib] || 0) + (d.receitaProduto || 0);
+        });
+        const byAtribuicao = Object.entries(atribuicaoRevenue)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+
+        // Revenue by Category
+        const categoryRevenue: { [key: string]: number } = {};
+        filtered.forEach((d: any) => {
+            const cat = d.categoria || 'Sem Categoria';
+            categoryRevenue[cat] = (categoryRevenue[cat] || 0) + (d.receitaProduto || 0);
+        });
+        const byCategory = Object.entries(categoryRevenue)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 8);
+
+        // Daily Revenue
+        const dailyRevenueMap: { [key: string]: { receita: number; pedidos: number } } = {};
+        filtered.forEach((d: any) => {
+            const dateRaw = d.data || d.dataTransacao;
+            if (dateRaw) {
+                const key = dateRaw.split(' ')[0];
+                if (!dailyRevenueMap[key]) dailyRevenueMap[key] = { receita: 0, pedidos: 0 };
+                dailyRevenueMap[key].receita += d.receitaProduto || 0;
+                dailyRevenueMap[key].pedidos += 1;
+            }
+        });
+        const dailyRevenue = Object.entries(dailyRevenueMap)
+            .map(([date, val]) => ({ date, receita: val.receita, pedidos: val.pedidos }))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        return {
+            totalReceita,
+            totalPedidos,
+            ticketMedio,
+            totalClientes: uniqueClients.size,
+            byAtribuicao,
+            byCategory,
+            dailyRevenue,
+        };
+    }, [catalogoData, filterOrigem, filterMidia, filterCategoria, filterAtribuicao]);
+
+    // Use filtered data or default from API
+    const displayData = filteredData || {
+        totalReceita: catalogoData?.totalReceita || 0,
+        totalPedidos: catalogoData?.totalPedidos || 0,
+        ticketMedio: catalogoData?.ticketMedio || 0,
+        totalClientes: catalogoData?.totalClientes || 0,
+        byAtribuicao: catalogoData?.byAtribuicao || [],
+        byCategory: catalogoData?.byCategory || [],
+        dailyRevenue: catalogoData?.dailyRevenue || [],
+    };
+
+    // Main KPIs
+    const kpis = [
         {
             id: 'receita_magento',
             titulo: 'Receita Magento',
-            valor: catalogoData.totalReceita,
-            valorFormatado: catalogoData.totalReceita_formatted,
+            valor: displayData.totalReceita,
+            valorFormatado: `R$ ${displayData.totalReceita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
             variacao: 8.5,
             tendencia: 'up' as const,
-            sparklineData: [catalogoData.totalReceita * 0.8, catalogoData.totalReceita * 0.85, catalogoData.totalReceita * 0.9, catalogoData.totalReceita * 0.95, catalogoData.totalReceita]
+            sparklineData: [displayData.totalReceita * 0.8, displayData.totalReceita * 0.85, displayData.totalReceita * 0.9, displayData.totalReceita * 0.95, displayData.totalReceita],
         },
         {
-            id: 'pedidos_magento',
+            id: 'pedidos',
             titulo: 'Pedidos',
-            valor: catalogoData.totalPedidos,
-            valorFormatado: catalogoData.totalPedidos.toLocaleString('pt-BR'),
+            valor: displayData.totalPedidos,
+            valorFormatado: displayData.totalPedidos.toLocaleString('pt-BR'),
             variacao: 5.2,
             tendencia: 'up' as const,
-            sparklineData: [catalogoData.totalPedidos * 0.8, catalogoData.totalPedidos * 0.85, catalogoData.totalPedidos * 0.9, catalogoData.totalPedidos * 0.95, catalogoData.totalPedidos]
+            sparklineData: [displayData.totalPedidos * 0.8, displayData.totalPedidos * 0.85, displayData.totalPedidos * 0.9, displayData.totalPedidos * 0.95, displayData.totalPedidos],
         },
         {
-            id: 'ticket_magento',
+            id: 'ticket_medio',
             titulo: 'Ticket Médio',
-            valor: catalogoData.ticketMedio,
-            valorFormatado: catalogoData.ticketMedio_formatted,
+            valor: displayData.ticketMedio,
+            valorFormatado: `R$ ${displayData.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
             variacao: 3.1,
             tendencia: 'up' as const,
-            sparklineData: [catalogoData.ticketMedio * 0.95, catalogoData.ticketMedio * 0.97, catalogoData.ticketMedio * 0.98, catalogoData.ticketMedio * 0.99, catalogoData.ticketMedio]
+            sparklineData: [displayData.ticketMedio * 0.95, displayData.ticketMedio * 0.97, displayData.ticketMedio * 0.98, displayData.ticketMedio * 0.99, displayData.ticketMedio],
         },
         {
-            id: 'clientes_magento',
+            id: 'clientes_unicos',
             titulo: 'Clientes Únicos',
-            valor: catalogoData.totalClientes,
-            valorFormatado: catalogoData.totalClientes.toLocaleString('pt-BR'),
+            valor: displayData.totalClientes,
+            valorFormatado: displayData.totalClientes.toLocaleString('pt-BR'),
             variacao: 4.2,
             tendencia: 'up' as const,
-            sparklineData: [catalogoData.totalClientes * 0.85, catalogoData.totalClientes * 0.88, catalogoData.totalClientes * 0.92, catalogoData.totalClientes * 0.96, catalogoData.totalClientes]
+            sparklineData: [displayData.totalClientes * 0.85, displayData.totalClientes * 0.88, displayData.totalClientes * 0.92, displayData.totalClientes * 0.96, displayData.totalClientes],
         },
-    ] : [];
-
-    // Google Ads KPIs
-    const adsKpis = gadsKpis ? [
         {
-            id: 'investimento',
+            id: 'investimento_ads',
             titulo: 'Investimento Ads',
-            valor: gadsKpis.spend,
-            valorFormatado: gadsKpis.spend_formatted,
+            valor: gadsKpis?.spend || 0,
+            valorFormatado: gadsKpis?.spend_formatted || 'R$ 0,00',
             variacao: 2.5,
             tendencia: 'stable' as const,
-            sparklineData: [gadsKpis.spend * 0.9, gadsKpis.spend * 0.92, gadsKpis.spend * 0.95, gadsKpis.spend * 0.98, gadsKpis.spend]
+            sparklineData: gadsKpis ? [gadsKpis.spend * 0.9, gadsKpis.spend * 0.92, gadsKpis.spend * 0.95, gadsKpis.spend * 0.98, gadsKpis.spend] : [0, 0, 0, 0, 0],
         },
-    ] : [];
+    ];
 
-    // Calculate ROAS if we have both Magento and Ads data
-    const roas = catalogoData && gadsKpis && gadsKpis.spend > 0
-        ? catalogoData.totalReceita / gadsKpis.spend
+    // Calculate ROAS
+    const roas = displayData.totalReceita > 0 && gadsKpis?.spend > 0
+        ? displayData.totalReceita / gadsKpis.spend
         : 0;
 
-    const roasKpi = roas > 0 ? [{
-        id: 'roas',
-        titulo: 'ROAS',
-        valor: roas,
-        valorFormatado: `${roas.toFixed(2)}x`,
-        variacao: 4.2,
-        tendencia: 'up' as const,
-        sparklineData: [roas * 0.85, roas * 0.9, roas * 0.95, roas * 0.98, roas]
-    }] : [];
+    if (roas > 0) {
+        kpis.push({
+            id: 'roas',
+            titulo: 'ROAS',
+            valor: roas,
+            valorFormatado: `${roas.toFixed(2)}x`,
+            variacao: 4.2,
+            tendencia: roas >= 3 ? 'up' as const : 'stable' as const,
+            sparklineData: [roas * 0.85, roas * 0.9, roas * 0.95, roas * 0.98, roas],
+        });
+    }
 
-    const allKpis = [...magentoKpis, ...adsKpis, ...roasKpi];
+    // Chart data
+    const atribuicaoData = displayData.byAtribuicao.slice(0, 6).map((c: any, i: number) => ({
+        ...c,
+        color: COLORS[i % COLORS.length]
+    }));
 
-    // Channel data from Magento
-    const channelData = catalogoData?.byChannel?.slice(0, 6).map((c: any, i: number) => ({
-        name: c.name || 'N/A',
-        value: c.value,
-        color: ['#4285F4', '#1877F2', '#EA4335', '#34A853', '#FBBC05', '#8b5cf6'][i % 6]
-    })) || [];
+    const categoryData = displayData.byCategory.slice(0, 6).map((c: any, i: number) => ({
+        ...c,
+        color: COLORS[i % COLORS.length]
+    }));
 
-    // Category data from Magento
-    const categoryData = catalogoData?.byCategory?.slice(0, 6).map((c: any, i: number) => ({
-        name: c.name,
-        value: c.value,
-        color: ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'][i % 6]
-    })) || [];
-
-    // State data from Magento
-    const stateData = catalogoData?.byState?.slice(0, 8) || [];
-
-    // Top products from Magento
-    const topProducts = catalogoData?.topSkus?.slice(0, 5) || [];
-
-    // Daily trend (Real Data if available)
-    const trendData = catalogoData?.dailyRevenue && catalogoData.dailyRevenue.length > 0
-        ? catalogoData.dailyRevenue
-        : (catalogoData ? [
-            { dia: '10/01', receita: catalogoData.totalReceita * 0.12, pedidos: Math.round(catalogoData.totalPedidos * 0.12) },
-            { dia: '11/01', receita: catalogoData.totalReceita * 0.14, pedidos: Math.round(catalogoData.totalPedidos * 0.14) },
-            { dia: '12/01', receita: catalogoData.totalReceita * 0.13, pedidos: Math.round(catalogoData.totalPedidos * 0.13) },
-            { dia: '13/01', receita: catalogoData.totalReceita * 0.16, pedidos: Math.round(catalogoData.totalPedidos * 0.16) },
-            { dia: '14/01', receita: catalogoData.totalReceita * 0.15, pedidos: Math.round(catalogoData.totalPedidos * 0.15) },
-            { dia: '15/01', receita: catalogoData.totalReceita * 0.17, pedidos: Math.round(catalogoData.totalPedidos * 0.17) },
-            { dia: '16/01', receita: catalogoData.totalReceita * 0.13, pedidos: Math.round(catalogoData.totalPedidos * 0.13) },
-        ] : []);
+    const trendData = displayData.dailyRevenue;
 
     return (
         <div className="space-y-6">
@@ -128,12 +202,41 @@ export default function HomeExecutiva() {
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <PageHeader
                     title="Visão Geral Executiva"
-                    description="Visão consolidada de performance • Dados do Magento (BD Mag), GA4 e Google Ads"
+                    description="Visão consolidada de performance • Dados do Magento (BD Mag) e Google Ads"
                     hasRealData={!!catalogoData}
                 />
                 <GlobalDatePicker />
             </div>
 
+            {/* Filters */}
+            <section className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 p-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <FilterDropdown
+                        label="Origem"
+                        options={filterOptions.origens}
+                        value={filterOrigem}
+                        onChange={setFilterOrigem}
+                    />
+                    <FilterDropdown
+                        label="Mídia"
+                        options={filterOptions.midias}
+                        value={filterMidia}
+                        onChange={setFilterMidia}
+                    />
+                    <FilterDropdown
+                        label="Categoria"
+                        options={filterOptions.categorias}
+                        value={filterCategoria}
+                        onChange={setFilterCategoria}
+                    />
+                    <FilterDropdown
+                        label="Atribuição"
+                        options={filterOptions.atribuicoes}
+                        value={filterAtribuicao}
+                        onChange={setFilterAtribuicao}
+                    />
+                </div>
+            </section>
 
             {/* Loading State */}
             {loading && (
@@ -146,21 +249,21 @@ export default function HomeExecutiva() {
             )}
 
             {/* KPIs Principais */}
-            {allKpis.length > 0 && (
+            {!loading && kpis.length > 0 && (
                 <section>
                     <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                        KPIs Principais (Magento)
+                        KPIs Principais
                     </h2>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                        {allKpis.map((kpi) => (
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                        {kpis.map((kpi) => (
                             <KPICard key={kpi.id} data={kpi} />
                         ))}
                     </div>
                 </section>
             )}
 
-            {/* Charts Row 1: Trend + Channel Distribution */}
-            {catalogoData && (
+            {/* Charts Row 1: Trend + Atribuição Distribution */}
+            {!loading && catalogoData && (
                 <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Revenue Trend */}
                     <Card className="border-border bg-card h-full">
@@ -197,17 +300,17 @@ export default function HomeExecutiva() {
                         </CardContent>
                     </Card>
 
-                    {/* Channel Distribution */}
+                    {/* Receita por Atribuição */}
                     <Card className="border-border bg-card h-full">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <PieChart className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Canal de Origem</CardTitle>
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Canal de Origem (Atribuição)</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={350}>
                                 <RechartsPie>
                                     <Pie
-                                        data={channelData}
+                                        data={atribuicaoData}
                                         cx="50%"
                                         cy="50%"
                                         innerRadius={80}
@@ -217,7 +320,7 @@ export default function HomeExecutiva() {
                                         label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                                         labelLine={false}
                                     >
-                                        {channelData.map((entry: any, index: number) => (
+                                        {atribuicaoData.map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={entry.color} />
                                         ))}
                                     </Pie>
@@ -233,155 +336,30 @@ export default function HomeExecutiva() {
             )}
 
             {/* Revenue by Category */}
-            {categoryData.length > 0 && (
-                <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card className="border-border bg-card h-full">
+            {!loading && categoryData.length > 0 && (
+                <section>
+                    <Card className="border-border bg-card">
                         <CardHeader className="flex flex-row items-center gap-2">
-                            <PieChart className="h-5 w-5 text-primary" />
+                            <Package className="h-5 w-5 text-primary" />
                             <CardTitle className="text-sm font-medium text-card-foreground">Receita por Categoria</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={350}>
-                                <RechartsPie>
-                                    <Pie
-                                        data={categoryData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={80}
-                                        outerRadius={120}
-                                        paddingAngle={2}
-                                        dataKey="value"
-                                        label={({ name, percent }) => `${(name || '').substring(0, 15)} ${((percent || 0) * 100).toFixed(0)}%`}
-                                        labelLine={false}
-                                    >
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={categoryData} layout="vertical" margin={{ left: 20, right: 30 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                    <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={12} />
+                                    <YAxis type="category" dataKey="name" width={150} stroke="var(--muted-foreground)" fontSize={11} tick={{ fill: 'var(--muted-foreground)' }} />
+                                    <Tooltip
+                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Bar dataKey="value" name="Receita" radius={[0, 4, 4, 0]}>
                                         {categoryData.map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={entry.color} />
                                         ))}
-                                    </Pie>
-                                    <Tooltip
-                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
-                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    />
-                                </RechartsPie>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
-
-                    {/* Revenue by State */}
-                    <Card className="border-border bg-card h-full">
-                        <CardHeader className="flex flex-row items-center gap-2">
-                            <BarChart3 className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Estado</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <ResponsiveContainer width="100%" height={350}>
-                                <BarChart data={stateData} margin={{ left: 20, right: 20, bottom: 20 }} layout="vertical">
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
-                                    <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                                    <YAxis dataKey="name" type="category" stroke="var(--muted-foreground)" fontSize={12} width={50} />
-                                    <Tooltip
-                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
-                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    />
-                                    <Bar dataKey="value" name="Receita" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                                    </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
-                </section>
-            )}
-
-            {/* Top Products */}
-            {topProducts.length > 0 && (
-                <Card className="border-border bg-card">
-                    <CardHeader className="flex flex-row items-center gap-2">
-                        <Package className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-sm font-medium text-card-foreground">Top 5 Produtos (Magento)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-border">
-                                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">Produto</th>
-                                        <th className="text-right py-3 px-2 font-medium text-muted-foreground">Qtd Vendas</th>
-                                        <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {topProducts.map((row: any) => (
-                                        <tr key={row.sku} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                                            <td className="py-3 px-2">
-                                                <p className="font-medium text-foreground">{row.nome}</p>
-                                            </td>
-                                            <td className="py-3 px-2 text-right text-muted-foreground">
-                                                {row.qtdVendas} un
-                                            </td>
-                                            <td className="py-3 px-2 text-right font-medium text-foreground">
-                                                R$ {row.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Summary Cards */}
-            {catalogoData && (
-                <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="border-border bg-card">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground">Total de Pedidos</p>
-                                    <p className="text-2xl font-bold text-foreground">{catalogoData.totalPedidos.toLocaleString('pt-BR')}</p>
-                                </div>
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20">
-                                    <ShoppingCart className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                                </div>
-                            </div>
-                            <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                                <TrendingUp className="h-3 w-3" />
-                                <span>Dados do Magento</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-border bg-card">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground">Clientes Únicos</p>
-                                    <p className="text-2xl font-bold text-foreground">{catalogoData.totalClientes.toLocaleString('pt-BR')}</p>
-                                </div>
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/20">
-                                    <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                </div>
-                            </div>
-                            <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                                <span>E-mails/CPFs únicos</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-border bg-card">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground">Produtos Vendidos</p>
-                                    <p className="text-2xl font-bold text-foreground">{catalogoData.totalProdutosVendidos.toLocaleString('pt-BR')}</p>
-                                </div>
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/20">
-                                    <DollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                </div>
-                            </div>
-                            <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                                <TrendingUp className="h-3 w-3" />
-                                <span>Itens totais</span>
-                            </div>
                         </CardContent>
                     </Card>
                 </section>

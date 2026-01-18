@@ -426,12 +426,22 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
     // Revenue by channel/origin
     const channelRevenue: { [key: string]: number } = {};
     completedOrders.forEach(order => {
-        // User requested grouping by 'Origem' specifically
         const channel = order.origem || 'Não identificado';
         channelRevenue[channel] = (channelRevenue[channel] || 0) + (order.receitaProduto || 0);
     });
 
     const byChannel = Object.entries(channelRevenue)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
+
+    // Revenue by Atribuição (user requested for "Receita por Canal de Origem" chart)
+    const atribuicaoRevenue: { [key: string]: number } = {};
+    completedOrders.forEach(order => {
+        const atrib = order.atribuicao || 'Não identificado';
+        atribuicaoRevenue[atrib] = (atribuicaoRevenue[atrib] || 0) + (order.receitaProduto || 0);
+    });
+
+    const byAtribuicao = Object.entries(atribuicaoRevenue)
         .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
@@ -457,8 +467,14 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
     const byDayOfWeek = Object.entries(dayOfWeekRevenue)
         .map(([name, value]) => ({ name, value }));
 
-    // Unique customers
-    const uniqueCustomers = new Set(completedOrders.map(d => d.emailCliente || d.cpfCliente).filter(Boolean));
+    // Unique customers by CPF only
+    const uniqueCustomers = new Set(completedOrders.map(d => d.cpfCliente).filter(Boolean));
+
+    // Filter options for dropdowns
+    const filterOrigens = [...new Set(data.map(d => d.origem).filter(Boolean))].sort();
+    const filterMidias = [...new Set(data.map(d => d.midia).filter(Boolean))].sort();
+    const filterCategorias = [...new Set(data.map(d => d.categoria).filter(Boolean))].sort();
+    const filterAtribuicoes = [...new Set(data.map(d => d.atribuicao).filter(Boolean))].sort();
 
     // Daily Revenue (Real Data)
     const dailyRevenueMap: { [key: string]: { receita: number; pedidos: number } } = {};
@@ -500,9 +516,16 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
         byCategory,
         byState,
         byChannel,
+        byAtribuicao,
         bySeller,
         byDayOfWeek,
         dailyRevenue,
+        filterOptions: {
+            origens: filterOrigens,
+            midias: filterMidias,
+            categorias: filterCategorias,
+            atribuicoes: filterAtribuicoes,
+        },
         rawData: data,
     };
 };
