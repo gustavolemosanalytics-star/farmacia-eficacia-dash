@@ -7,7 +7,7 @@ Para que a aplicação funcione corretamente na Vercel (Production), você preci
 Adicione a variável `REDIS_URL` com o valor de conexão (o mesmo configurado localmente):
 
 - **Key**: `REDIS_URL`
-- **Value**: `redis://default:90SXFSWHE7Tx6k2HqYu4N3KZURfqjMQh@redis-13698.c98.us-east-1-4.ec2.cloud.redislabs.com:13698`
+- **Value**: `redis://default:REDIS_PASSWORD@REDIS_HOST:REDIS_PORT` (Copie do seu `.env.local`)
 
 ## 2. Google Sheets (Credenciais)
 
