@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { format, startOfMonth, endOfMonth, subMonths, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, startOfQuarter, endOfQuarter, startOfYear, endOfYear, differenceInDays, subDays, subYears } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
 import { DayPicker, DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
@@ -10,8 +10,14 @@ import 'react-day-picker/dist/style.css';
 interface DateRangePickerProps {
     date: DateRange | undefined;
     setDate: (date: DateRange | undefined) => void;
+    compareDate?: DateRange;
+    setCompareDate?: (date: DateRange | undefined) => void;
+    isComparing?: boolean;
+    setIsComparing?: (enabled: boolean) => void;
     className?: string;
 }
+
+type ComparisonType = 'previous_period' | 'previous_year' | 'custom';
 
 interface PresetOption {
     label: string;
@@ -43,9 +49,37 @@ const getPresets = (): PresetOption[] => {
     ];
 };
 
-export function DateRangePicker({ date, setDate, className }: DateRangePickerProps) {
+export function DateRangePicker({
+    date,
+    setDate,
+    compareDate,
+    setCompareDate,
+    isComparing = false,
+    setIsComparing,
+    className
+}: DateRangePickerProps) {
     const [isOpen, setIsOpen] = React.useState(false);
+    const [comparisonType, setComparisonType] = React.useState<ComparisonType>('previous_period');
     const ref = React.useRef<HTMLDivElement>(null);
+
+    // Auto-update comparison date when main date changes
+    React.useEffect(() => {
+        if (!isComparing || !date?.from || !date.to || !setCompareDate || comparisonType === 'custom') return;
+
+        if (comparisonType === 'previous_period') {
+            const daysDiff = differenceInDays(date.to, date.from); // Difference in days (0 for same day)
+            // Previous period should be same duration immediately before
+            const rangeDuration = daysDiff + 1;
+            const newFrom = subDays(date.from, rangeDuration);
+            const newTo = subDays(date.to, rangeDuration);
+            setCompareDate({ from: newFrom, to: newTo });
+        } else if (comparisonType === 'previous_year') {
+            setCompareDate({
+                from: subYears(date.from, 1),
+                to: subYears(date.to, 1),
+            });
+        }
+    }, [date, isComparing, comparisonType, setCompareDate]);
 
     // Close on click outside
     React.useEffect(() => {
@@ -152,6 +186,83 @@ export function DateRangePicker({ date, setDate, className }: DateRangePickerPro
                         fromYear={2020}
                         toYear={2030}
                     />
+
+                    {/* Comparison Section */}
+                    {setIsComparing && (
+                        <div className="border-t border-slate-700 mt-4 pt-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            checked={isComparing}
+                                            onChange={(e) => setIsComparing(e.target.checked)}
+                                        />
+                                        <div className="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-200">Comparar</span>
+                                </label>
+                            </div>
+
+                            {isComparing && (
+                                <div className="space-y-3 animate-in fade-in slide-in-from-top-1">
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={comparisonType}
+                                            onChange={(e) => setComparisonType(e.target.value as ComparisonType)}
+                                            className="flex-1 bg-slate-800 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-violet-500 outline-none"
+                                        >
+                                            <option value="previous_period">Período Anterior</option>
+                                            <option value="previous_year">Ano Anterior</option>
+                                            <option value="custom">Personalizado</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Display Comparison Date Range */}
+                                    {comparisonType === 'custom' ? (
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="date"
+                                                className="bg-slate-800 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-violet-500 outline-none w-full"
+                                                value={compareDate?.from ? format(compareDate.from, 'yyyy-MM-dd') : ''}
+                                                onChange={(e) => {
+                                                    const newDate = e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined;
+                                                    setCompareDate?.({
+                                                        from: newDate,
+                                                        to: compareDate?.to
+                                                    });
+                                                }}
+                                            />
+                                            <input
+                                                type="date"
+                                                className="bg-slate-800 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-violet-500 outline-none w-full"
+                                                value={compareDate?.to ? format(compareDate.to, 'yyyy-MM-dd') : ''}
+                                                onChange={(e) => {
+                                                    const newDate = e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined;
+                                                    setCompareDate?.({
+                                                        from: compareDate?.from,
+                                                        to: newDate
+                                                    });
+                                                }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-slate-400 bg-slate-800/50 p-2 rounded border border-slate-700/50 flex flex-col gap-1">
+                                            <span className="font-semibold uppercase text-[10px]">Período Comparação:</span>
+                                            {compareDate?.from ? (
+                                                <span className="font-mono">
+                                                    {format(compareDate.from, "dd/MM/yyyy")} - {compareDate.to ? format(compareDate.to, "dd/MM/yyyy") : "..."}
+                                                </span>
+                                            ) : (
+                                                <span>Selecione um período</span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
         </div>

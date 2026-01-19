@@ -5,7 +5,16 @@ import { DateRangePicker } from './DateRangePicker';
 import { DateRange } from 'react-day-picker';
 
 export function GlobalDatePicker() {
-    const { periodoInicio, periodoFim, setPeriodo } = useFilterStore();
+    const {
+        periodoInicio,
+        periodoFim,
+        setPeriodo,
+        compareStart,
+        compareEnd,
+        setComparePeriod,
+        isComparing,
+        setIsComparing
+    } = useFilterStore();
 
     const handleDateChange = (range: DateRange | undefined) => {
         if (range?.from) {
@@ -19,10 +28,18 @@ export function GlobalDatePicker() {
         }
     };
 
+    const handleCompareChange = (range: DateRange | undefined) => {
+        setComparePeriod(range?.from, range?.to);
+    };
+
     return (
         <DateRangePicker
             date={{ from: periodoInicio, to: periodoFim }}
             setDate={handleDateChange}
+            compareDate={{ from: compareStart, to: compareEnd }}
+            setCompareDate={handleCompareChange}
+            isComparing={isComparing}
+            setIsComparing={setIsComparing}
         />
     );
 }

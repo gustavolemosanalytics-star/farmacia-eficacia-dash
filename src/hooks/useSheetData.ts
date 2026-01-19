@@ -5,15 +5,17 @@ import { useFilterStore } from '@/stores/filterStore';
 // Generic hook for fetching sheet data
 export function useSheetData<T>(endpoint: string, aggregated: boolean = false) {
     const [data, setData] = useState<T | null>(null);
+    const [comparisonData, setComparisonData] = useState<T | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const { periodoInicio, periodoFim } = useFilterStore();
+    const { periodoInicio, periodoFim, isComparing, compareStart, compareEnd } = useFilterStore();
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         setError(null);
 
         try {
+            // Main Period Fetch
             const params = new URLSearchParams();
             if (aggregated) params.append('aggregated', 'true');
             if (periodoInicio) params.append('startDate', periodoInicio.toISOString());
@@ -28,18 +30,37 @@ export function useSheetData<T>(endpoint: string, aggregated: boolean = false) {
             } else {
                 setError(result.error || 'Failed to fetch data');
             }
+
+            // Comparison Period Fetch
+            if (isComparing && compareStart && compareEnd) {
+                const compareParams = new URLSearchParams();
+                if (aggregated) compareParams.append('aggregated', 'true');
+                compareParams.append('startDate', compareStart.toISOString());
+                compareParams.append('endDate', compareEnd.toISOString());
+
+                const compareUrl = `${endpoint}?${compareParams.toString()}`;
+                const compareResponse = await fetch(compareUrl);
+                const compareResult = await compareResponse.json();
+
+                if (compareResult.success) {
+                    setComparisonData(compareResult.data);
+                }
+            } else {
+                setComparisonData(null);
+            }
+
         } catch (err: any) {
             setError(err.message || 'Network error');
         } finally {
             setLoading(false);
         }
-    }, [endpoint, aggregated, periodoInicio, periodoFim]);
+    }, [endpoint, aggregated, periodoInicio, periodoFim, isComparing, compareStart, compareEnd]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
-    return { data, loading, error, refetch: fetchData };
+    return { data, comparisonData, loading, error, refetch: fetchData };
 }
 
 // Specific hooks for each data source
@@ -57,10 +78,11 @@ export function useTVSalesData() {
 
 // Hook for Google Ads KPIs
 export function useGoogleAdsKPIs() {
-    const { data, loading, error, refetch } = useGoogleAdsData(true);
+    const { data, comparisonData, loading, error, refetch } = useGoogleAdsData(true);
 
     return {
         kpis: data,
+        comparisonKpis: comparisonData,
         loading,
         error,
         refetch
@@ -69,10 +91,11 @@ export function useGoogleAdsKPIs() {
 
 // Hook for GA4 KPIs
 export function useGA4KPIs() {
-    const { data, loading, error, refetch } = useGA4Data(true);
+    const { data, comparisonData, loading, error, refetch } = useGA4Data(true);
 
     return {
         kpis: data,
+        comparisonKpis: comparisonData,
         loading,
         error,
         refetch

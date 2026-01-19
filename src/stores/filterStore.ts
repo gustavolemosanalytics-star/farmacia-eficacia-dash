@@ -21,6 +21,9 @@ interface FilterState {
 
     // Comparação
     comparacao: TipoComparacao;
+    compareStart: Date | undefined;
+    compareEnd: Date | undefined;
+    isComparing: boolean;
 
     // Ações
     setPeriodo: (inicio: Date, fim: Date) => void;
@@ -31,6 +34,8 @@ interface FilterState {
     setCategorias: (categorias: string[]) => void;
     setTipoCliente: (tipo: TipoCliente) => void;
     setComparacao: (comparacao: TipoComparacao) => void;
+    setComparePeriod: (start: Date | undefined, end: Date | undefined) => void;
+    setIsComparing: (enabled: boolean) => void;
     resetFilters: () => void;
 }
 
@@ -56,6 +61,9 @@ const initialState = {
     categorias: [],
     tipoCliente: 'all' as TipoCliente,
     comparacao: 'MoM' as TipoComparacao,
+    compareStart: undefined,
+    compareEnd: undefined,
+    isComparing: false,
 };
 
 export const useFilterStore = create<FilterState>()(
@@ -71,6 +79,8 @@ export const useFilterStore = create<FilterState>()(
             setCategorias: (categorias) => set({ categorias }),
             setTipoCliente: (tipoCliente) => set({ tipoCliente }),
             setComparacao: (comparacao) => set({ comparacao }),
+            setComparePeriod: (start, end) => set({ compareStart: start, compareEnd: end }),
+            setIsComparing: (enabled) => set({ isComparing: enabled }),
             resetFilters: () => set(initialState),
         }),
         {
@@ -80,6 +90,9 @@ export const useFilterStore = create<FilterState>()(
                 canais: state.canais,
                 dispositivos: state.dispositivos,
                 comparacao: state.comparacao,
+                compareStart: state.compareStart,
+                compareEnd: state.compareEnd,
+                isComparing: state.isComparing,
             }),
         }
     )
@@ -106,3 +119,7 @@ export const tipoClienteLabels: Record<TipoCliente, string> = {
     new: 'Novos',
     returning: 'Recorrentes',
 };
+
+// Use fixed dates to avoid hydration mismatch (server vs client time difference)
+// ... existing getInitialDates code ...
+
