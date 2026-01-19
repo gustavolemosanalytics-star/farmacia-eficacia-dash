@@ -130,7 +130,7 @@ export function DateRangePicker({
             </div>
 
             {isOpen && (
-                <div className="absolute top-full mt-2 right-0 z-[100] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-4 animate-in fade-in zoom-in-95 text-white max-w-[90vw] overflow-auto">
+                <div className="absolute top-full mt-2 right-0 z-[100] bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-4 animate-in fade-in zoom-in-95 text-white w-auto max-w-[95vw] overflow-y-auto max-h-[85vh]">
                     {/* Preset Buttons */}
                     <div className="flex flex-wrap gap-2 mb-4 pb-3 border-b border-slate-700">
                         {getPresets().map((preset) => (
@@ -156,9 +156,9 @@ export function DateRangePicker({
 
                     <style>{`
                         .rdp { --rdp-cell-size: 32px; --rdp-accent-color: #8b5cf6; --rdp-background-color: #8b5cf6; margin: 0; background: transparent !important; }
-                        .rdp-months { background: transparent !important; }
+                        .rdp-months { display: flex !important; flex-direction: row !important; gap: 1.5rem !important; background: transparent !important; }
                         .rdp-month { background: transparent !important; }
-                        .rdp-table { background: transparent !important; }
+                        .rdp-table { background: transparent !important; border-collapse: collapse; }
                         .rdp-day_selected:not([disabled]) { font-weight: bold; background-color: #8b5cf6 !important; color: white !important; }
                         .rdp-day_selected:hover:not([disabled]) { background-color: #7c3aed !important; color: white !important; }
                         .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: rgba(255,255,255,0.1) !important; }
@@ -173,96 +173,95 @@ export function DateRangePicker({
                         .rdp-dropdown { background: #1e293b !important; color: white !important; border: 1px solid #475569 !important; border-radius: 6px; padding: 4px 8px; }
                         .rdp-dropdown option { background: #1e293b !important; color: white !important; }
                         .rdp-vhidden { display: none; }
+                        @media (max-width: 640px) {
+                           .rdp-months { flex-direction: column !important; }
+                        }
                     `}</style>
-                    <DayPicker
-                        mode="range"
-                        defaultMonth={date?.from}
-                        selected={date}
-                        onSelect={setDate}
-                        numberOfMonths={2}
-                        locale={ptBR}
-                        showOutsideDays={false}
-                        captionLayout="dropdown"
-                        fromYear={2020}
-                        toYear={2030}
-                    />
 
-                    {/* Comparison Section */}
-                    {setIsComparing && (
-                        <div className="border-t border-slate-700 mt-4 pt-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <label className="flex items-center gap-2 cursor-pointer select-none">
-                                    <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            checked={isComparing}
-                                            onChange={(e) => setIsComparing(e.target.checked)}
-                                        />
-                                        <div className="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
-                                    </div>
-                                    <span className="text-sm font-medium text-slate-200">Comparar</span>
-                                </label>
-                            </div>
+                    <div className="flex flex-col gap-6">
+                        {/* Main Date Picker */}
+                        <div>
+                            <div className="text-xs font-semibold text-slate-400 uppercase mb-2 tracking-wider">Período Principal</div>
+                            <DayPicker
+                                mode="range"
+                                defaultMonth={date?.from}
+                                selected={date}
+                                onSelect={setDate}
+                                numberOfMonths={2}
+                                locale={ptBR}
+                                showOutsideDays={false}
+                                captionLayout="dropdown"
+                                fromYear={2020}
+                                toYear={2030}
+                            />
+                        </div>
 
-                            {isComparing && (
-                                <div className="space-y-3 animate-in fade-in slide-in-from-top-1">
-                                    <div className="flex gap-2">
+                        {/* Comparison Section */}
+                        {setIsComparing && (
+                            <div className="border-t border-slate-700 pt-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <div className="relative">
+                                            <input
+                                                type="checkbox"
+                                                className="sr-only peer"
+                                                checked={isComparing}
+                                                onChange={(e) => setIsComparing(e.target.checked)}
+                                            />
+                                            <div className="w-9 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                                        </div>
+                                        <span className="text-sm font-medium text-slate-200">Comparar</span>
+                                    </label>
+
+                                    {isComparing && (
                                         <select
                                             value={comparisonType}
                                             onChange={(e) => setComparisonType(e.target.value as ComparisonType)}
-                                            className="flex-1 bg-slate-800 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-violet-500 outline-none"
+                                            className="bg-slate-800 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-violet-500 outline-none min-w-[140px]"
                                         >
                                             <option value="previous_period">Período Anterior</option>
                                             <option value="previous_year">Ano Anterior</option>
                                             <option value="custom">Personalizado</option>
                                         </select>
-                                    </div>
-
-                                    {/* Display Comparison Date Range */}
-                                    {comparisonType === 'custom' ? (
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="date"
-                                                className="bg-slate-800 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-violet-500 outline-none w-full"
-                                                value={compareDate?.from ? format(compareDate.from, 'yyyy-MM-dd') : ''}
-                                                onChange={(e) => {
-                                                    const newDate = e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined;
-                                                    setCompareDate?.({
-                                                        from: newDate,
-                                                        to: compareDate?.to
-                                                    });
-                                                }}
-                                            />
-                                            <input
-                                                type="date"
-                                                className="bg-slate-800 border border-slate-600 text-slate-200 text-xs rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-violet-500 outline-none w-full"
-                                                value={compareDate?.to ? format(compareDate.to, 'yyyy-MM-dd') : ''}
-                                                onChange={(e) => {
-                                                    const newDate = e.target.value ? new Date(e.target.value + 'T00:00:00') : undefined;
-                                                    setCompareDate?.({
-                                                        from: compareDate?.from,
-                                                        to: newDate
-                                                    });
-                                                }}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="text-xs text-slate-400 bg-slate-800/50 p-2 rounded border border-slate-700/50 flex flex-col gap-1">
-                                            <span className="font-semibold uppercase text-[10px]">Período Comparação:</span>
-                                            {compareDate?.from ? (
-                                                <span className="font-mono">
-                                                    {format(compareDate.from, "dd/MM/yyyy")} - {compareDate.to ? format(compareDate.to, "dd/MM/yyyy") : "..."}
-                                                </span>
-                                            ) : (
-                                                <span>Selecione um período</span>
-                                            )}
-                                        </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
-                    )}
+
+                                {isComparing && (
+                                    <div className="animate-in fade-in slide-in-from-top-2">
+                                        <div className="text-xs font-semibold text-slate-400 uppercase mb-2 tracking-wider flex items-center justify-between">
+                                            <span>Período de Comparação</span>
+                                            {compareDate?.from && (
+                                                <span className="font-mono text-slate-300 normal-case bg-slate-800 px-2 py-0.5 rounded">
+                                                    {format(compareDate.from, "dd/MM/yyyy")} - {compareDate.to ? format(compareDate.to, "dd/MM/yyyy") : "..."}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <DayPicker
+                                            mode="range"
+                                            defaultMonth={compareDate?.from || subMonths(date?.from || new Date(), 1)}
+                                            selected={compareDate}
+                                            onSelect={(range) => {
+                                                setComparisonType('custom');
+                                                setCompareDate?.(range);
+                                            }}
+                                            numberOfMonths={2}
+                                            locale={ptBR}
+                                            showOutsideDays={false}
+                                            captionLayout="dropdown"
+                                            fromYear={2010}
+                                            toYear={2030}
+                                            modifiers={{
+                                                disabled: [] // Disable nothing, allowing selection
+                                            }}
+                                            modifiersStyles={{
+                                                selected: { backgroundColor: '#475569' } // Different color for comparison
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
