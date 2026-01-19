@@ -211,6 +211,67 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         .map(([date, cost]) => ({ date, cost }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
+    // ==========================================
+    // SEGMENTAÇÃO: Leads vs Ecommerce
+    // ==========================================
+    // Campanhas de Leads: contém "Lead" no nome da campanha
+    // Campanhas Ecommerce: todas as outras (Shopping, PMax, etc.)
+    const isLeadsCampaign = (campaign: string) => {
+        const lowerCampaign = campaign?.toLowerCase() || '';
+        return lowerCampaign.includes('lead');
+    };
+
+    const leadsData = data.filter(entry => isLeadsCampaign(entry.campaign));
+    const ecommerceData = data.filter(entry => !isLeadsCampaign(entry.campaign));
+
+    const leadsSpend = leadsData.reduce((sum, entry) => sum + (entry.cost || 0), 0);
+    const ecommerceSpend = ecommerceData.reduce((sum, entry) => sum + (entry.cost || 0), 0);
+    const leadsConversions = leadsData.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
+    const ecommerceConversions = ecommerceData.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
+    const leadsClicks = leadsData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
+    const ecommerceClicks = ecommerceData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
+
+    // Metas definidas pelo usuário
+    const LEADS_META = 28000;
+    const ECOMMERCE_META = 66000;
+
+    // ==========================================
+    // DADOS POR CAMPANHA (para tabela detalhada)
+    // ==========================================
+    const campaignMap: {
+        [key: string]: {
+            campaign: string;
+            spend: number;
+            conversions: number;
+            clicks: number;
+            tipo: 'leads' | 'ecommerce';
+        }
+    } = {};
+
+    data.forEach(entry => {
+        const campaign = entry.campaign || 'Desconhecida';
+        if (!campaignMap[campaign]) {
+            campaignMap[campaign] = {
+                campaign,
+                spend: 0,
+                conversions: 0,
+                clicks: 0,
+                tipo: isLeadsCampaign(campaign) ? 'leads' : 'ecommerce'
+            };
+        }
+        campaignMap[campaign].spend += entry.cost || 0;
+        campaignMap[campaign].conversions += entry.conversions || 0;
+        campaignMap[campaign].clicks += entry.clicks || 0;
+    });
+
+    const byCampaign = Object.values(campaignMap)
+        .map(c => ({
+            ...c,
+            cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
+            cpa: c.conversions > 0 ? c.spend / c.conversions : 0,
+        }))
+        .sort((a, b) => b.spend - a.spend);
+
     return {
         spend: totalCost,
         spend_formatted: `R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
@@ -221,6 +282,28 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         costPerConversion,
         cpc: totalClicks > 0 ? totalCost / totalClicks : 0,
         dailyData,
+        // Segmentação Leads vs Ecommerce
+        segmented: {
+            leads: {
+                spend: leadsSpend,
+                spend_formatted: `R$ ${leadsSpend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                conversions: leadsConversions,
+                conversionsLabel: 'Leads', // Label para exibição
+                clicks: leadsClicks,
+                meta: LEADS_META,
+                percentMeta: LEADS_META > 0 ? (leadsSpend / LEADS_META) * 100 : 0,
+            },
+            ecommerce: {
+                spend: ecommerceSpend,
+                spend_formatted: `R$ ${ecommerceSpend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                conversions: ecommerceConversions,
+                conversionsLabel: 'Compras', // Label para exibição
+                clicks: ecommerceClicks,
+                meta: ECOMMERCE_META,
+                percentMeta: ECOMMERCE_META > 0 ? (ecommerceSpend / ECOMMERCE_META) * 100 : 0,
+            },
+        },
+        byCampaign,
     };
 };
 

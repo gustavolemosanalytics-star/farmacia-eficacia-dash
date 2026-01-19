@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageHeader } from '@/components/ui/MockDataBadge';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { TrendingUp, DollarSign, ShoppingCart, Target, Activity, BarChart3, PieChart, Package, Users } from 'lucide-react';
+import { TrendingUp, DollarSign, ShoppingCart, Target, Activity, BarChart3, PieChart, Package, Users, Filter, AlertTriangle, CheckCircle } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart as RechartsPie, Pie, Cell, Legend, AreaChart, Area
@@ -176,16 +176,17 @@ export default function HomeExecutiva() {
         },
     ];
 
-    // Calculate ROAS using only Google Ads attributed revenue
+    // Calculate ROAS using only Ecommerce spend (campaigns without "Lead")
     const receitaGoogleAds = displayData.receitaGoogleAds || 0;
-    const roas = receitaGoogleAds > 0 && gadsKpis?.spend > 0
-        ? receitaGoogleAds / gadsKpis.spend
+    const ecommerceSpend = gadsKpis?.segmented?.ecommerce?.spend || 0;
+    const roas = receitaGoogleAds > 0 && ecommerceSpend > 0
+        ? receitaGoogleAds / ecommerceSpend
         : 0;
 
     if (roas > 0) {
         kpis.push({
             id: 'roas',
-            titulo: 'ROAS',
+            titulo: 'ROAS (Ecommerce)',
             valor: roas,
             valorFormatado: `${roas.toFixed(2)}x`,
             variacao: 4.2,
@@ -278,6 +279,197 @@ export default function HomeExecutiva() {
                 </section>
             )}
 
+            {/* Investimento Ads Segmentado - Leads vs Ecommerce */}
+            {!loading && gadsKpis?.segmented && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Investimento em Ads por Tipo
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Leads */}
+                        <Card className="border-border bg-card">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <Target className="h-5 w-5 text-blue-500" />
+                                        <span className="font-medium">Investimento Leads</span>
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">
+                                        Meta: R$ {gadsKpis.segmented.leads.meta.toLocaleString('pt-BR')}
+                                    </span>
+                                </div>
+                                <div className="text-2xl font-bold mb-2">
+                                    {gadsKpis.segmented.leads.spend_formatted}
+                                </div>
+                                <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-2.5">
+                                    <div
+                                        className={`h-2.5 rounded-full transition-all ${gadsKpis.segmented.leads.percentMeta > 100
+                                            ? 'bg-red-500'
+                                            : gadsKpis.segmented.leads.percentMeta > 80
+                                                ? 'bg-yellow-500'
+                                                : 'bg-blue-500'
+                                            }`}
+                                        style={{ width: `${Math.min(gadsKpis.segmented.leads.percentMeta, 100)}%` }}
+                                    ></div>
+                                </div>
+                                <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                                    <span>{gadsKpis.segmented.leads.percentMeta.toFixed(1)}% da meta</span>
+                                    <span>{gadsKpis.segmented.leads.conversions.toFixed(0)} Leads</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Ecommerce */}
+                        <Card className="border-border bg-card">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <ShoppingCart className="h-5 w-5 text-purple-500" />
+                                        <span className="font-medium">Investimento Ecommerce</span>
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">
+                                        Meta: R$ {gadsKpis.segmented.ecommerce.meta.toLocaleString('pt-BR')}
+                                    </span>
+                                </div>
+                                <div className="text-2xl font-bold mb-2">
+                                    {gadsKpis.segmented.ecommerce.spend_formatted}
+                                </div>
+                                <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-2.5">
+                                    <div
+                                        className={`h-2.5 rounded-full transition-all ${gadsKpis.segmented.ecommerce.percentMeta > 100
+                                            ? 'bg-red-500'
+                                            : gadsKpis.segmented.ecommerce.percentMeta > 80
+                                                ? 'bg-yellow-500'
+                                                : 'bg-purple-500'
+                                            }`}
+                                        style={{ width: `${Math.min(gadsKpis.segmented.ecommerce.percentMeta, 100)}%` }}
+                                    ></div>
+                                </div>
+                                <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                                    <span>{gadsKpis.segmented.ecommerce.percentMeta.toFixed(1)}% da meta</span>
+                                    <span>{gadsKpis.segmented.ecommerce.conversions.toFixed(0)} Compras</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </section>
+            )}
+
+            {/* Saúde do Funil */}
+            {!loading && gadsKpis && catalogoData && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Saúde do Funil
+                    </h2>
+                    <Card className="border-border bg-card">
+                        <CardContent className="pt-6">
+                            <div className="space-y-4">
+                                {/* Funil sem impressões - começa em Cliques */}
+                                {(() => {
+                                    const clicks = gadsKpis?.clicks || 0;
+                                    const leadsConversions = gadsKpis?.segmented?.leads?.conversions || 0;
+                                    const ecommerceConversions = gadsKpis?.segmented?.ecommerce?.conversions || 0;
+                                    const pedidos = displayData.totalPedidos || 0;
+                                    const receita = displayData.totalReceita || 0;
+
+                                    // Calcular taxas de conversão
+                                    const clickToLeads = clicks > 0 ? (leadsConversions / clicks) * 100 : 0;
+                                    const clickToCompras = clicks > 0 ? (ecommerceConversions / clicks) * 100 : 0;
+                                    const comprasToPedido = ecommerceConversions > 0 ? (pedidos / ecommerceConversions) * 100 : 0;
+
+                                    // Funnel steps sem impressões
+                                    const funnelSteps = [
+                                        {
+                                            name: 'Cliques',
+                                            value: clicks,
+                                            formatted: clicks.toLocaleString('pt-BR'),
+                                            rate: null,
+                                            health: 'neutral' as const
+                                        },
+                                        {
+                                            name: 'Leads (GAds)',
+                                            value: Math.round(leadsConversions),
+                                            formatted: Math.round(leadsConversions).toLocaleString('pt-BR'),
+                                            rate: clickToLeads,
+                                            health: clickToLeads >= 5 ? 'good' as const : clickToLeads >= 2 ? 'warning' as const : 'bad' as const
+                                        },
+                                        {
+                                            name: 'Compras (GAds)',
+                                            value: Math.round(ecommerceConversions),
+                                            formatted: Math.round(ecommerceConversions).toLocaleString('pt-BR'),
+                                            rate: clickToCompras,
+                                            health: clickToCompras >= 3 ? 'good' as const : clickToCompras >= 1.5 ? 'warning' as const : 'bad' as const
+                                        },
+                                        {
+                                            name: 'Pedidos (Magento)',
+                                            value: pedidos,
+                                            formatted: pedidos.toLocaleString('pt-BR'),
+                                            rate: comprasToPedido,
+                                            health: comprasToPedido >= 50 ? 'good' as const : comprasToPedido >= 30 ? 'warning' as const : 'bad' as const
+                                        },
+                                    ];
+
+                                    return funnelSteps.map((step, index) => (
+                                        <div key={step.name} className="flex items-center gap-4">
+                                            <div className="w-40 flex items-center gap-2">
+                                                {step.health === 'good' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                                                {step.health === 'warning' && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
+                                                {step.health === 'bad' && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                                                {step.health === 'neutral' && <Filter className="h-4 w-4 text-slate-400" />}
+                                                <span className="text-sm font-medium">{step.name}</span>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-4 relative overflow-hidden">
+                                                    <div
+                                                        className={`h-4 rounded-full transition-all ${step.health === 'good' ? 'bg-green-500' :
+                                                            step.health === 'warning' ? 'bg-yellow-500' :
+                                                                step.health === 'bad' ? 'bg-red-500' :
+                                                                    'bg-slate-400'
+                                                            }`}
+                                                        style={{
+                                                            width: `${Math.max((step.value / (funnelSteps[0].value || 1)) * 100, 2)}%`
+                                                        }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                            <div className="w-24 text-right">
+                                                <span className="font-bold">{step.formatted}</span>
+                                            </div>
+                                            <div className="w-20 text-right">
+                                                {step.rate !== null && (
+                                                    <span className={`text-sm ${step.health === 'good' ? 'text-green-600' :
+                                                        step.health === 'warning' ? 'text-yellow-600' :
+                                                            'text-red-600'
+                                                        }`}>
+                                                        {step.rate.toFixed(1)}%
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-4">
+                                    <span className="flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3 text-green-500" /> Saudável
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3 text-yellow-500" /> Atenção
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <AlertTriangle className="h-3 w-3 text-red-500" /> Crítico
+                                    </span>
+                                </div>
+                                <div className="text-muted-foreground">
+                                    Receita Total: <span className="font-bold text-foreground">R$ {displayData.totalReceita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
+
             {/* Charts Row 1: Trend + Atribuição Distribution */}
             {!loading && catalogoData && (
                 <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -356,31 +548,104 @@ export default function HomeExecutiva() {
                 </section>
             )}
 
-            {/* Revenue by Category */}
-            {!loading && categoryData.length > 0 && (
+            {/* Revenue by Category with ROAS */}
+            {!loading && categoryData.length > 0 && gadsKpis && (
                 <section>
                     <Card className="border-border bg-card">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <Package className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Categoria</CardTitle>
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Categoria + ROAS</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={categoryData} layout="vertical" margin={{ left: 20, right: 30 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-                                    <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={12} />
-                                    <YAxis type="category" dataKey="name" width={150} stroke="var(--muted-foreground)" fontSize={11} tick={{ fill: 'var(--muted-foreground)' }} />
-                                    <Tooltip
-                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
-                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    />
-                                    <Bar dataKey="value" name="Receita" radius={[0, 4, 4, 0]}>
-                                        {categoryData.map((entry: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                            {(() => {
+                                // Calcular receita total para proporção
+                                const totalReceita = categoryData.reduce((sum: number, c: any) => sum + c.value, 0);
+                                const totalInvestimento = gadsKpis?.spend || 0;
+
+                                // Enriquecer categoryData com investimento proporcional e ROAS
+                                const enrichedCategories = categoryData.map((cat: any) => {
+                                    const shareReceita = totalReceita > 0 ? cat.value / totalReceita : 0;
+                                    const investimentoProporcional = totalInvestimento * shareReceita;
+                                    const roas = investimentoProporcional > 0 ? cat.value / investimentoProporcional : 0;
+                                    return {
+                                        ...cat,
+                                        investimento: investimentoProporcional,
+                                        roas,
+                                        shareReceita: shareReceita * 100,
+                                    };
+                                });
+
+                                return (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-border">
+                                                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Categoria</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">% Share</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Invest. (Est.)</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">ROAS</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {enrichedCategories.map((cat: any, index: number) => (
+                                                    <tr key={cat.name} className="border-b border-border/50 hover:bg-muted/50">
+                                                        <td className="py-3 px-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <div
+                                                                    className="w-3 h-3 rounded-full"
+                                                                    style={{ backgroundColor: cat.color }}
+                                                                ></div>
+                                                                <span className="font-medium">{cat.name}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="text-right py-3 px-2 font-mono">
+                                                            R$ {cat.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="text-right py-3 px-2 text-muted-foreground">
+                                                            {cat.shareReceita.toFixed(1)}%
+                                                        </td>
+                                                        <td className="text-right py-3 px-2 font-mono text-muted-foreground">
+                                                            R$ {cat.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="text-right py-3 px-2">
+                                                            <span className={`font-bold ${cat.roas >= 3 ? 'text-green-600' :
+                                                                cat.roas >= 2 ? 'text-yellow-600' :
+                                                                    'text-red-600'
+                                                                }`}>
+                                                                {cat.roas.toFixed(2)}x
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                            <tfoot>
+                                                <tr className="bg-muted/30 font-bold">
+                                                    <td className="py-3 px-2">Total</td>
+                                                    <td className="text-right py-3 px-2 font-mono">
+                                                        R$ {totalReceita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className="text-right py-3 px-2">100%</td>
+                                                    <td className="text-right py-3 px-2 font-mono">
+                                                        R$ {totalInvestimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className="text-right py-3 px-2">
+                                                        <span className={`${(totalReceita / totalInvestimento) >= 3 ? 'text-green-600' :
+                                                            (totalReceita / totalInvestimento) >= 2 ? 'text-yellow-600' :
+                                                                'text-red-600'
+                                                            }`}>
+                                                            {totalInvestimento > 0 ? (totalReceita / totalInvestimento).toFixed(2) : '0.00'}x
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                        <p className="text-xs text-muted-foreground mt-3">
+                                            * Investimento estimado proporcionalmente à participação de receita de cada categoria. ROAS = Receita ÷ Investimento.
+                                        </p>
+                                    </div>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
                 </section>
