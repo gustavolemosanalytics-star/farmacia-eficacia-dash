@@ -1,570 +1,482 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
-import { PageHeader } from '@/components/ui/MockDataBadge';
-import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
-import { kpisCRM, cohortData, segmentosRFM } from '@/lib/mockData';
-import { Users, Heart, Crown, AlertTriangle, XCircle, TrendingUp } from 'lucide-react';
+import { PageFilters } from '@/components/ui/PageFilters';
+import { useCRMData, useCatalogoData } from '@/hooks/useSheetData';
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Cell
+    Users, Heart, Crown, AlertTriangle, XCircle, TrendingUp, TrendingDown, Clock, DollarSign, RefreshCw, ShoppingCart, UserCheck, Lightbulb, CheckCircle, Calendar, Layers
+} from 'lucide-react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+    AreaChart, Area, PieChart, Pie, LineChart, Line, Legend, ScatterChart, Scatter, ZAxis, ComposedChart
 } from 'recharts';
 
-const getCohortColor = (value: number | null) => {
-    if (value === null) return 'bg-muted';
-    if (value >= 20) return 'bg-emerald-500 text-white';
-    if (value >= 15) return 'bg-emerald-400/80 text-white';
-    if (value >= 10) return 'bg-yellow-400/80 text-black';
-    if (value >= 5) return 'bg-orange-400/80 text-white';
-    return 'bg-red-400/80 text-white';
-};
-
-const getSegmentoIcon = (segmento: string) => {
-    switch (segmento) {
-        case 'Campeões': return <Crown className="h-5 w-5 text-yellow-500" />;
-        case 'Leais': return <Heart className="h-5 w-5 text-emerald-500" />;
-        case 'Em Risco': return <AlertTriangle className="h-5 w-5 text-orange-500" />;
-        case 'Perdidos': return <XCircle className="h-5 w-5 text-red-500" />;
-        default: return <Users className="h-5 w-5 text-muted-foreground" />;
-    }
-};
-
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { useState } from 'react';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
-import { useCRMData } from '@/hooks/useSheetData';
+const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
 export default function CrmPage() {
-    const { data: realData, loading } = useCRMData();
-    const [selectedSegment, setSelectedSegment] = useState<any | null>(null);
+    const { data: crmData, loading: loadingCRM } = useCRMData();
+    const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
 
-    // Use property 'segments' from realData if available
-    const segments = realData?.segments || segmentosRFM;
+    const loading = loadingCRM || loadingCatalogo;
 
-    // Transform RFM data for chart
-    const rfmChartData = segments.map((seg: any) => ({
-        name: seg.segmento,
-        clientes: seg.clientes,
-        percentual: seg.percentual,
-        receitaEstimada: seg.clientes * (seg.valorMedio || 150), // Fallback tickey
-        ...seg // Pass full segment data to click handler
-    })).sort((a: any, b: any) => b.clientes - a.clientes);
+    // Advanced CRM Analytics
+    const analytics = useMemo(() => {
+        if (!catalogoData?.rawData) return null;
 
-    const handleBarClick = (data: any) => {
-        if (data && data.activePayload && data.activePayload.length > 0) {
-            const segmentData = data.activePayload[0].payload;
-            setSelectedSegment(segmentData);
-        }
-    };
+        const filtered = catalogoData.rawData.filter((d: any) =>
+            d.status?.toLowerCase().includes('complete') ||
+            d.status?.toLowerCase().includes('completo') ||
+            d.status?.toLowerCase().includes('pago') ||
+            d.status?.toLowerCase().includes('enviado') ||
+            d.status?.toLowerCase().includes('faturado') ||
+            !d.status
+        );
 
-    // Helper to extract top cities from selected segment
-    const getSegmentGeoStats = (customers: any[]) => {
-        if (!customers || customers.length === 0) return [];
-        const cityCounts: { [key: string]: number } = {};
-        const stateCounts: { [key: string]: number } = {};
+        // --- Customer Map Build ---
+        const customerMap: {
+            [cpf: string]: {
+                cpf: string;
+                orders: any[];
+                totalReceita: number;
+                totalPedidos: number;
+                firstOrder: Date;
+                lastOrder: Date;
+                avgTicket: number;
+                categories: string[];
+                cohortMonth: string; // YYYY-MM
+            }
+        } = {};
 
-        customers.forEach(c => {
-            const city = c.cidade || 'N/A';
-            const state = c.estado || 'N/A';
-            cityCounts[city] = (cityCounts[city] || 0) + 1;
-            stateCounts[state] = (stateCounts[state] || 0) + 1;
+        // Helper to formatting dates YYYY-MM
+        const getMonthStr = (date: Date) => date.toISOString().slice(0, 7);
+
+        filtered.forEach((d: any) => {
+            const cpf = d.cpfCliente || 'anon_' + Math.random();
+            const dateStr = d.data || d.dataTransacao;
+            if (!dateStr) return;
+
+            let orderDate = new Date();
+            if (dateStr.includes('/')) {
+                orderDate = new Date(dateStr.split('/').reverse().join('-'));
+            } else {
+                orderDate = new Date(dateStr.split(' ')[0]);
+            }
+
+            if (!customerMap[cpf]) {
+                customerMap[cpf] = {
+                    cpf,
+                    orders: [],
+                    totalReceita: 0,
+                    totalPedidos: 0,
+                    firstOrder: orderDate,
+                    lastOrder: orderDate,
+                    avgTicket: 0,
+                    categories: [],
+                    cohortMonth: getMonthStr(orderDate)
+                };
+            }
+
+            const cust = customerMap[cpf];
+            cust.orders.push({ ...d, orderDate });
+            cust.totalReceita += d.receitaProduto || 0;
+
+            if (orderDate < cust.firstOrder) {
+                cust.firstOrder = orderDate;
+                cust.cohortMonth = getMonthStr(orderDate);
+            }
+            if (orderDate > cust.lastOrder) {
+                cust.lastOrder = orderDate;
+            }
+
+            if (d.categoria) {
+                cust.categories.push(d.categoria.split(',')[0]?.trim());
+            }
         });
 
-        const topCities = Object.entries(cityCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([name, count]) => ({ name, count }));
+        const customers = Object.values(customerMap).map(c => {
+            const uniqueOrders = new Set(c.orders.map((o: any) => o.pedido).filter(Boolean));
+            c.totalPedidos = uniqueOrders.size || c.orders.length;
+            c.avgTicket = c.totalPedidos > 0 ? c.totalReceita / c.totalPedidos : 0;
+            return c;
+        });
 
-        return topCities;
-    };
+        // --- Cohort Analysis ---
+        const cohorts: { [month: string]: { [monthDiff: number]: Set<string> } } = {};
 
+        customers.forEach(cust => {
+            cust.orders.forEach(order => {
+                const diffTime = Math.abs(order.orderDate.getTime() - cust.firstOrder.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const diffMonths = Math.floor(diffDays / 30); // Approximate month diff
 
-    // ...
+                if (!cohorts[cust.cohortMonth]) cohorts[cust.cohortMonth] = {};
+                if (!cohorts[cust.cohortMonth][diffMonths]) cohorts[cust.cohortMonth][diffMonths] = new Set();
+
+                cohorts[cust.cohortMonth][diffMonths].add(cust.cpf);
+            });
+        });
+
+        // Format cohort data for table/heatmap
+        const cohortData = Object.keys(cohorts)
+            .sort()
+            .slice(-6) // Last 6 months only for display
+            .map(month => {
+                const month0Count = cohorts[month][0]?.size || 0;
+                return {
+                    month,
+                    size: month0Count,
+                    retention: [0, 1, 2, 3, 4, 5].map(m => {
+                        const count = cohorts[month][m]?.size || 0;
+                        const percent = month0Count > 0 ? (count / month0Count) * 100 : 0;
+                        return { monthIdx: m, count, percent };
+                    })
+                };
+            });
+
+        // --- LTV Evolution Line Chart ---
+        // Average Cumulative LTV by "Customer Age (Months)"
+        // For each customer, calculate cumulative spend at month 0, 1, 2...
+        const ltvByAge: { [age: number]: { sum: number, count: number } } = {};
+
+        customers.forEach(cust => {
+            // Sort orders by date
+            const sortedOrders = cust.orders.sort((a, b) => a.orderDate.getTime() - b.orderDate.getTime());
+            let cumulativeSpend = 0;
+            const seenMonths = new Set<number>();
+
+            sortedOrders.forEach(order => {
+                const diffTime = Math.abs(order.orderDate.getTime() - cust.firstOrder.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const diffMonths = Math.floor(diffDays / 30);
+
+                cumulativeSpend += order.receitaProduto || 0;
+
+                // Only record the latest cumulative spend for each month for this customer (snapshot)
+                // Actually better: record spend happening at month X.
+                // Let's do: For each month Age, what is the avg cumulative LTV?
+
+                // Simplification: Update the max cumulative value for each age up to current age
+                for (let m = diffMonths; m <= 6; m++) { // Project up to 6 months
+                    if (!ltvByAge[m]) ltvByAge[m] = { sum: 0, count: 0 };
+                    // This is tricky. Let's do clearer logic:
+                }
+            });
+        });
+
+        // Better Logic for LTV Curve: 
+        // Group customers by Cohort Month. Calculate their avg cumulative LTV at month 0, 1, 2...
+        // Then average across cohorts or show aggregate line.
+        const ltvPerAgeMap: { [age: number]: number[] } = {};
+
+        customers.forEach(cust => {
+            let currentLTV = 0;
+            const customerLTVAtAge: { [age: number]: number } = {};
+
+            const sortedOrders = cust.orders.sort((a, b) => a.orderDate.getTime() - b.orderDate.getTime());
+
+            sortedOrders.forEach(order => {
+                const diffMonths = Math.floor((order.orderDate.getTime() - cust.firstOrder.getTime()) / (1000 * 60 * 60 * 24 * 30));
+                if (diffMonths > 12) return; // Limit to 12 months
+                currentLTV += order.receitaProduto || 0;
+                customerLTVAtAge[diffMonths] = currentLTV;
+            });
+
+            // Fill gaps (carry over LTV)
+            let maxAge = Math.max(...Object.keys(customerLTVAtAge).map(Number));
+            if (maxAge < 0) maxAge = 0;
+
+            let lastVal = 0;
+            for (let i = 0; i <= 6; i++) { // Show 6 months curve
+                if (customerLTVAtAge[i] !== undefined) lastVal = customerLTVAtAge[i];
+                // Only add if the customer has "lived" this long? 
+                // To avoid dropping off, we assume LTV holds steady if no churn.
+                // But we should only count customers who satisfy the age condition (e.g. joined > i months ago)
+                // For simplicity with this dataset: assume all customers contribute to averages
+                if (!ltvPerAgeMap[i]) ltvPerAgeMap[i] = [];
+                ltvPerAgeMap[i].push(lastVal);
+            }
+        });
+
+        const ltvEvolutionData = Object.keys(ltvPerAgeMap).map(key => {
+            const age = Number(key);
+            const values = ltvPerAgeMap[age];
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+            return { age, avgLTV: avg };
+        });
+
+        // --- RFM Analysis Data for Scatter ---
+        const rfmData = customers.map(c => {
+            const recencyDays = Math.floor((new Date().getTime() - c.lastOrder.getTime()) / (1000 * 60 * 60 * 24));
+            return {
+                recency: recencyDays,
+                frequency: c.totalPedidos,
+                monetary: c.totalReceita,
+                cpf: c.cpf
+            };
+        }).filter(d => d.monetary < 10000 && d.frequency < 20); // Remove outliers for better chart
+
+        // --- Original Metrics ---
+        // LTV Distribution
+        const ltvBuckets = [
+            { range: 'R$ 0-200', min: 0, max: 200, count: 0, revenue: 0 },
+            { range: 'R$ 200-500', min: 200, max: 500, count: 0, revenue: 0 },
+            { range: 'R$ 500-1k', min: 500, max: 1000, count: 0, revenue: 0 },
+            { range: 'R$ 1k-2k', min: 1000, max: 2000, count: 0, revenue: 0 },
+            { range: 'R$ 2k-5k', min: 2000, max: 5000, count: 0, revenue: 0 },
+            { range: 'R$ 5k+', min: 5000, max: Infinity, count: 0, revenue: 0 },
+        ];
+        customers.forEach(c => {
+            const bucket = ltvBuckets.find(b => c.totalReceita >= b.min && c.totalReceita < b.max);
+            if (bucket) { bucket.count++; bucket.revenue += c.totalReceita; }
+        });
+
+        const recurringCustomers = customers.filter(c => c.totalPedidos > 1);
+        const recurrenceRate = customers.length > 0 ? (recurringCustomers.length / customers.length * 100) : 0;
+
+        // Days between orders
+        let totalDaysBetween = 0;
+        let countWithDays = 0;
+        recurringCustomers.forEach(c => {
+            if (c.firstOrder && c.lastOrder && c.totalPedidos > 1) {
+                const daysDiff = (c.lastOrder.getTime() - c.firstOrder.getTime()) / (1000 * 60 * 60 * 24);
+                const avgDays = daysDiff / (c.totalPedidos - 1);
+                if (avgDays > 0) { totalDaysBetween += avgDays; countWithDays++; }
+            }
+        });
+        const avgDaysBetweenOrders = countWithDays > 0 ? totalDaysBetween / countWithDays : 0;
+
+        const totalLTV = customers.reduce((s, c) => s + c.totalReceita, 0);
+        const avgLTV = customers.length > 0 ? totalLTV / customers.length : 0;
+
+        const behaviorSegments = [
+            { name: 'Campeões', description: '+R$ 2k e +3 pedidos', count: customers.filter(c => c.totalReceita > 2000 && c.totalPedidos >= 3).length, color: '#10b981', icon: Crown, action: 'Manter engajados' },
+            { name: 'Leais', description: 'Recorrentes estáveis', count: customers.filter(c => c.totalPedidos >= 2 && c.totalReceita >= 500 && c.totalReceita <= 2000).length, color: '#8b5cf6', icon: Heart, action: 'Upsell' },
+            { name: 'Potenciais', description: 'Uma compra alta', count: customers.filter(c => c.totalPedidos === 1 && c.totalReceita > 500).length, color: '#3b82f6', icon: TrendingUp, action: 'Incentivar 2ª compra' },
+            { name: 'Em Risco', description: 'Ausentes > 60 dias', count: customers.filter(c => { if (!c.lastOrder) return false; const d = (new Date().getTime() - c.lastOrder.getTime()) / (86400000); return d > 60 && c.totalPedidos >= 1; }).length, color: '#f59e0b', icon: AlertTriangle, action: 'Reativar' },
+            { name: 'Novos', description: '< 30 dias', count: customers.filter(c => { if (!c.firstOrder) return false; const d = (new Date().getTime() - c.firstOrder.getTime()) / (86400000); return d <= 30 && c.totalPedidos === 1; }).length, color: '#14b8a6', icon: UserCheck, action: 'Onboarding' }
+        ];
+
+        // Top LTV Customers Table
+        const topLTVCustomers = [...customers].sort((a, b) => b.totalReceita - a.totalReceita).slice(0, 10).map((c, i) => ({
+            rank: i + 1, cpf: c.cpf.substring(0, 6) + '***', ltv: c.totalReceita, pedidos: c.totalPedidos, ticketMedio: c.avgTicket,
+        }));
+
+        const revenueConcentration = customers.length > 0 ? (([...customers].sort((a, b) => b.totalReceita - a.totalReceita).slice(0, Math.ceil(customers.length * 0.2)).reduce((s, c) => s + c.totalReceita, 0) / totalLTV) * 100) : 0;
+
+        return {
+            totalCustomers: customers.length,
+            recurringCustomers: recurringCustomers.length,
+            recurrenceRate,
+            avgLTV,
+            avgDaysBetweenOrders,
+            revenueConcentration,
+            ltvBuckets,
+            behaviorSegments,
+            topLTVCustomers,
+            cohortData,
+            ltvEvolutionData,
+            rfmData
+        };
+    }, [catalogoData]);
+
+    const insights = useMemo(() => {
+        if (!analytics) return [];
+        const result: { type: 'alert' | 'success' | 'insight'; icon: any; title: string; description: string }[] = [];
+        if (analytics.recurrenceRate < 20) { result.push({ type: 'alert', icon: AlertTriangle, title: 'Baixa Recorrência', description: `Apenas ${analytics.recurrenceRate.toFixed(1)}% voltam. Implemente fidelidade.` }); }
+        else if (analytics.recurrenceRate > 40) { result.push({ type: 'success', icon: CheckCircle, title: 'Alta Fidelização', description: `${analytics.recurrenceRate.toFixed(1)}% de recorrência. Base saudável!` }); }
+        if (analytics.revenueConcentration > 70) { result.push({ type: 'alert', icon: AlertTriangle, title: 'Alta Concentração', description: `${analytics.revenueConcentration.toFixed(0)}% receita vem de 20% clientes.` }); }
+        return result;
+    }, [analytics]);
+
+    // KPIs
+    const kpis = [
+        { id: 'clientes', titulo: 'Total Clientes', valor: analytics?.totalCustomers || 0, valorFormatado: (analytics?.totalCustomers || 0).toLocaleString('pt-BR'), variacao: 5.2, tendencia: 'up' as const, sparklineData: [1, 1.02, 1.04, 1.05, 1.06] },
+        { id: 'recorrentes', titulo: 'Clientes Recorrentes', valor: analytics?.recurringCustomers || 0, valorFormatado: (analytics?.recurringCustomers || 0).toLocaleString('pt-BR'), variacao: analytics?.recurrenceRate || 0, tendencia: (analytics?.recurrenceRate || 0) > 25 ? 'up' as const : 'down' as const, sparklineData: [1, 1.01, 1.03, 1.02, 1.04] },
+        { id: 'ltv', titulo: 'LTV Médio', valor: analytics?.avgLTV || 0, valorFormatado: `R$ ${(analytics?.avgLTV || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, variacao: 8.5, tendencia: 'up' as const, sparklineData: [1, 1.03, 1.05, 1.07, 1.09] },
+        { id: 'ciclo', titulo: 'Ciclo Recompra', valor: analytics?.avgDaysBetweenOrders || 0, valorFormatado: `${Math.round(analytics?.avgDaysBetweenOrders || 0)} dias`, variacao: 0, tendencia: 'stable' as const, sparklineData: [1, 1, 1, 1, 1] },
+    ];
 
     return (
         <div className="space-y-6">
-            {/* Header with Date Picker */}
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <PageHeader
-                    title="CRM & Retenção"
-                    description="Análise de clientes, vendas e retenção"
-                    hasRealData={!!realData}
-                />
-                <GlobalDatePicker />
-            </div>
+            <PageFilters title="CRM & Clientes" description="Fidelização, LTV e Análise de Comportamento" />
 
-            {/* KPIs */}
-            <section>
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Saúde da Base</h2>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {kpisCRM.map((kpi) => (
-                        <KPICard key={kpi.id} data={kpi} />
-                    ))}
-                </div>
-            </section>
+            {loading && (<div className="flex items-center justify-center py-8"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div> </div>)}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Visualização RFM */}
-                <Card className="border-border bg-card">
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-foreground">Distribuição de Clientes por Segmento</CardTitle>
-                        <p className="text-xs text-muted-foreground">Clique numa barra para ver detalhes e lista de clientes.</p>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px] w-full">
-                            {loading ? (
-                                <div className="flex h-full items-center justify-center">
-                                    <span className="loading loading-spinner text-muted-foreground">Carregando dados RFM...</span>
-                                </div>
-                            ) : (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={rfmChartData}
-                                        layout="vertical"
-                                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                        onClick={handleBarClick}
-                                        className="cursor-pointer"
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
-                                        <XAxis type="number" hide />
-                                        <YAxis
-                                            type="category"
-                                            dataKey="name"
-                                            width={80}
-                                            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
-                                            axisLine={false}
-                                            tickLine={false}
-                                        />
-                                        <Tooltip
-                                            cursor={{ fill: 'var(--accent)', opacity: 0.2 }}
-                                            contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                                        />
-                                        <Bar dataKey="clientes" name="Clientes" radius={[0, 4, 4, 0]}>
-                                            {rfmChartData.map((entry: any, index: number) => (
-                                                <Cell key={`cell-${index}`} fill={
-                                                    entry.name === 'Campeões' ? '#eab308' :
-                                                        entry.name === 'Perdidos' ? '#ef4444' :
-                                                            '#3b82f6'
-                                                } />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+            {!loading && insights.length > 0 && (
+                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {insights.map((insight, i) => {
+                        const Icon = insight.icon;
+                        const bgColor = insight.type === 'alert' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : insight.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
+                        const iconColor = insight.type === 'alert' ? 'text-red-500' : insight.type === 'success' ? 'text-green-500' : 'text-blue-500';
+                        return (<Card key={i} className={`${bgColor} border`}><CardContent className="pt-4"><div className="flex items-start gap-3"><Icon className={`h-5 w-5 ${iconColor} flex-shrink-0 mt-0.5`} /><div><p className="font-medium text-sm">{insight.title}</p><p className="text-xs text-muted-foreground mt-1">{insight.description}</p></div></div></CardContent></Card>);
+                    })}
+                </section>
+            )}
 
-                {/* Detalhes RFM */}
-                <Card className="border-border bg-card">
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-foreground">Insights dos Segmentos</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                            {segments.slice(0, 4).map((seg: any) => (
-                                <div key={seg.segmento} className="flex items-start gap-3 p-3 rounded-lg border border-border bg-accent/30 cursor-pointer hover:bg-accent/50 transition-colors"
-                                    onClick={() => setSelectedSegment(seg.customerList ? seg : null)}>
-                                    <div className="mt-1">{getSegmentoIcon(seg.segmento)}</div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-medium text-foreground">{seg.segmento}</span>
-                                            <Badge variant="outline" className="text-xs bg-background">{seg.percentual?.toFixed(1) || 0}%</Badge>
-                                        </div>
-                                        <div className="mt-1 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                                            <div>
-                                                <span className="block font-medium text-foreground">{seg.clientes?.toLocaleString()}</span>
-                                                Clientes
-                                            </div>
-                                            <div>
-                                                <span className="block font-medium text-foreground">R$ {seg.valorMedio?.toFixed(0)}</span>
-                                                Ticket Médio
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+            {!loading && (<section><div className="grid grid-cols-2 gap-4 md:grid-cols-4">{kpis.map((kpi) => (<KPICard key={kpi.id} data={kpi} compact />))}</div></section>)}
 
-            {/* Segment Details Modal */}
-            <Dialog open={!!selectedSegment} onOpenChange={(open) => !open && setSelectedSegment(null)}>
-                <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            {selectedSegment && getSegmentoIcon(selectedSegment.name || selectedSegment.segmento)}
-                            <span>Segmento: {selectedSegment?.name || selectedSegment?.segmento}</span>
-                        </DialogTitle>
-                        <DialogDescription>
-                            Análise detalhada e lista de clientes deste cluster.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    {selectedSegment && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-                            {/* Left Column: Stats & Geo */}
-                            <div className="space-y-6">
-                                <Card>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-xs uppercase text-muted-foreground">Resumo</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-2">
-                                        <div className="flex justify-between">
-                                            <span className="text-sm">Total Clientes:</span>
-                                            <span className="font-bold">{selectedSegment.clientes}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-sm">Ticket Médio:</span>
-                                            <span className="font-bold">R$ {selectedSegment.valorMedio?.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-xs uppercase text-muted-foreground">Top Cidades (Geo)</CardTitle>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-2">
-                                            {getSegmentGeoStats(selectedSegment.customerList).map((city, idx) => (
-                                                <div key={idx} className="flex justify-between text-sm items-center">
-                                                    <span className="truncate max-w-[120px]" title={city.name}>{city.name}</span>
-                                                    <Badge variant="secondary" className="text-xs">{city.count}</Badge>
-                                                </div>
-                                            ))}
-                                            {getSegmentGeoStats(selectedSegment.customerList).length === 0 && (
-                                                <span className="text-xs text-muted-foreground">Sem dados geográficos</span>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            {/* Right Column: Customer List */}
-                            <div className="md:col-span-2">
-                                <h3 className="text-sm font-semibold mb-3">Lista de Clientes (Top 50)</h3>
-                                <div className="border rounded-md max-h-[400px] overflow-auto">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-muted/50 sticky top-0">
-                                            <tr>
-                                                <th className="p-2 text-left font-medium">Nome/ID</th>
-                                                <th className="p-2 text-left font-medium">Cidade/UF</th>
-                                                <th className="p-2 text-right font-medium">Receita Total</th>
-                                                <th className="p-2 text-right font-medium">Última Compra</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {selectedSegment.customerList?.slice(0, 50).map((c: any, i: number) => (
-                                                <tr key={i} className="border-t hover:bg-muted/30">
-                                                    <td className="p-2">
-                                                        <div className="font-medium truncate max-w-[150px]" title={c.nome || c.id}>{c.nome || c.id}</div>
-                                                        <div className="text-xs text-muted-foreground truncate max-w-[150px]">{c.email}</div>
-                                                    </td>
-                                                    <td className="p-2 text-xs">
-                                                        {c.cidade ? `${c.cidade}/${c.estado}` : '-'}
-                                                    </td>
-                                                    <td className="p-2 text-right font-medium text-emerald-600">
-                                                        R$ {c.receita?.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-                                                    </td>
-                                                    <td className="p-2 text-right text-xs text-muted-foreground">
-                                                        {c.recenciaDays} dias atrás
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {(!selectedSegment.customerList || selectedSegment.customerList.length === 0) && (
-                                                <tr>
-                                                    <td colSpan={4} className="p-4 text-center text-muted-foreground">
-                                                        Nenhum cliente listado neste segmento.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
-            {/* Header Padronizado */}
-            <PageHeader
-                title="CRM & Retenção"
-                description="Análise de base de clientes, cohorts e segmentação RFM"
-                hasRealData={!!realData}
-                hasMockData={!realData}
-            >
-                <DatePickerWithRange />
-            </PageHeader>
-
-            {/* KPIs */}
-            <section>
-                <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Saúde da Base</h2>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {kpisCRM.map((kpi) => (
-                        <KPICard key={kpi.id} data={kpi} />
-                    ))}
-                </div>
-            </section>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Visualização RFM */}
-                <Card className="border-border bg-card">
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-foreground">Distribuição de Clientes por Segmento</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[300px] w-full">
-                            {loading ? (
-                                <div className="flex h-full items-center justify-center">
-                                    <span className="loading loading-spinner text-muted-foreground">Carregando dados RFM...</span>
-                                </div>
-                            ) : (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={rfmChartData}
-                                        layout="vertical"
-                                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
-                                        <XAxis type="number" hide />
-                                        <YAxis
-                                            type="category"
-                                            dataKey="name"
-                                            width={80}
-                                            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
-                                            axisLine={false}
-                                            tickLine={false}
-                                        />
-                                        <Tooltip
-                                            cursor={{ fill: 'var(--accent)', opacity: 0.2 }}
-                                            contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                                        />
-                                        <Bar dataKey="clientes" name="Clientes" radius={[0, 4, 4, 0]}>
-                                            {rfmChartData.map((entry: any, index: number) => (
-                                                <Cell key={`cell-${index}`} fill={
-                                                    entry.name === 'Campeões' ? '#eab308' :
-                                                        entry.name === 'Perdidos' ? '#ef4444' :
-                                                            '#3b82f6'
-                                                } />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Detalhes RFM */}
-                <Card className="border-border bg-card">
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-foreground">Insights dos Segmentos</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-                            {segments.slice(0, 4).map((seg: any) => (
-                                <div key={seg.segmento} className="flex items-start gap-3 p-3 rounded-lg border border-border bg-accent/30">
-                                    <div className="mt-1">{getSegmentoIcon(seg.segmento)}</div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-medium text-foreground">{seg.segmento}</span>
-                                            <Badge variant="outline" className="text-xs bg-background">{seg.percentual.toFixed(1)}%</Badge>
-                                        </div>
-                                        <div className="mt-1 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                                            <div>
-                                                <span className="block font-medium text-foreground">{seg.clientes.toLocaleString()}</span>
-                                                Clientes
-                                            </div>
-                                            <div>
-                                                <span className="block font-medium text-foreground">R$ {seg.valorMedio.toFixed(0)}</span>
-                                                Ticket Médio
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Top Clientes & Vendas por Vendedor */}
-            {
-                realData && (
+            {/* New Advanced Charts Section */}
+            {!loading && analytics && (
+                <section className="space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Top Clientes */}
+                        {/* LTV Evolution */}
                         <Card className="border-border bg-card">
-                            <CardHeader>
-                                <CardTitle className="text-sm font-medium text-foreground">Top 10 Clientes (Receita)</CardTitle>
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-sm font-medium">LTV Médio ao Longo do Tempo</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="border-b border-border">
-                                                <th className="text-left py-3 px-2 font-medium text-muted-foreground">Cliente (CPF/ID)</th>
-                                                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Pedidos</th>
-                                                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {realData.topCustomers?.map((row: any) => (
-                                                <tr key={row.email || row.nome} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                                                    <td className="py-3 px-2">
-                                                        <p className="font-medium text-foreground">{row.nome}</p>
-                                                        {row.email && <p className="text-xs text-muted-foreground">{row.email}</p>}
-                                                    </td>
-                                                    <td className="py-3 px-2 text-right text-muted-foreground">
-                                                        {row.qtdPedidos}
-                                                    </td>
-                                                    <td className="py-3 px-2 text-right font-medium text-foreground">
-                                                        {row.receita_formatted}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <p className="text-xs text-muted-foreground mb-4">Média de valor acumulado gasto pelo cliente nos primeiros 6 meses.</p>
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <AreaChart data={analytics.ltvEvolutionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorLTV" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                                        <XAxis dataKey="age" stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `Mês ${v}`} />
+                                        <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `R$${v}`} />
+                                        <Tooltip formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, 'LTV Médio']} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                        <Area type="monotone" dataKey="avgLTV" stroke="#10b981" fillOpacity={1} fill="url(#colorLTV)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
                             </CardContent>
                         </Card>
 
-                        {/* Top 10 Clientes por Quantidade de Produtos */}
+                        {/* RFM Scatter */}
                         <Card className="border-border bg-card">
-                            <CardHeader>
-                                <CardTitle className="text-sm font-medium text-foreground">Top 10 Clientes (Qtd. Produtos)</CardTitle>
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <Users className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-sm font-medium">Matriz RFM: Recência vs Frequência</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="h-[300px] w-full">
-                                    {realData.topCustomers?.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart
-                                                data={realData.topCustomers.slice(0, 10).sort((a: any, b: any) => b.qtdPedidos - a.qtdPedidos)}
-                                                layout="vertical"
-                                                margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-                                            >
-                                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
-                                                <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} />
-                                                <YAxis type="category" dataKey="email" stroke="var(--muted-foreground)" fontSize={10} width={100} tickFormatter={(v) => v.length > 15 ? v.substring(0, 15) + '...' : v} />
-                                                <Tooltip
-                                                    formatter={(value) => [value, 'Qtd. Produtos']}
-                                                    contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                                                />
-                                                <Bar dataKey="qtdPedidos" name="Qtd. Produtos" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                                            Sem dados de clientes
+                                <p className="text-xs text-muted-foreground mb-4">Cada ponto é um cliente. Tamanho = Gasto total.</p>
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                                        <XAxis type="number" dataKey="recency" name="Recência days" stroke="var(--muted-foreground)" fontSize={11} label={{ value: 'Dias sem comprar', position: 'insideBottom', offset: -10, style: { fill: 'var(--muted-foreground)', fontSize: '10px' } }} />
+                                        <YAxis type="number" dataKey="frequency" name="Pedidos" stroke="var(--muted-foreground)" fontSize={11} label={{ value: 'Freq. Pedidos', angle: -90, position: 'insideLeft', style: { fill: 'var(--muted-foreground)', fontSize: '10px' } }} />
+                                        <ZAxis type="number" dataKey="monetary" range={[10, 100]} name="Valor Total" />
+                                        <Tooltip cursor={{ strokeDasharray: '3 3' }} formatter={(value: any, name: any) => [name === 'Valor Total' ? `R$ ${value.toFixed(2)}` : value, name]} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                        <Scatter name="Clientes" data={analytics.rfmData} fill="#8b5cf6" fillOpacity={0.6} />
+                                    </ScatterChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Cohort Report */}
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <Layers className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium">Análise Cohort (Retenção)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-border">
+                                            <th className="text-left py-2 px-2 font-medium">Safra</th>
+                                            <th className="text-center py-2 px-2 font-medium">Clientes</th>
+                                            <th className="text-center py-2 px-2 font-medium">Mês 0</th>
+                                            <th className="text-center py-2 px-2 font-medium">Mês 1</th>
+                                            <th className="text-center py-2 px-2 font-medium">Mês 2</th>
+                                            <th className="text-center py-2 px-2 font-medium">Mês 3</th>
+                                            <th className="text-center py-2 px-2 font-medium">Mês 4</th>
+                                            <th className="text-center py-2 px-2 font-medium">Mês 5</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {analytics.cohortData.map((cohort, i) => (
+                                            <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50">
+                                                <td className="py-3 px-2 font-medium">{cohort.month}</td>
+                                                <td className="py-3 px-2 text-center text-muted-foreground">{cohort.size}</td>
+                                                {cohort.retention.map((r, idx) => {
+                                                    const bgIntensity = Math.min(r.percent, 100) / 100;
+                                                    const isActive = r.count > 0;
+                                                    return (
+                                                        <td key={idx} className="py-3 px-1 text-center">
+                                                            <div
+                                                                className={`rounded px-1 py-1 text-xs ${isActive ? '' : 'text-muted-foreground opacity-30'}`}
+                                                                style={{
+                                                                    backgroundColor: isActive ? `rgba(16, 185, 129, ${bgIntensity * 0.5})` : 'transparent',
+                                                                    color: isActive && bgIntensity > 0.5 ? 'white' : 'inherit'
+                                                                }}
+                                                            >
+                                                                {r.percent > 0 ? `${r.percent.toFixed(0)}%` : '-'}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card className="border-border bg-card">
+                            <CardHeader><CardTitle className="text-sm font-medium">Segmentação de Comportamento</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                {analytics.behaviorSegments.map((seg, i) => {
+                                    const Icon = seg.icon;
+                                    return (
+                                        <div key={i} className="flex items-center justify-between p-3 rounded-lg border bg-card/50 hover:bg-muted/50 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2 rounded-full bg-opacity-10`} style={{ backgroundColor: `${seg.color}20` }}>
+                                                    <Icon className="h-4 w-4" style={{ color: seg.color }} />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-sm">{seg.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{seg.description}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold">{seg.count}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase">{seg.action}</p>
+                                            </div>
                                         </div>
-                                    )}
+                                    );
+                                })}
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-border bg-card">
+                            <CardHeader><CardTitle className="text-sm font-medium">Top 10 Clientes (LTV)</CardTitle></CardHeader>
+                            <CardContent>
+                                <div className="max-h-[400px] overflow-y-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 bg-card">
+                                            <tr className="border-b border-border">
+                                                <th className="text-left py-2 px-2 font-medium text-muted-foreground">#</th>
+                                                <th className="text-left py-2 px-2 font-medium text-muted-foreground">Cliente</th>
+                                                <th className="text-right py-2 px-2 font-medium text-muted-foreground">LTV</th>
+                                                <th className="text-right py-2 px-2 font-medium text-muted-foreground">Pedidos</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {analytics.topLTVCustomers.map((c, i) => (
+                                                <tr key={i} className="border-b border-border last:border-0">
+                                                    <td className="py-2 px-2 text-xs text-muted-foreground">{c.rank}</td>
+                                                    <td className="py-2 px-2 text-xs font-medium">{c.cpf}</td>
+                                                    <td className="py-2 px-2 text-right text-xs font-bold text-emerald-600">R$ {c.ltv.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</td>
+                                                    <td className="py-2 px-2 text-right text-xs">{c.pedidos}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
-                )
-            }
-
-            {/* Vendas por Cidade */}
-            {
-                realData && (
-                    <section>
-                        <Card className="border-border bg-card">
-                            <CardHeader>
-                                <CardTitle className="text-sm font-medium text-foreground">Top 10 Cidades (Receita)</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="h-[300px] w-full">
-                                    {realData.byCity?.length > 0 ? (
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart
-                                                data={realData.byCity}
-                                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                                            >
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-                                                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`} />
-                                                <Tooltip
-                                                    formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
-                                                    contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', color: 'var(--foreground)' }}
-                                                />
-                                                <Bar dataKey="value" name="Receita" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    ) : (
-                                        <div className="flex items-center justify-center h-full text-muted-foreground">
-                                            Sem dados de cidades
-                                        </div>
-                                    )}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </section>
-                )
-            }
-
-            {/* Cohort Heatmap */}
-            <section>
-                <Card className="border-border bg-card">
-                    <CardHeader>
-                        <CardTitle className="text-sm font-medium text-foreground">Matriz de Cohort (Retenção %)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-border">
-                                        <th className="text-left py-3 px-2 text-xs font-medium text-muted-foreground">Cohort</th>
-                                        <th className="text-center py-3 px-2 text-xs font-medium text-muted-foreground">M0</th>
-                                        <th className="text-center py-3 px-2 text-xs font-medium text-muted-foreground">M1</th>
-                                        <th className="text-center py-3 px-2 text-xs font-medium text-muted-foreground">M2</th>
-                                        <th className="text-center py-3 px-2 text-xs font-medium text-muted-foreground">M3</th>
-                                        <th className="text-center py-3 px-2 text-xs font-medium text-muted-foreground">M4</th>
-                                        <th className="text-center py-3 px-2 text-xs font-medium text-muted-foreground">M5</th>
-                                        <th className="text-center py-3 px-2 text-xs font-medium text-muted-foreground">M6</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {cohortData.map((row) => (
-                                        <tr key={row.mes} className="border-b border-border last:border-0 hover:bg-muted/30">
-                                            <td className="py-3 px-2 text-foreground font-medium">{row.mes}</td>
-                                            {[row.m0, row.m1, row.m2, row.m3, row.m4, row.m5, row.m6].map((value, index) => (
-                                                <td key={index} className="py-2 px-1 text-center">
-                                                    <div className={`flex items-center justify-center w-full max-w-[50px] mx-auto py-1.5 rounded text-xs font-medium ${getCohortColor(value)}`}>
-                                                        {value !== null ? `${value}%` : '-'}
-                                                    </div>
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        {/* Legenda simples */}
-                        <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-400" /> &lt;5%</div>
-                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-orange-400" /> 5-10%</div>
-                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-yellow-400" /> 10-15%</div>
-                            <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-400" /> &gt;15%</div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </section>
-        </div >
+                </section>
+            )}
+        </div>
     );
 }

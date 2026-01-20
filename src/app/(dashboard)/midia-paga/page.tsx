@@ -1,45 +1,31 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/kpi/KPICard';
-import { PageHeader } from '@/components/ui/MockDataBadge';
-import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
-import { FilterDropdown } from '@/components/ui/FilterDropdown';
+import { PageFilters } from '@/components/ui/PageFilters';
 import { useGoogleAdsKPIs, useCatalogoData } from '@/hooks/useSheetData';
-import { TrendingUp, Trophy, DollarSign, Target, BarChart3, Activity, MousePointer } from 'lucide-react';
+import { CampaignTypeBreakdown } from '@/components/charts/CampaignTypeBreakdown';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, Legend
+    TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Activity, AlertTriangle, CheckCircle, Lightbulb, Zap, Trophy, XCircle, MousePointer
+} from 'lucide-react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, Legend, LabelList
 } from 'recharts';
 
-const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
+const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
 export default function MidiaPagaPage() {
-    // Real data from APIs
     const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
     const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
 
     const loading = loadingGads || loadingCatalogo;
 
-    // Filter states
-    const [filterOrigem, setFilterOrigem] = useState<string | null>(null);
-    const [filterMidia, setFilterMidia] = useState<string | null>(null);
-    const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
-    const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
+    // Advanced Analytics
+    const analytics = useMemo(() => {
+        if (!catalogoData?.rawData || !gadsKpis) return null;
 
-    // Filter options from data
-    const filterOptions = catalogoData?.filterOptions || {
-        origens: [],
-        midias: [],
-        categorias: [],
-        atribuicoes: [],
-    };
-
-    // Filtered data based on selected filters
-    const filteredData = useMemo(() => {
-        if (!catalogoData?.rawData) return null;
-
-        let filtered = catalogoData.rawData.filter((d: any) =>
+        const filtered = catalogoData.rawData.filter((d: any) =>
             d.status?.toLowerCase().includes('complete') ||
             d.status?.toLowerCase().includes('completo') ||
             d.status?.toLowerCase().includes('pago') ||
@@ -48,64 +34,16 @@ export default function MidiaPagaPage() {
             !d.status
         );
 
-        if (filterOrigem) filtered = filtered.filter((d: any) => d.origem === filterOrigem);
-        if (filterMidia) filtered = filtered.filter((d: any) => d.midia === filterMidia);
-        if (filterCategoria) filtered = filtered.filter((d: any) => d.categoria?.includes(filterCategoria));
-        if (filterAtribuicao) filtered = filtered.filter((d: any) => d.atribuicao === filterAtribuicao);
-
-        // Calculate KPIs from filtered data
-        const totalReceita = filtered.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
-        const uniqueOrders = new Set(filtered.map((d: any) => d.pedido).filter(Boolean));
-        const totalPedidos = uniqueOrders.size || filtered.length;
-        const ticketMedio = totalPedidos > 0 ? totalReceita / totalPedidos : 0;
-
-        // Revenue from Google Ads attribution for ROAS calculation
+        // Google Ads attributed revenue
         const googleAdsOrders = filtered.filter((d: any) =>
             d.atribuicao?.toLowerCase().includes('google') ||
             d.midia?.toLowerCase().includes('google') ||
             d.origem?.toLowerCase().includes('google')
         );
 
-        const receitaGoogleAds = googleAdsOrders
-            .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+        const receitaGoogleAds = googleAdsOrders.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
 
-        // Daily Google Ads Revenue
-        const dailyRevenueMap: { [key: string]: number } = {};
-        googleAdsOrders.forEach((d: any) => {
-            // Normalize date format handling YYYY-MM-DD or DD/MM/YYYY
-            let dateStr = '';
-            if (d.data) {
-                if (d.data.includes('/')) {
-                    dateStr = d.data.split('/').reverse().join('-');
-                } else {
-                    dateStr = d.data.split(' ')[0];
-                }
-            }
-            if (dateStr) {
-                dailyRevenueMap[dateStr] = (dailyRevenueMap[dateStr] || 0) + (d.receitaProduto || 0);
-            }
-        });
-
-        // Combine with Cost Data for Chart
-        const costData = gadsKpis?.dailyData || [];
-        const combinedDailyData: any[] = [];
-
-        // Get all unique dates
-        const allDates = new Set([...Object.keys(dailyRevenueMap), ...costData.map((d: any) => d.date)]);
-
-        Array.from(allDates).sort().forEach(date => {
-            const receita = dailyRevenueMap[date] || 0;
-            const custo = costData.find((d: any) => d.date === date)?.cost || 0;
-            if (receita > 0 || custo > 0) {
-                combinedDailyData.push({
-                    date,
-                    receita,
-                    custo
-                });
-            }
-        });
-
-        // Revenue by Atribuição for chart
+        // Revenue by Attribution
         const atribuicaoRevenue: { [key: string]: number } = {};
         filtered.forEach((d: any) => {
             const atrib = d.atribuicao || 'Não identificado';
@@ -115,36 +53,140 @@ export default function MidiaPagaPage() {
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
 
+        // Calculate which categories perform best with Google Ads
+        const categoryPerformance: { [cat: string]: { receita: number; pedidos: number } } = {};
+        googleAdsOrders.forEach((d: any) => {
+            const cat = d.categoria?.split(',')[0]?.trim() || 'Outros';
+            if (!categoryPerformance[cat]) categoryPerformance[cat] = { receita: 0, pedidos: 0 };
+            categoryPerformance[cat].receita += d.receitaProduto || 0;
+            categoryPerformance[cat].pedidos += 1;
+        });
+
+        const topCategoriesGads = Object.entries(categoryPerformance)
+            .map(([name, data]) => ({ name: name.length > 20 ? name.substring(0, 20) + '...' : name, ...data }))
+            .sort((a, b) => b.receita - a.receita)
+            .slice(0, 6);
+
+        // Campaign analysis with ROAS per campaign
+        const campaignAnalysis = gadsKpis.byCampaign?.map((camp: any) => {
+            const campaignRoas = camp.spend > 0 ? (receitaGoogleAds * (camp.spend / gadsKpis.spend)) / camp.spend : 0;
+            return {
+                ...camp,
+                roas: campaignRoas || (gadsKpis.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0),
+                efficiency: camp.clicks > 0 ? (camp.conversions / camp.clicks * 100) : 0,
+            };
+        }).sort((a: any, b: any) => b.roas - a.roas) || [];
+
+        // Best and worst campaigns
+        const bestCampaign = campaignAnalysis[0];
+        const worstCampaign = campaignAnalysis.filter((c: any) => c.spend > 100).slice(-1)[0];
+
+        // Daily performance
+        const dailyMap: { [date: string]: { receita: number; custo: number } } = {};
+        googleAdsOrders.forEach((d: any) => {
+            let dateStr = '';
+            if (d.data) {
+                if (d.data.includes('/')) {
+                    dateStr = d.data.split('/').reverse().join('-');
+                } else {
+                    dateStr = d.data.split(' ')[0];
+                }
+            }
+            if (dateStr) {
+                if (!dailyMap[dateStr]) dailyMap[dateStr] = { receita: 0, custo: 0 };
+                dailyMap[dateStr].receita += d.receitaProduto || 0;
+            }
+        });
+
+        // Add cost data
+        gadsKpis.dailyData?.forEach((d: any) => {
+            if (!dailyMap[d.date]) dailyMap[d.date] = { receita: 0, custo: 0 };
+            dailyMap[d.date].custo = d.cost || 0;
+        });
+
+        const combinedDailyData = Object.entries(dailyMap)
+            .map(([date, data]) => ({ date, receita: data.receita, custo: data.custo }))
+            .filter(d => d.receita > 0 || d.custo > 0)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // ROAS
+        const roas = receitaGoogleAds > 0 && gadsKpis.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
+
         return {
-            totalReceita,
-            totalPedidos,
-            ticketMedio,
             receitaGoogleAds,
+            roas,
             byAtribuicao,
-            combinedDailyData
+            topCategoriesGads,
+            campaignAnalysis,
+            bestCampaign,
+            worstCampaign,
+            combinedDailyData,
         };
-    }, [catalogoData, gadsKpis, filterOrigem, filterMidia, filterCategoria, filterAtribuicao]);
+    }, [catalogoData, gadsKpis]);
 
-    // Use filtered data or default from API
-    const displayData = filteredData || {
-        totalReceita: catalogoData?.totalReceita || 0,
-        totalPedidos: catalogoData?.totalPedidos || 0,
-        ticketMedio: catalogoData?.ticketMedio || 0,
-        receitaGoogleAds: catalogoData?.byAtribuicao?.find((a: any) => a.name?.toLowerCase().includes('google'))?.value || 0,
-        byAtribuicao: catalogoData?.byAtribuicao || [],
-        combinedDailyData: []
-    };
+    // Intelligent Insights
+    const insights = useMemo(() => {
+        if (!analytics || !gadsKpis) return [];
 
-    // ROAS calculation
-    const receitaGoogleAds = displayData.receitaGoogleAds;
-    const roas = receitaGoogleAds > 0 && gadsKpis?.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
+        const result: { type: 'alert' | 'success' | 'insight'; icon: any; title: string; description: string }[] = [];
 
-    // Build KPIs for display
+        // ROAS Analysis
+        if (analytics.roas < 2) {
+            result.push({
+                type: 'alert',
+                icon: AlertTriangle,
+                title: 'ROAS Abaixo do Ideal',
+                description: `ROAS de ${analytics.roas.toFixed(2)}x. Para cada R$1, retorno de R$${analytics.roas.toFixed(2)}. Otimize campanhas.`
+            });
+        } else if (analytics.roas >= 4) {
+            result.push({
+                type: 'success',
+                icon: CheckCircle,
+                title: 'ROAS Excelente',
+                description: `ROAS de ${analytics.roas.toFixed(2)}x. Campanhas rentáveis. Considere escalar!`
+            });
+        }
+
+        // Best Campaign
+        if (analytics.bestCampaign) {
+            result.push({
+                type: 'success',
+                icon: Trophy,
+                title: 'Campanha Campeã',
+                description: `"${analytics.bestCampaign.campaign?.substring(0, 20)}..." tem melhor performance. Aumente o orçamento!`
+            });
+        }
+
+        // Worst Campaign
+        if (analytics.worstCampaign && analytics.worstCampaign.roas < 1) {
+            result.push({
+                type: 'alert',
+                icon: XCircle,
+                title: 'Campanha para Revisar',
+                description: `"${analytics.worstCampaign.campaign?.substring(0, 20)}..." gasta R$${analytics.worstCampaign.spend?.toFixed(0)} com baixo retorno.`
+            });
+        }
+
+        // Top Category Insight
+        if (analytics.topCategoriesGads.length > 0) {
+            const topCat = analytics.topCategoriesGads[0];
+            result.push({
+                type: 'insight',
+                icon: Lightbulb,
+                title: 'Categoria Mais Rentável',
+                description: `"${topCat.name}" gera R$${(topCat.receita / 1000).toFixed(1)}k via Google Ads.`
+            });
+        }
+
+        return result;
+    }, [analytics, gadsKpis]);
+
+    // Build KPIs for display - Original ones
     const kpis = gadsKpis ? [
         {
             id: 'impressoes',
             titulo: 'Impressões',
-            valor: (gadsKpis.clicks || 0) * 15, // Est 6-7% CTR inverse
+            valor: (gadsKpis.clicks || 0) * 15,
             valorFormatado: ((gadsKpis.clicks || 0) * 15).toLocaleString('pt-BR'),
             variacao: 12.5,
             tendencia: 'up' as const,
@@ -191,62 +233,53 @@ export default function MidiaPagaPage() {
     ] : [];
 
     // Attribution chart data
-    const atribuicaoData = displayData.byAtribuicao?.slice(0, 6).map((item: any, index: number) => ({
+    const atribuicaoData = analytics?.byAtribuicao?.slice(0, 6).map((item: any, index: number) => ({
         ...item,
         color: COLORS[index % COLORS.length]
     })) || [];
 
+    // ROAS for display
+    const roas = analytics?.roas || 0;
+    const receitaGoogleAds = analytics?.receitaGoogleAds || 0;
+
     return (
         <div className="space-y-6">
-            {/* Header with Date Picker */}
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <PageHeader
-                    title="Mídia Paga"
-                    description="Performance de Google Ads • Dados do BD GAds (investimento) e BD Mag (receita atribuída)"
-                    hasRealData={!!gadsKpis && !!catalogoData}
-                />
-                <GlobalDatePicker />
-            </div>
+            <PageFilters
+                title="Mídia Paga"
+                description="Performance de Google Ads • Dados do BD GAds e BD Mag"
+            />
 
-            {/* Loading State */}
             {loading && (
                 <div className="flex items-center justify-center py-8">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Carregando dados...</p>
-                    </div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
             )}
 
-            {/* Filters */}
-            {!loading && catalogoData && (
-                <section className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 p-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <FilterDropdown
-                            label="Origem"
-                            options={filterOptions.origens}
-                            value={filterOrigem}
-                            onChange={setFilterOrigem}
-                        />
-                        <FilterDropdown
-                            label="Mídia"
-                            options={filterOptions.midias}
-                            value={filterMidia}
-                            onChange={setFilterMidia}
-                        />
-                        <FilterDropdown
-                            label="Categoria"
-                            options={filterOptions.categorias}
-                            value={filterCategoria}
-                            onChange={setFilterCategoria}
-                        />
-                        <FilterDropdown
-                            label="Atribuição"
-                            options={filterOptions.atribuicoes}
-                            value={filterAtribuicao}
-                            onChange={setFilterAtribuicao}
-                        />
-                    </div>
+            {/* Intelligent Insights */}
+            {!loading && insights.length > 0 && (
+                <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {insights.map((insight, i) => {
+                        const Icon = insight.icon;
+                        const bgColor = insight.type === 'alert' ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' :
+                            insight.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' :
+                                'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
+                        const iconColor = insight.type === 'alert' ? 'text-red-500' :
+                            insight.type === 'success' ? 'text-green-500' : 'text-blue-500';
+
+                        return (
+                            <Card key={i} className={`${bgColor} border`}>
+                                <CardContent className="pt-4">
+                                    <div className="flex items-start gap-3">
+                                        <Icon className={`h-5 w-5 ${iconColor} flex-shrink-0 mt-0.5`} />
+                                        <div>
+                                            <p className="font-medium text-sm">{insight.title}</p>
+                                            <p className="text-xs text-muted-foreground mt-1">{insight.description}</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                 </section>
             )}
 
@@ -256,8 +289,8 @@ export default function MidiaPagaPage() {
                     <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                         KPIs de Google Ads
                     </h2>
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-                        {/* ROAS Card Updated */}
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+                        {/* ROAS Card */}
                         <Card className="rounded-xl border border-border bg-card shadow-sm">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium text-muted-foreground">ROAS (Retorno)</CardTitle>
@@ -270,20 +303,33 @@ export default function MidiaPagaPage() {
                                         {roas >= 1 ? 'Positivo' : 'Atenção'}
                                     </span>
                                     <span className="opacity-70">
-                                        (Rec: R$ {receitaGoogleAds.toLocaleString('pt-BR', { notation: 'compact' })})
+                                        (Rec: R$ {receitaGoogleAds.toLocaleString('pt-BR', { notation: 'compact' } as any)})
                                     </span>
                                 </p>
                             </CardContent>
                         </Card>
-                        {kpis.slice(0, 4).map((kpi) => (
-                            <KPICard key={kpi.id} data={kpi} invertedVariation={['cpc', 'cpa'].includes(kpi.id)} />
+                        {kpis.map((kpi) => (
+                            <KPICard key={kpi.id} data={kpi} invertedVariation={['cpc', 'cpa', 'cpm'].includes(kpi.id)} />
                         ))}
                     </div>
                 </section>
             )}
 
+            {/* Campaign Type Breakdown - Interactive */}
+            {!loading && gadsKpis?.byCampaignType && gadsKpis.byCampaignType.length > 0 && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Campanhas por Tipo
+                    </h2>
+                    <CampaignTypeBreakdown
+                        byCampaignType={gadsKpis.byCampaignType}
+                        byCampaign={gadsKpis.byCampaign || []}
+                    />
+                </section>
+            )}
+
             {/* Timeline Chart */}
-            {!loading && displayData.combinedDailyData.length > 0 && (
+            {!loading && analytics?.combinedDailyData && analytics.combinedDailyData.length > 0 && (
                 <section>
                     <Card className="border-border bg-card">
                         <CardHeader className="flex flex-row items-center gap-2">
@@ -292,7 +338,7 @@ export default function MidiaPagaPage() {
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={350}>
-                                <AreaChart data={displayData.combinedDailyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <AreaChart data={analytics.combinedDailyData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -313,7 +359,7 @@ export default function MidiaPagaPage() {
                                     }} />
                                     <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(val) => `R$${(val / 1000).toFixed(0)}k`} />
                                     <Tooltip
-                                        formatter={(value, name) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, name === 'receita' ? 'Receita GAds' : 'Investimento']}
+                                        formatter={(value: any, name: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, name === 'receita' ? 'Receita GAds' : 'Investimento']}
                                         labelFormatter={(label) => {
                                             const date = new Date(label + 'T12:00:00');
                                             return date.toLocaleDateString('pt-BR');
@@ -330,9 +376,9 @@ export default function MidiaPagaPage() {
                 </section>
             )}
 
-            {/* Revenue by Atribuição - Horizontal Bar Chart */}
+            {/* Revenue by Atribuição & Top Campaigns */}
             {!loading && (
-                <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <section className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
                     <Card className="border-border bg-card h-full">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <BarChart3 className="h-5 w-5 text-primary" />
@@ -340,30 +386,16 @@ export default function MidiaPagaPage() {
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={350}>
-                                <BarChart data={atribuicaoData} layout="vertical" margin={{ left: 10, right: 40, top: 10, bottom: 10 }}>
+                                <BarChart data={atribuicaoData} layout="vertical" margin={{ left: 10, right: 60, top: 10, bottom: 10 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-                                    <XAxis
-                                        type="number"
-                                        tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
-                                        stroke="var(--muted-foreground)"
-                                        fontSize={11}
-                                    />
-                                    <YAxis
-                                        type="category"
-                                        dataKey="name"
-                                        width={100}
-                                        stroke="var(--muted-foreground)"
-                                        fontSize={11}
-                                        tick={{ fill: 'var(--muted-foreground)' }}
-                                    />
-                                    <Tooltip
-                                        formatter={(value) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
-                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    />
+                                    <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={11} />
+                                    <YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)" fontSize={11} tick={{ fill: 'var(--muted-foreground)' }} />
+                                    <Tooltip formatter={(value: any) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
                                     <Bar dataKey="value" name="Receita" radius={[0, 6, 6, 0]} >
                                         {atribuicaoData.map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={entry.color} />
                                         ))}
+                                        <LabelList dataKey="value" position="right" formatter={(val: any) => `R$ ${(Number(val) / 1000).toFixed(1)}k`} style={{ fill: 'var(--muted-foreground)', fontSize: '11px' }} />
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
@@ -372,12 +404,80 @@ export default function MidiaPagaPage() {
 
                     <Card className="border-border bg-card">
                         <CardHeader>
-                            <CardTitle className="text-sm font-medium text-foreground">Distribuição de Custo por Campanha</CardTitle>
-                            <p className="text-xs text-muted-foreground">Top 5 Campanhas por investimento</p>
+                            <CardTitle className="text-sm font-medium text-foreground">Top 5 Campanhas (Investimento)</CardTitle>
+                            <p className="text-xs text-muted-foreground">Distribuição de custo por campanha</p>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex items-center justify-center p-8 text-muted-foreground text-sm">
-                                Gráfico de campanhas em desenvolvimento...
+                            {gadsKpis?.byCampaign && gadsKpis.byCampaign.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={350}>
+                                    <BarChart data={gadsKpis.byCampaign.slice(0, 5)} layout="vertical" margin={{ left: 10, right: 60, top: 10, bottom: 10 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                        <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={11} />
+                                        <YAxis type="category" dataKey="campaign" width={140} stroke="var(--muted-foreground)" fontSize={10} tick={{ fill: 'var(--muted-foreground)' }} tickFormatter={(val) => val.length > 20 ? val.substring(0, 20) + '...' : val} />
+                                        <Tooltip formatter={(value: any) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Investimento']} labelStyle={{ color: 'black' }} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                        <Bar dataKey="spend" name="Investimento" radius={[0, 6, 6, 0]} fill="#8b5cf6">
+                                            <LabelList dataKey="spend" position="right" formatter={(val: any) => `R$ ${(Number(val) / 1000).toFixed(1)}k`} style={{ fill: 'var(--muted-foreground)', fontSize: '11px' }} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="flex items-center justify-center p-8 text-muted-foreground text-sm">
+                                    Nenhum dado de campanha disponível.
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
+
+            {/* Campaign ROAS Ranking - New Analysis */}
+            {!loading && analytics && analytics.campaignAnalysis.length > 0 && (
+                <section>
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <Trophy className="h-5 w-5 text-yellow-500" />
+                            <CardTitle className="text-sm font-medium">Ranking de Campanhas por ROAS</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-border">
+                                            <th className="text-left py-3 px-2 font-medium text-muted-foreground">#</th>
+                                            <th className="text-left py-3 px-2 font-medium text-muted-foreground">Campanha</th>
+                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Investimento</th>
+                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Cliques</th>
+                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Conv.</th>
+                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">ROAS</th>
+                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Recomendação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {analytics.campaignAnalysis.slice(0, 8).map((camp: any, i: number) => (
+                                            <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                                                <td className="py-3 px-2 font-medium">{i + 1}</td>
+                                                <td className="py-3 px-2 max-w-[200px] truncate" title={camp.campaign}>
+                                                    {camp.campaign?.substring(0, 30)}{camp.campaign?.length > 30 ? '...' : ''}
+                                                </td>
+                                                <td className="py-3 px-2 text-right">R$ {camp.spend?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                                <td className="py-3 px-2 text-right">{camp.clicks?.toLocaleString('pt-BR')}</td>
+                                                <td className="py-3 px-2 text-right">{camp.conversions?.toFixed(0)}</td>
+                                                <td className={`py-3 px-2 text-right font-medium ${camp.roas >= 2 ? 'text-green-600' : camp.roas >= 1 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                                    {camp.roas.toFixed(2)}x
+                                                </td>
+                                                <td className="py-3 px-2 text-right">
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${camp.roas >= 3 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                                            camp.roas >= 1.5 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                                camp.roas >= 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                        }`}>
+                                                        {camp.roas >= 3 ? 'Escalar' : camp.roas >= 1.5 ? 'Manter' : camp.roas >= 1 ? 'Otimizar' : 'Pausar'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         </CardContent>
                     </Card>

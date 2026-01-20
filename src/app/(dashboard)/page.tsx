@@ -3,12 +3,11 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/kpi/KPICard';
-import { PageHeader } from '@/components/ui/MockDataBadge';
-import { FilterDropdown } from '@/components/ui/FilterDropdown';
+import { PageFilters } from '@/components/ui/PageFilters';
 import { TrendingUp, DollarSign, ShoppingCart, Target, Activity, BarChart3, PieChart, Package, Users, Filter, AlertTriangle, CheckCircle } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart as RechartsPie, Pie, Cell, Legend, AreaChart, Area
+    PieChart as RechartsPie, Pie, Cell, Legend, AreaChart, Area, LabelList, Line
 } from 'recharts';
 import { useCatalogoData, useGoogleAdsKPIs } from '@/hooks/useSheetData';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
@@ -77,11 +76,13 @@ export default function HomeExecutiva() {
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
 
-        // Revenue by Category
+        // Revenue by Category (excluding items without category)
         const categoryRevenue: { [key: string]: number } = {};
         filtered.forEach((d: any) => {
-            const cat = d.categoria || 'Sem Categoria';
-            categoryRevenue[cat] = (categoryRevenue[cat] || 0) + (d.receitaProduto || 0);
+            const cat = d.categoria;
+            if (cat && cat.trim() !== '') {
+                categoryRevenue[cat] = (categoryRevenue[cat] || 0) + (d.receitaProduto || 0);
+            }
         });
         const byCategory = Object.entries(categoryRevenue)
             .map(([name, value]) => ({ name, value }))
@@ -210,45 +211,11 @@ export default function HomeExecutiva() {
 
     return (
         <div className="space-y-6">
-            {/* Header with Date Picker */}
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <PageHeader
-                    title="Visão Geral Executiva"
-                    description="Visão consolidada de performance • Dados do Magento (BD Mag) e Google Ads"
-                    hasRealData={!!catalogoData}
-                />
-                <GlobalDatePicker />
-            </div>
-
-            {/* Filters */}
-            <section className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 p-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <FilterDropdown
-                        label="Origem"
-                        options={filterOptions.origens}
-                        value={filterOrigem}
-                        onChange={setFilterOrigem}
-                    />
-                    <FilterDropdown
-                        label="Mídia"
-                        options={filterOptions.midias}
-                        value={filterMidia}
-                        onChange={setFilterMidia}
-                    />
-                    <FilterDropdown
-                        label="Categoria"
-                        options={filterOptions.categorias}
-                        value={filterCategoria}
-                        onChange={setFilterCategoria}
-                    />
-                    <FilterDropdown
-                        label="Atribuição"
-                        options={filterOptions.atribuicoes}
-                        value={filterAtribuicao}
-                        onChange={setFilterAtribuicao}
-                    />
-                </div>
-            </section>
+            {/* Header with Period Filter Only */}
+            <PageFilters
+                title="Visão Geral Executiva"
+                description="Visão consolidada de performance • Dados do Magento (BD Mag) e Google Ads"
+            />
 
             {/* Loading State */}
             {loading && (
@@ -355,116 +322,108 @@ export default function HomeExecutiva() {
                 </section>
             )}
 
-            {/* Saúde do Funil */}
-            {!loading && gadsKpis && catalogoData && (
+            {/* Vendas por Hora - Análise de Horário Pico */}
+            {!loading && catalogoData?.rawData && (
                 <section>
                     <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                        Saúde do Funil
+                        Vendas por Hora do Dia
                     </h2>
                     <Card className="border-border bg-card">
                         <CardContent className="pt-6">
-                            <div className="space-y-4">
-                                {/* Funil sem impressões - começa em Cliques */}
-                                {(() => {
-                                    const clicks = gadsKpis?.clicks || 0;
-                                    const leadsConversions = gadsKpis?.segmented?.leads?.conversions || 0;
-                                    const ecommerceConversions = gadsKpis?.segmented?.ecommerce?.conversions || 0;
-                                    const pedidos = displayData.totalPedidos || 0;
-                                    const receita = displayData.totalReceita || 0;
+                            <ResponsiveContainer width="100%" height={320}>
+                                <BarChart
+                                    data={(() => {
+                                        // Aggregate sales by hour
+                                        const hourlyMap: { [key: number]: { receita: number; pedidos: number } } = {};
+                                        for (let i = 0; i < 24; i++) {
+                                            hourlyMap[i] = { receita: 0, pedidos: 0 };
+                                        }
 
-                                    // Calcular taxas de conversão
-                                    const clickToLeads = clicks > 0 ? (leadsConversions / clicks) * 100 : 0;
-                                    const clickToCompras = clicks > 0 ? (ecommerceConversions / clicks) * 100 : 0;
-                                    const comprasToPedido = ecommerceConversions > 0 ? (pedidos / ecommerceConversions) * 100 : 0;
+                                        catalogoData.rawData.filter((d: any) =>
+                                            d.status?.toLowerCase().includes('complete') ||
+                                            d.status?.toLowerCase().includes('completo') ||
+                                            d.status?.toLowerCase().includes('pago') ||
+                                            d.status?.toLowerCase().includes('enviado') ||
+                                            d.status?.toLowerCase().includes('faturado') ||
+                                            !d.status
+                                        ).forEach((d: any) => {
+                                            const hora = d.hora || d.horaSimples;
+                                            if (hora) {
+                                                // Parse hour from "HH:MM:SS" or just "HH"
+                                                const hourStr = hora.toString().split(':')[0];
+                                                const hour = parseInt(hourStr);
+                                                if (!isNaN(hour) && hour >= 0 && hour < 24) {
+                                                    hourlyMap[hour].receita += d.receitaProduto || 0;
+                                                    hourlyMap[hour].pedidos += 1;
+                                                }
+                                            }
+                                        });
 
-                                    // Funnel steps sem impressões
-                                    const funnelSteps = [
-                                        {
-                                            name: 'Cliques',
-                                            value: clicks,
-                                            formatted: clicks.toLocaleString('pt-BR'),
-                                            rate: null,
-                                            health: 'neutral' as const
-                                        },
-                                        {
-                                            name: 'Leads (GAds)',
-                                            value: Math.round(leadsConversions),
-                                            formatted: Math.round(leadsConversions).toLocaleString('pt-BR'),
-                                            rate: clickToLeads,
-                                            health: clickToLeads >= 5 ? 'good' as const : clickToLeads >= 2 ? 'warning' as const : 'bad' as const
-                                        },
-                                        {
-                                            name: 'Compras (GAds)',
-                                            value: Math.round(ecommerceConversions),
-                                            formatted: Math.round(ecommerceConversions).toLocaleString('pt-BR'),
-                                            rate: clickToCompras,
-                                            health: clickToCompras >= 3 ? 'good' as const : clickToCompras >= 1.5 ? 'warning' as const : 'bad' as const
-                                        },
-                                        {
-                                            name: 'Pedidos (Magento)',
-                                            value: pedidos,
-                                            formatted: pedidos.toLocaleString('pt-BR'),
-                                            rate: comprasToPedido,
-                                            health: comprasToPedido >= 50 ? 'good' as const : comprasToPedido >= 30 ? 'warning' as const : 'bad' as const
-                                        },
-                                    ];
-
-                                    return funnelSteps.map((step, index) => (
-                                        <div key={step.name} className="flex items-center gap-4">
-                                            <div className="w-40 flex items-center gap-2">
-                                                {step.health === 'good' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                                                {step.health === 'warning' && <AlertTriangle className="h-4 w-4 text-yellow-500" />}
-                                                {step.health === 'bad' && <AlertTriangle className="h-4 w-4 text-red-500" />}
-                                                {step.health === 'neutral' && <Filter className="h-4 w-4 text-slate-400" />}
-                                                <span className="text-sm font-medium">{step.name}</span>
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-4 relative overflow-hidden">
-                                                    <div
-                                                        className={`h-4 rounded-full transition-all ${step.health === 'good' ? 'bg-green-500' :
-                                                            step.health === 'warning' ? 'bg-yellow-500' :
-                                                                step.health === 'bad' ? 'bg-red-500' :
-                                                                    'bg-slate-400'
-                                                            }`}
-                                                        style={{
-                                                            width: `${Math.max((step.value / (funnelSteps[0].value || 1)) * 100, 2)}%`
-                                                        }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                            <div className="w-24 text-right">
-                                                <span className="font-bold">{step.formatted}</span>
-                                            </div>
-                                            <div className="w-20 text-right">
-                                                {step.rate !== null && (
-                                                    <span className={`text-sm ${step.health === 'good' ? 'text-green-600' :
-                                                        step.health === 'warning' ? 'text-yellow-600' :
-                                                            'text-red-600'
-                                                        }`}>
-                                                        {step.rate.toFixed(1)}%
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ));
-                                })()}
-                            </div>
-                            <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-4">
-                                    <span className="flex items-center gap-1">
-                                        <CheckCircle className="h-3 w-3 text-green-500" /> Saudável
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <AlertTriangle className="h-3 w-3 text-yellow-500" /> Atenção
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                        <AlertTriangle className="h-3 w-3 text-red-500" /> Crítico
-                                    </span>
-                                </div>
-                                <div className="text-muted-foreground">
-                                    Receita Total: <span className="font-bold text-foreground">R$ {displayData.totalReceita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                            </div>
+                                        return Object.entries(hourlyMap)
+                                            .map(([hour, data]) => ({
+                                                hora: `${hour.padStart(2, '0')}h`,
+                                                receita: data.receita,
+                                                pedidos: data.pedidos
+                                            }))
+                                            .filter(d => d.receita > 0 || d.pedidos > 0);
+                                    })()}
+                                    margin={{ top: 20, right: 60, left: 0, bottom: 50 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                                    <XAxis
+                                        dataKey="hora"
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={10}
+                                        interval={0}
+                                        angle={-45}
+                                        textAnchor="end"
+                                        height={50}
+                                    />
+                                    <YAxis
+                                        yAxisId="left"
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={10}
+                                        tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                                    />
+                                    <YAxis
+                                        yAxisId="right"
+                                        orientation="right"
+                                        stroke="#10b981"
+                                        fontSize={10}
+                                        tickFormatter={(v) => v.toString()}
+                                    />
+                                    <Tooltip
+                                        formatter={(value: any, name: any) => [
+                                            name === 'receita'
+                                                ? `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                                : value,
+                                            name === 'receita' ? 'Receita' : 'Pedidos'
+                                        ]}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Legend />
+                                    <Bar yAxisId="left" dataKey="receita" fill="#8b5cf6" name="Receita" radius={[4, 4, 0, 0]}>
+                                        <LabelList
+                                            dataKey="receita"
+                                            position="top"
+                                            formatter={(v: any) => Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(1)}k` : ''}
+                                            style={{ fill: 'var(--muted-foreground)', fontSize: '9px' }}
+                                        />
+                                    </Bar>
+                                    <Line
+                                        yAxisId="right"
+                                        type="monotone"
+                                        dataKey="pedidos"
+                                        stroke="#10b981"
+                                        strokeWidth={2}
+                                        name="Pedidos"
+                                        dot={{ fill: '#10b981', r: 3 }}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                            <p className="text-xs text-muted-foreground text-center mt-2">
+                                Receita (barras) e Quantidade de Pedidos (linha) por hora do dia baseada no campo "Hora: Min: Seg" do BD Mag
+                            </p>
                         </CardContent>
                     </Card>
                 </section>
@@ -540,6 +499,12 @@ export default function HomeExecutiva() {
                                         {atribuicaoData.map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={entry.color} />
                                         ))}
+                                        <LabelList
+                                            dataKey="value"
+                                            position="right"
+                                            formatter={(val: any) => `R$ ${(Number(val) / 1000).toFixed(1)}k`}
+                                            style={{ fill: 'var(--muted-foreground)', fontSize: '11px' }}
+                                        />
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>

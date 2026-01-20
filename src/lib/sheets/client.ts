@@ -104,6 +104,11 @@ export const fetchGoogleAdsData = async () => {
             campaignStatus: obj['Campaign status'] || '',
             clicks: parseInt(obj['Clicks'] || '0'),
             ctr: parseFloat(obj['CTR']?.replace('%', '')?.replace(',', '.') || '0'),
+            impressions: (() => {
+                const c = parseInt(obj['Clicks'] || '0');
+                const ctr = parseFloat(obj['CTR']?.replace('%', '')?.replace(',', '.') || '0');
+                return ctr > 0 ? Math.round(c / (ctr / 100)) : 0;
+            })(),
             weekNumber: obj['Nº da Semana'] || '',
             data: obj['Data'] || '',
             month: obj['Mês'] || '',
@@ -195,8 +200,13 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     const totalCost = data.reduce((sum, entry) => sum + (entry.cost || 0), 0);
     const totalConversions = data.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
     const totalClicks = data.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
-    const avgCTR = data.length > 0 ? data.reduce((sum, entry) => sum + (entry.ctr || 0), 0) / data.length : 0;
+    const totalImpressions = data.reduce((sum, entry) => sum + (entry.impressions || 0), 0);
+
+    // Weighted CTR (Total Clicks / Total Impressions) is more accurate than avg of CTRs
+    const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+
     const costPerConversion = totalConversions > 0 ? totalCost / totalConversions : 0;
+    const avgCPM = totalImpressions > 0 ? (totalCost / totalImpressions) * 1000 : 0;
 
     // Daily Cost Aggregation
     const dailyCostMap: { [key: string]: number } = {};
@@ -215,14 +225,20 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     // SEGMENTAÇÃO: Leads vs Ecommerce
     // ==========================================
     // Campanhas de Leads: contém "Lead" no nome da campanha
-    // Campanhas Ecommerce: todas as outras (Shopping, PMax, etc.)
+    // Campanhas Ecommerce: NÃO contém "Lead" E NÃO contém "Visita"
     const isLeadsCampaign = (campaign: string) => {
         const lowerCampaign = campaign?.toLowerCase() || '';
         return lowerCampaign.includes('lead');
     };
 
+    const isVisitaCampaign = (campaign: string) => {
+        const lowerCampaign = campaign?.toLowerCase() || '';
+        return lowerCampaign.includes('visita');
+    };
+
     const leadsData = data.filter(entry => isLeadsCampaign(entry.campaign));
-    const ecommerceData = data.filter(entry => !isLeadsCampaign(entry.campaign));
+    // Ecommerce excludes Leads AND Visita
+    const ecommerceData = data.filter(entry => !isLeadsCampaign(entry.campaign) && !isVisitaCampaign(entry.campaign));
 
     const leadsSpend = leadsData.reduce((sum, entry) => sum + (entry.cost || 0), 0);
     const ecommerceSpend = ecommerceData.reduce((sum, entry) => sum + (entry.cost || 0), 0);
@@ -236,6 +252,33 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     const ECOMMERCE_META = 66000;
 
     // ==========================================
+    // CLASSIFICAÇÃO DE CAMPANHAS (5 tipos)
+    // ==========================================
+    type CampaignType = 'pmax_ecommerce' | 'shopping' | 'search_institucional' | 'search_leads' | 'visita_loja' | 'outros';
+
+    const classifyCampaign = (campaign: string): CampaignType => {
+        const lower = (campaign || '').toLowerCase();
+
+        // Check in specific order (most restrictive first)
+        if (lower.includes('visita')) return 'visita_loja';
+        if (lower.includes('lead')) return 'search_leads';
+        if (lower.includes('institucional') && !lower.includes('lead') && !lower.includes('visita')) return 'search_institucional';
+        if (lower.includes('shopping')) return 'shopping';
+        if (lower.includes('pmax') && !lower.includes('lead') && !lower.includes('visita')) return 'pmax_ecommerce';
+
+        return 'outros';
+    };
+
+    const CAMPAIGN_TYPE_LABELS: Record<CampaignType, string> = {
+        'pmax_ecommerce': 'PMAX Ecommerce',
+        'shopping': 'Shopping',
+        'search_institucional': 'Search Institucional',
+        'search_leads': 'Search Leads',
+        'visita_loja': 'Visita à Loja',
+        'outros': 'Outros'
+    };
+
+    // ==========================================
     // DADOS POR CAMPANHA (para tabela detalhada)
     // ==========================================
     const campaignMap: {
@@ -244,7 +287,8 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
             spend: number;
             conversions: number;
             clicks: number;
-            tipo: 'leads' | 'ecommerce';
+            impressions: number;
+            tipo: CampaignType;
         }
     } = {};
 
@@ -256,17 +300,21 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
                 spend: 0,
                 conversions: 0,
                 clicks: 0,
-                tipo: isLeadsCampaign(campaign) ? 'leads' : 'ecommerce'
+                impressions: 0,
+                tipo: classifyCampaign(campaign)
             };
         }
         campaignMap[campaign].spend += entry.cost || 0;
         campaignMap[campaign].conversions += entry.conversions || 0;
         campaignMap[campaign].clicks += entry.clicks || 0;
+        campaignMap[campaign].impressions += entry.impressions || 0;
     });
 
     const byCampaign = Object.values(campaignMap)
         .map(c => ({
             ...c,
+            ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
+            cpm: c.impressions > 0 ? (c.spend / c.impressions) * 1000 : 0,
             cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
             cpa: c.conversions > 0 ? c.spend / c.conversions : 0,
         }))
@@ -277,8 +325,11 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         spend_formatted: `R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         conversions: totalConversions,
         clicks: totalClicks,
+        impressions: totalImpressions,
         ctr: avgCTR,
         ctr_formatted: `${avgCTR.toFixed(2)}%`,
+        cpm: avgCPM,
+        cpm_formatted: `R$ ${avgCPM.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         costPerConversion,
         cpc: totalClicks > 0 ? totalCost / totalClicks : 0,
         dailyData,
@@ -304,6 +355,38 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
             },
         },
         byCampaign,
+        // Agregação por tipo de campanha (5 tipos) para drill-down interativo
+        byCampaignType: (() => {
+            const typeMap: Record<CampaignType, { spend: number; conversions: number; clicks: number; impressions: number; campaigns: string[] }> = {
+                'pmax_ecommerce': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'shopping': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'search_institucional': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'search_leads': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'visita_loja': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'outros': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
+            };
+
+            byCampaign.forEach(c => {
+                const t = typeMap[c.tipo];
+                if (t) {
+                    t.spend += c.spend;
+                    t.conversions += c.conversions;
+                    t.clicks += c.clicks;
+                    t.impressions += c.impressions;
+                    t.campaigns.push(c.campaign);
+                }
+            });
+
+            return Object.entries(typeMap).map(([type, data]) => ({
+                type: type as CampaignType,
+                label: CAMPAIGN_TYPE_LABELS[type as CampaignType],
+                ...data,
+                ctr: data.impressions > 0 ? (data.clicks / data.impressions) * 100 : 0,
+                cpc: data.clicks > 0 ? data.spend / data.clicks : 0,
+                cpa: data.conversions > 0 ? data.spend / data.conversions : 0,
+                campaignCount: data.campaigns.length,
+            })).filter(t => t.spend > 0); // Only include types with spend
+        })(),
     };
 };
 
@@ -860,6 +943,44 @@ export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
         }))
         .sort((a, b) => b.clientes - a.clientes);
 
+    // Seasonality Analysis (Last 12 Months independent of filter)
+    const seasonalityMap: { [key: string]: number } = {};
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    oneYearAgo.setHours(0, 0, 0, 0);
+
+    data.forEach(order => {
+        // Parse date safely
+        let orderDate: Date;
+        try {
+            if (order.data?.includes('/')) {
+                orderDate = new Date(order.data.split('/').reverse().join('-'));
+            } else if (order.data) {
+                orderDate = new Date(order.data.split(' ')[0]);
+            } else {
+                return;
+            }
+        } catch (e) { return; }
+
+        // Filter last 12 months and valid status
+        if (orderDate >= oneYearAgo) {
+            const status = order.status?.toLowerCase() || '';
+            if (status.includes('complete') || status.includes('completo') || status.includes('faturado') || status.includes('entregue')) {
+                const monthKey = orderDate.toISOString().slice(0, 7); // YYYY-MM
+                seasonalityMap[monthKey] = (seasonalityMap[monthKey] || 0) + (order.receitaProduto || 0);
+            }
+        }
+    });
+
+    const seasonality = Object.entries(seasonalityMap)
+        .map(([date, value]) => ({
+            date,
+            month: new Date(date + '-02').toLocaleString('pt-BR', { month: 'short' }), // formatted month
+            fullDate: date,
+            receita: value
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
     return {
         totalClientes,
         topCustomers,
@@ -867,6 +988,7 @@ export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
         byState,
         byCity,
         segments, // New RFM segments with full data
+        seasonality, // New seasonality data
         // Include raw data for flexible client-side processing if needed
         rawData: data
     };

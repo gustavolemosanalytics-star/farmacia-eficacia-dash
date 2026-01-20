@@ -19,7 +19,7 @@ import {
     Legend,
     Cell
 } from 'recharts';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { PageFilters } from '@/components/ui/PageFilters';
 
 export default function DataQualityPage() {
     // Score Global de Qualidade (Simulado para Visualização)
@@ -32,13 +32,10 @@ export default function DataQualityPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageFilters
                 title="Data Quality & Governança"
                 description="Monitoramento de integridade e qualidade dos dados"
-                hasMockData={true}
-            >
-                <DatePickerWithRange />
-            </PageHeader>
+            />
 
             {/* KPIs */}
             <section>

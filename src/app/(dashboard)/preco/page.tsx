@@ -18,18 +18,15 @@ import {
     Legend,
     ReferenceLine
 } from 'recharts';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { PageFilters } from '@/components/ui/PageFilters';
 
 export default function PrecoPage() {
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageFilters
                 title="Preço & Concorrência"
                 description="Monitoramento de preços e posicionamento vs mercado"
-                hasMockData={true}
-            >
-                <DatePickerWithRange />
-            </PageHeader>
+            />
 
             {/* KPIs */}
             <section>

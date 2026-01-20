@@ -27,9 +27,6 @@ export function FilterDropdown({ label, options, value, onChange, placeholder = 
 
     return (
         <div className="relative" ref={ref}>
-            <label className="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                {label}
-            </label>
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="
@@ -38,11 +35,12 @@ export function FilterDropdown({ label, options, value, onChange, placeholder = 
                     border border-slate-200 dark:border-zinc-700
                     hover:border-primary/50
                     text-sm text-slate-700 dark:text-slate-200
-                    min-w-[140px] w-full
+                    min-w-[140px]
                     transition-all duration-200
                 "
             >
-                <span className={value ? '' : 'text-slate-400 dark:text-slate-500'}>
+                <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1">{label}:</span>
+                <span className={value ? 'flex-1' : 'flex-1 text-slate-400 dark:text-slate-500'}>
                     {value || placeholder}
                 </span>
                 <div className="flex items-center gap-1">

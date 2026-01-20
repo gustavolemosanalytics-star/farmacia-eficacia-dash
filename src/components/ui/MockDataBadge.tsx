@@ -33,42 +33,35 @@ export function MockDataBadge({ variant = 'sidebar', className }: MockDataBadgeP
     );
 }
 
-// Page header with optional mock data indicator
+// Minimal Page Header
 export function PageHeader({
     title,
     description,
-    hasMockData = false,
-    hasRealData = false,
     children
 }: {
     title: string;
     description?: string;
-    hasMockData?: boolean;
+    hasMockData?: boolean; // Props kept for backward compatibility but unused visually
     hasRealData?: boolean;
     children?: React.ReactNode;
 }) {
     return (
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-            <div>
-                <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-                    {hasMockData && <MockDataBadge variant="page" />}
-                    {hasRealData && (
-                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>Dados Reais</span>
-                        </div>
+        <div className="flex flex-col gap-4 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-xl font-semibold text-foreground tracking-tight">{title}</h1>
+                    {description && (
+                        <p className="text-sm text-muted-foreground mt-1 font-light">{description}</p>
                     )}
                 </div>
-                {description && (
-                    <p className="text-sm text-muted-foreground mt-1">{description}</p>
+                {children && (
+                    <div className="flex-shrink-0">
+                        {children}
+                    </div>
                 )}
             </div>
-            {children && (
-                <div className="flex-shrink-0">
-                    {children}
-                </div>
-            )}
+            {/* Minimal separator */}
+            <div className="h-[1px] w-full bg-border/40" />
         </div>
     );
 }

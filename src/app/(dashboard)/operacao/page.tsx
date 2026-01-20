@@ -20,18 +20,15 @@ import {
     Legend,
     Cell
 } from 'recharts';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { PageFilters } from '@/components/ui/PageFilters';
 
 export default function OperacaoPage() {
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageFilters
                 title="Operação & Experiência"
                 description="Métricas logísticas, prazos de entrega e satisfação"
-                hasMockData={true}
-            >
-                <DatePickerWithRange />
-            </PageHeader>
+            />
 
             {/* KPIs */}
             <section>

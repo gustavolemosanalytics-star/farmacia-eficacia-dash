@@ -17,7 +17,7 @@ import {
     ReferenceLine,
     Label
 } from 'recharts';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { PageFilters } from '@/components/ui/PageFilters';
 
 export default function TendenciasPage() {
     // Prepare Data for Scatter Matrix
@@ -33,13 +33,10 @@ export default function TendenciasPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageFilters
                 title="Tendências & Oportunidades"
                 description="Growth Radar - Oportunidades priorizadas por impacto"
-                hasMockData={true}
-            >
-                <DatePickerWithRange />
-            </PageHeader>
+            />
 
             {/* Matriz de Oportunidades (Scatter Plot) */}
             <section>

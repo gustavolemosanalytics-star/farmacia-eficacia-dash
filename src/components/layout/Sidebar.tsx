@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { MockDataBadge } from '@/components/ui/MockDataBadge';
+import { useTheme } from '@/components/theme-provider';
 import {
     LayoutDashboard,
     Brain,
@@ -27,6 +28,9 @@ import {
     TrendingUp,
     Zap,
     Menu,
+    ShoppingCart,
+    Sun,
+    Moon,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -44,9 +48,35 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     Truck,
     Database,
     TrendingUp,
+    ShoppingCart,
 };
 
-const gruposOrdem = ['ceo', 'marketing', 'cro', 'crm', 'operacao', 'dados'] as const;
+const gruposOrdem = ['ceo', 'marketing', 'crm', 'dados', 'operacao'] as const;
+
+function ThemeToggle() {
+    const { theme, toggleTheme } = useTheme();
+
+    return (
+        <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleTheme}
+            className="w-full justify-start gap-3 px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900"
+        >
+            {theme === 'dark' ? (
+                <>
+                    <Moon className="h-4 w-4" />
+                    <span>Modo Escuro</span>
+                </>
+            ) : (
+                <>
+                    <Sun className="h-4 w-4" />
+                    <span>Modo Claro</span>
+                </>
+            )}
+        </Button>
+    );
+}
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     const pathname = usePathname();
@@ -101,16 +131,23 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                         </ul>
                     </div>
                 ))}
-
-                {/* Legend */}
-                <div className="px-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                    <div className="flex items-center gap-2 text-[10px] text-zinc-400">
-                        <MockDataBadge variant="sidebar" />
-                        <span>Developed by DeltaViz</span>
-                    </div>
-                </div>
             </nav>
         </ScrollArea>
+    );
+}
+
+function SidebarFooter() {
+    return (
+        <div className="border-t border-zinc-200 dark:border-zinc-800 p-4 space-y-3">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
+            {/* Credits */}
+            <div className="flex items-center gap-2 px-3 text-[10px] text-zinc-400">
+                <MockDataBadge variant="sidebar" />
+                <span>Developed by DeltaViz</span>
+            </div>
+        </div>
     );
 }
 
@@ -139,9 +176,12 @@ export function MobileSidebar() {
                     <Menu className="h-5 w-5" />
                 </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-0">
+            <SheetContent side="left" className="w-64 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-0 flex flex-col">
                 <SidebarHeader />
-                <SidebarContent onNavigate={() => setOpen(false)} />
+                <div className="flex-1 overflow-hidden">
+                    <SidebarContent onNavigate={() => setOpen(false)} />
+                </div>
+                <SidebarFooter />
             </SheetContent>
         </Sheet>
     );
@@ -150,11 +190,12 @@ export function MobileSidebar() {
 // Desktop Sidebar (Fixed)
 export function DesktopSidebar() {
     return (
-        <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 lg:block">
+        <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 lg:flex lg:flex-col">
             <SidebarHeader />
-            <div className="h-[calc(100vh-4rem)]">
+            <div className="flex-1 overflow-hidden">
                 <SidebarContent />
             </div>
+            <SidebarFooter />
         </aside>
     );
 }

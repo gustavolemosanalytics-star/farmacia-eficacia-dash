@@ -17,9 +17,8 @@ import {
     Cell,
     LineChart,
     Line,
-    Legend
 } from 'recharts';
-import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
+import { PageFilters } from '@/components/ui/PageFilters';
 
 const getFluxoIcon = (fluxo: string) => {
     if (fluxo.includes('Carrinho')) return <ShoppingCart className="h-4 w-4 text-orange-500" />;
@@ -52,15 +51,11 @@ export default function EmailPage() {
 
     return (
         <div className="space-y-6">
-            {/* Header with Date Picker */}
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <PageHeader
-                    title="E-mail & Automação"
-                    description="Performance de campanhas e fluxos automatizados"
-                    hasMockData={true}
-                />
-                <GlobalDatePicker />
-            </div>
+            {/* Header com PageFilters padrão */}
+            <PageFilters
+                title="E-mail & Automação"
+                description="Performance de campanhas e fluxos automatizados"
+            />
 
             {/* KPIs */}
             <section>

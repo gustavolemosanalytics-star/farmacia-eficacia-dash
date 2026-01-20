@@ -504,12 +504,11 @@ export const timeSeriesSessoes = gerarTimeSeries(30, 10333, 'down');
 // ============================================
 export const navegacaoItems = [
     { titulo: 'Home Executiva', href: '/', icone: 'LayoutDashboard', grupo: 'ceo' as const, isMockData: false },
-    { titulo: 'Diagnóstico IA', href: '/diagnostico', icone: 'Brain', grupo: 'ceo' as const, badge: '3', isMockData: true },
-    { titulo: 'Aquisição & Tráfego', href: '/aquisicao', icone: 'Users', grupo: 'marketing' as const, isMockData: true },
+    { titulo: 'Diagnóstico IA', href: '/diagnostico', icone: 'Brain', grupo: 'dados' as const, badge: '3', isMockData: true },
+    { titulo: 'Ecommerce', href: '/ecommerce', icone: 'ShoppingCart', grupo: 'marketing' as const, isMockData: false },
     { titulo: 'Mídia Paga', href: '/midia-paga', icone: 'Target', grupo: 'marketing' as const, isMockData: true },
     { titulo: 'SEO & Demanda', href: '/seo', icone: 'Search', grupo: 'marketing' as const, badge: '!', isMockData: true },
-    { titulo: 'Funil E-commerce', href: '/funil', icone: 'Filter', grupo: 'cro' as const, isMockData: true },
-    { titulo: 'Catálogo & Merchandising', href: '/catalogo', icone: 'Package', grupo: 'cro' as const, isMockData: false },
+
     { titulo: 'CRM & Retenção', href: '/crm', icone: 'Heart', grupo: 'crm' as const, isMockData: false },
     { titulo: 'E-mail & Automação', href: '/email', icone: 'Mail', grupo: 'crm' as const, isMockData: true },
     { titulo: 'Social & Marca', href: '/social', icone: 'Share2', grupo: 'crm' as const, isMockData: true },
@@ -517,7 +516,8 @@ export const navegacaoItems = [
     { titulo: 'Operação & Experiência', href: '/operacao', icone: 'Truck', grupo: 'operacao' as const, isMockData: true },
     { titulo: 'Data Quality', href: '/data-quality', icone: 'Database', grupo: 'dados' as const, isMockData: true },
     { titulo: 'Tendências & Oportunidades', href: '/tendencias', icone: 'TrendingUp', grupo: 'dados' as const, isMockData: true },
+    { titulo: 'Análise Preditiva', href: '/analise-preditiva', icone: 'Brain', grupo: 'dados' as const, isMockData: true },
 ];
 
-export const gruposLabels = { ceo: 'Executivo', marketing: 'Marketing', cro: 'Conversão', crm: 'Retenção', operacao: 'Operação', dados: 'Dados & IA' };
+export const gruposLabels = { ceo: 'Executivo', marketing: 'Marketing', crm: 'Retenção', operacao: 'Operação', dados: 'Dados & IA' };
 export const ultimaAtualizacao = new Date().toISOString();

@@ -18,7 +18,7 @@ import {
     YAxis,
     CartesianGrid
 } from 'recharts';
-import { DatePickerWithRange } from '@/components/ui/date-range-picker';
+import { PageFilters } from '@/components/ui/PageFilters';
 
 export default function SocialPage() {
     // Data for Sentiment Pie Chart
@@ -38,13 +38,10 @@ export default function SocialPage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
+            <PageFilters
                 title="Social & Marca"
                 description="Métricas de redes sociais e análise de sentimento"
-                hasMockData={true}
-            >
-                <DatePickerWithRange />
-            </PageHeader>
+            />
 
             {/* KPIs */}
             <section>

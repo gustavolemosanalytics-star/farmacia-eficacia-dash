@@ -3,9 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
-import { PageHeader } from '@/components/ui/MockDataBadge';
+import { PageFilters } from '@/components/ui/PageFilters';
 import { useGA4KPIs } from '@/hooks/useSheetData';
-import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
 import { TrendingUp, Search, AlertTriangle, Sparkles, Globe, Users, MousePointer, Activity } from 'lucide-react';
 import {
     BarChart,
@@ -83,14 +82,10 @@ export default function SeoPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                <PageHeader
-                    title="SEO & Tráfego Orgânico"
-                    description="Performance de busca orgânica • Dados do BD GA4"
-                    hasRealData={!!ga4Kpis}
-                />
-                <GlobalDatePicker />
-            </div>
+            <PageFilters
+                title="SEO & Tráfego Orgânico"
+                description="Performance orgânica e oportunidades de keywords"
+            />
 
             {/* Alerta de Queda (Mantido como alerta visual mockado por enquanto, pois não temos histórico suficiente para detectar queda real crítica via API simples) */}
             {/* <div className="rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900/30 dark:bg-yellow-900/10 p-4">
