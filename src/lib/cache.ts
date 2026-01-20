@@ -78,10 +78,10 @@ const HISTORICAL_TTL = 3600; // 1 hour for historical data (doesn't change often
 const RAW_DATA_TTL = 600; // 10 minutes for raw sheet data
 
 // ===========================================
-// SMART CACHE KEY GENERATION
+// SMART CACHE KEY GENERATION (internal helper)
 // ===========================================
 
-export const generateCacheKey = (
+const generateCacheKey = (
     type: string,
     params: Record<string, string | undefined>
 ): string => {
@@ -94,8 +94,8 @@ export const generateCacheKey = (
     return `farm:${type}:${sortedParams || 'all'}`;
 };
 
-// Check if request is for historical data (older than 30 days)
-export const isHistoricalRequest = (startDate?: Date, endDate?: Date): boolean => {
+// Check if request is for historical data (older than 30 days) - internal helper
+const isHistoricalRequest = (startDate?: Date, endDate?: Date): boolean => {
     if (!endDate) return false;
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
