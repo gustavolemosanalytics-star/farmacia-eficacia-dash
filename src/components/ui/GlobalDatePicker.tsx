@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useFilterStore } from '@/stores/filterStore';
 import { DateRangePicker } from './DateRangePicker';
 import { DateRange } from 'react-day-picker';
@@ -16,7 +17,7 @@ export function GlobalDatePicker() {
         setIsComparing
     } = useFilterStore();
 
-    const handleDateChange = (range: DateRange | undefined) => {
+    const handleDateChange = useCallback((range: DateRange | undefined) => {
         if (range?.from) {
             setPeriodo(range.from, range.to || range.from);
         } else {
@@ -26,11 +27,11 @@ export function GlobalDatePicker() {
             thirtyDaysAgo.setDate(today.getDate() - 30);
             setPeriodo(thirtyDaysAgo, today);
         }
-    };
+    }, [setPeriodo]);
 
-    const handleCompareChange = (range: DateRange | undefined) => {
+    const handleCompareChange = useCallback((range: DateRange | undefined) => {
         setComparePeriod(range?.from, range?.to);
-    };
+    }, [setComparePeriod]);
 
     return (
         <DateRangePicker
