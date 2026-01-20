@@ -1,8 +1,15 @@
 import { google } from 'googleapis';
 import path from 'path';
 
-// Spreadsheet ID extracted from the URL
+// ==========================================
+// SPREADSHEET CONFIGURATION
+// ==========================================
+
+// Current/Live Spreadsheet (2026+)
 const SPREADSHEET_ID = '198auS_FJrjvfvGMuTxWFFwgL8NHLiq3dMFsWSyBpBpA';
+
+// Historical Spreadsheet (2024-01 to 2025-12)
+const HISTORICAL_SPREADSHEET_ID = '1nZaUBP-7DhI1iXhAnDOJsQs8aJlkb9x_BGGfRfIinK8';
 
 // Sheet names/GIDs
 export const SHEETS = {
@@ -54,33 +61,81 @@ const getSheetsClient = async () => {
     return google.sheets({ version: 'v4', auth: authClient as any });
 };
 
-// Generic function to fetch data from a sheet
-export const getSheetData = async (sheetName: string, range?: string): Promise<any[][]> => {
+// Generic function to fetch data from a specific spreadsheet
+export const getSheetData = async (sheetName: string, range?: string, spreadsheetId: string = SPREADSHEET_ID): Promise<any[][]> => {
     try {
         const sheets = await getSheetsClient();
         const fullRange = range ? `${sheetName}!${range}` : sheetName;
 
         const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: SPREADSHEET_ID,
+            spreadsheetId: spreadsheetId,
             range: fullRange,
         });
 
         return response.data.values || [];
     } catch (error) {
-        console.error(`Error fetching sheet ${sheetName}:`, error);
+        console.error(`Error fetching sheet ${sheetName} from ${spreadsheetId}:`, error);
         if (error instanceof Error) {
             console.error('Error Stack:', error.stack);
             console.error('Error Message:', error.message);
         }
-        // If it's a file issue (missing credentials), log it clearly
-        // Don't swallow the error, let it bubble up to the route handler which returns 500
         throw error;
     }
 };
 
-// Fetch Google Ads data
+// Fetch data from both current and historical spreadsheets and merge
+export const getSheetDataWithHistory = async (sheetName: string, range?: string): Promise<any[][]> => {
+    try {
+        // Fetch from current spreadsheet
+        const currentData = await getSheetData(sheetName, range, SPREADSHEET_ID);
+
+        // Fetch from historical spreadsheet
+        let historicalData: any[][] = [];
+        try {
+            historicalData = await getSheetData(sheetName, range, HISTORICAL_SPREADSHEET_ID);
+        } catch (err) {
+            console.warn(`Historical data not available for sheet ${sheetName}:`, err);
+            // Continue with just current data if historical fails
+        }
+
+        if (historicalData.length === 0) {
+            return currentData;
+        }
+
+        // Merge data
+        // Current data has headers, historical should too
+        // We need to:
+        // 1. Take headers from current (row 0 or 1 depending on sheet)
+        // 2. Append all data rows from historical (skip headers)
+        // 3. Append all data rows from current (skip headers)
+
+        // For BD GAds and BD GA4, headers are in row 1 (index 1), data starts at row 2
+        // For BD Mag and others, headers are in row 0 (index 0), data starts at row 1
+
+        const isGAdsOrGA4 = sheetName === SHEETS.BD_GADS || sheetName === SHEETS.BD_GA4;
+        const headerRowIndex = isGAdsOrGA4 ? 1 : 0;
+        const dataStartIndex = isGAdsOrGA4 ? 2 : 1;
+
+        // Get headers from current data
+        const headers = currentData.slice(0, dataStartIndex);
+
+        // Get data rows from both sources
+        const historicalRows = historicalData.slice(dataStartIndex);
+        const currentRows = currentData.slice(dataStartIndex);
+
+        // Combine: headers + historical + current
+        // Historical data comes first (older), then current (newer)
+        return [...headers, ...historicalRows, ...currentRows];
+
+    } catch (error) {
+        console.error(`Error fetching merged data for ${sheetName}:`, error);
+        throw error;
+    }
+};
+
+// Fetch Google Ads data (including historical)
 export const fetchGoogleAdsData = async () => {
-    const data = await getSheetData(SHEETS.BD_GADS);
+    const data = await getSheetDataWithHistory(SHEETS.BD_GADS);
 
     if (data.length < 3) return [];
 
@@ -118,9 +173,9 @@ export const fetchGoogleAdsData = async () => {
     });
 };
 
-// Fetch GA4 data
+// Fetch GA4 data (including historical)
 export const fetchGA4Data = async () => {
-    const data = await getSheetData(SHEETS.BD_GA4);
+    const data = await getSheetDataWithHistory(SHEETS.BD_GA4);
 
     if (data.length < 3) return [];
 
@@ -437,9 +492,9 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
     };
 };
 
-// Fetch Magento (BD Mag) data - E-commerce CRM data
+// Fetch Magento (BD Mag) data - E-commerce CRM data (including historical)
 export const fetchMagData = async () => {
-    const data = await getSheetData(SHEETS.BD_MAG);
+    const data = await getSheetDataWithHistory(SHEETS.BD_MAG);
 
     if (data.length < 2) return [];
 
