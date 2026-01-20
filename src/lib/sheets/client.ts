@@ -61,8 +61,25 @@ const getSheetsClient = async () => {
     return google.sheets({ version: 'v4', auth: authClient as any });
 };
 
-// Generic function to fetch data from a specific spreadsheet
+// Import cache functions
+import { getCachedSheetData, setCachedSheetData } from '@/lib/cache';
+
+// Generic function to fetch data from a specific spreadsheet (with caching)
 export const getSheetData = async (sheetName: string, range?: string, spreadsheetId: string = SPREADSHEET_ID): Promise<any[][]> => {
+    // Generate cache key based on sheet and spreadsheet
+    const cacheKey = `${sheetName}_${spreadsheetId.slice(-8)}`;
+
+    // Check cache first (only for full sheet fetches without range)
+    if (!range) {
+        const cached = await getCachedSheetData(cacheKey);
+        if (cached) {
+            console.log(`[Sheets] Cache HIT: ${sheetName}`);
+            return cached;
+        }
+    }
+
+    console.log(`[Sheets] Fetching: ${sheetName} from ${spreadsheetId.slice(-8)}...`);
+
     try {
         const sheets = await getSheetsClient();
         const fullRange = range ? `${sheetName}!${range}` : sheetName;
@@ -72,48 +89,47 @@ export const getSheetData = async (sheetName: string, range?: string, spreadshee
             range: fullRange,
         });
 
-        return response.data.values || [];
+        const data = response.data.values || [];
+
+        // Cache the result (only for full sheet fetches)
+        if (!range && data.length > 0) {
+            await setCachedSheetData(cacheKey, data);
+            console.log(`[Sheets] Cached: ${sheetName} (${data.length} rows)`);
+        }
+
+        return data;
     } catch (error) {
-        console.error(`Error fetching sheet ${sheetName} from ${spreadsheetId}:`, error);
+        console.error(`[Sheets] Error fetching ${sheetName}:`, error);
         if (error instanceof Error) {
-            console.error('Error Stack:', error.stack);
             console.error('Error Message:', error.message);
         }
         throw error;
     }
 };
 
-// Fetch data from both current and historical spreadsheets and merge
+// Fetch data from both current and historical spreadsheets and merge (with parallel fetching)
 export const getSheetDataWithHistory = async (sheetName: string, range?: string): Promise<any[][]> => {
-    try {
-        // Fetch from current spreadsheet
-        const currentData = await getSheetData(sheetName, range, SPREADSHEET_ID);
+    console.log(`[Sheets] Fetching with history: ${sheetName}`);
 
-        // Fetch from historical spreadsheet
-        let historicalData: any[][] = [];
-        try {
-            historicalData = await getSheetData(sheetName, range, HISTORICAL_SPREADSHEET_ID);
-        } catch (err) {
-            console.warn(`Historical data not available for sheet ${sheetName}:`, err);
-            // Continue with just current data if historical fails
-        }
+    try {
+        // Parallel fetch from both spreadsheets for better performance
+        const [currentData, historicalData] = await Promise.all([
+            getSheetData(sheetName, range, SPREADSHEET_ID),
+            getSheetData(sheetName, range, HISTORICAL_SPREADSHEET_ID).catch(err => {
+                console.warn(`[Sheets] Historical data not available for ${sheetName}`);
+                return [] as any[][];
+            })
+        ]);
 
         if (historicalData.length === 0) {
+            console.log(`[Sheets] Using current data only for ${sheetName}`);
             return currentData;
         }
 
         // Merge data
-        // Current data has headers, historical should too
-        // We need to:
-        // 1. Take headers from current (row 0 or 1 depending on sheet)
-        // 2. Append all data rows from historical (skip headers)
-        // 3. Append all data rows from current (skip headers)
-
         // For BD GAds and BD GA4, headers are in row 1 (index 1), data starts at row 2
         // For BD Mag and others, headers are in row 0 (index 0), data starts at row 1
-
         const isGAdsOrGA4 = sheetName === SHEETS.BD_GADS || sheetName === SHEETS.BD_GA4;
-        const headerRowIndex = isGAdsOrGA4 ? 1 : 0;
         const dataStartIndex = isGAdsOrGA4 ? 2 : 1;
 
         // Get headers from current data
@@ -124,11 +140,13 @@ export const getSheetDataWithHistory = async (sheetName: string, range?: string)
         const currentRows = currentData.slice(dataStartIndex);
 
         // Combine: headers + historical + current
-        // Historical data comes first (older), then current (newer)
-        return [...headers, ...historicalRows, ...currentRows];
+        const merged = [...headers, ...historicalRows, ...currentRows];
+        console.log(`[Sheets] Merged ${sheetName}: ${historicalRows.length} historical + ${currentRows.length} current = ${merged.length - dataStartIndex} total rows`);
+
+        return merged;
 
     } catch (error) {
-        console.error(`Error fetching merged data for ${sheetName}:`, error);
+        console.error(`[Sheets] Error fetching merged data for ${sheetName}:`, error);
         throw error;
     }
 };

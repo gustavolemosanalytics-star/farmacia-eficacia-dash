@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { aggregateCRMKPIs } from '@/lib/sheets/client';
-import { getCachedData, setCachedData } from '@/lib/cache';
+import { getCachedAggregation, setCachedAggregation } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,23 +10,43 @@ export async function GET(request: Request) {
         const startDateStr = searchParams.get('startDate');
         const endDateStr = searchParams.get('endDate');
 
-        const cacheKey = `crm_${startDateStr || 'all'}_${endDateStr || 'all'}`;
-        const cached = await getCachedData(cacheKey);
-
-        if (cached) {
-            return NextResponse.json({ success: true, data: cached, source: 'cache' });
-        }
-
         const startDate = startDateStr ? new Date(startDateStr) : undefined;
         const endDate = endDateStr ? new Date(endDateStr) : undefined;
 
+        // Check cache with smart TTL (longer for historical data)
+        const cached = await getCachedAggregation<any>('crm', startDate, endDate);
+
+        if (cached.data) {
+            console.log(`[API] crm: Cache ${cached.source.toUpperCase()}${cached.stale ? ' (stale)' : ''}`);
+
+            // If stale, trigger background refresh
+            if (cached.stale) {
+                refreshCRMData(startDate, endDate).catch(console.error);
+            }
+
+            return NextResponse.json({
+                success: true,
+                data: cached.data,
+                source: cached.source,
+                stale: cached.stale
+            });
+        }
+
+        console.log('[API] crm: Fetching fresh data...');
         const data = await aggregateCRMKPIs(startDate, endDate);
 
-        await setCachedData(cacheKey, data);
+        await setCachedAggregation('crm', data, startDate, endDate);
 
         return NextResponse.json({ success: true, data, source: 'api' });
     } catch (error) {
-        console.error('Error fetching CRM data:', error);
+        console.error('[API] Error fetching CRM data:', error);
         return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
     }
+}
+
+async function refreshCRMData(startDate?: Date, endDate?: Date) {
+    console.log('[API] crm: Background refresh starting...');
+    const data = await aggregateCRMKPIs(startDate, endDate);
+    await setCachedAggregation('crm', data, startDate, endDate);
+    console.log('[API] crm: Background refresh complete');
 }
