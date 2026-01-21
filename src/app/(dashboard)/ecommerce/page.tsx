@@ -139,20 +139,69 @@ export default function EcommercePage() {
             .sort((a, b) => b.receita - a.receita)
             .slice(0, 8);
 
-        // Top Products
-        const productMap: { [key: string]: { receita: number; quantidade: number } } = {};
+        // ======= IMPROVED TOP PRODUCTS + ROAS CALCULATION =======
+        // 1. Map costs by campaign from GAds
+        const campaignCosts: Record<string, number> = {};
+        if (gadsKpis?.byCampaign) {
+            gadsKpis.byCampaign.forEach((c: any) => {
+                campaignCosts[c.campaign] = c.spend || 0;
+            });
+        }
+
+        // 2. Aggregate product revenue and track campaign distribution
+        const productData: Record<string, {
+            name: string,
+            receita: number,
+            quantidade: number,
+            campaigns: Record<string, number>
+        }> = {};
+
+        const totalCampaignRevenue: Record<string, number> = {};
+
         filtered.forEach((d: any) => {
-            const prod = d.nomeProduto || d.sku;
-            if (prod) {
-                if (!productMap[prod]) productMap[prod] = { receita: 0, quantidade: 0 };
-                productMap[prod].receita += d.receitaProduto || 0;
-                productMap[prod].quantidade += d.quantidade || 1;
+            const prodName = d.nomeProduto || d.sku;
+            if (!prodName) return;
+
+            if (!productData[prodName]) {
+                productData[prodName] = { name: prodName, receita: 0, quantidade: 0, campaigns: {} };
             }
+
+            const revenue = d.receitaProduto || 0;
+            const campaign = d.campanha || 'Desconhecida';
+
+            productData[prodName].receita += revenue;
+            productData[prodName].quantidade += d.quantidade || 1;
+            productData[prodName].campaigns[campaign] = (productData[prodName].campaigns[campaign] || 0) + revenue;
+
+            totalCampaignRevenue[campaign] = (totalCampaignRevenue[campaign] || 0) + revenue;
         });
-        const topProducts = Object.entries(productMap)
-            .map(([name, data]) => ({ name: name.length > 30 ? name.substring(0, 30) + '...' : name, ...data }))
+
+        // 3. Calculate investment and ROAS per product
+        const topProducts = Object.values(productData)
+            .map(prod => {
+                let investment = 0;
+                Object.entries(prod.campaigns).forEach(([campaign, revenueGenerated]) => {
+                    const cost = campaignCosts[campaign] || 0;
+                    const totalRev = totalCampaignRevenue[campaign] || 0;
+
+                    // Allocate cost proportionally based on revenue share within that campaign
+                    if (totalRev > 0) {
+                        investment += cost * (revenueGenerated / totalRev);
+                    }
+                });
+
+                return {
+                    name: prod.name.length > 30 ? prod.name.substring(0, 30) + '...' : prod.name,
+                    fullName: prod.name,
+                    receita: prod.receita,
+                    quantidade: prod.quantidade,
+                    investimento: investment,
+                    roas: investment > 0 ? prod.receita / investment : 0
+                };
+            })
             .sort((a, b) => b.receita - a.receita)
             .slice(0, 10);
+        // ========================================================
 
         // Revenue by State
         const stateMap: { [key: string]: number } = {};
@@ -168,9 +217,6 @@ export default function EcommercePage() {
             .slice(0, 10);
 
         // For totalReceitaGeral, we want to respect the Status filter but NOT the attribution filter
-        // We already have 'filtered' which respects Status. If filterAtribuicao is ON, 
-        // totalReceitaGeral should probably be the sum of all orders with that Status.
-        // But the user's intent with "Geral" is usually the total of the PERIOD/STATUS.
         const totalReceitaGeral = catalogoData.rawData.filter((d: any) => {
             if (filterStatus) return d.status === filterStatus;
             return d.status?.toLowerCase().includes('complete') ||
@@ -212,7 +258,7 @@ export default function EcommercePage() {
             byState,
             receitaGoogleAds,
         };
-    }, [catalogoData, filterStatus, filterAtribuicao]);
+    }, [catalogoData, filterStatus, filterAtribuicao, gadsKpis]);
 
     // Funnel data
     const funnelMetrics = {
@@ -631,16 +677,12 @@ export default function EcommercePage() {
                                     </thead>
                                     <tbody>
                                         {analytics.topProducts.map((prod, i) => {
-                                            // Calculate proportional investment based on revenue share
-                                            const totalProductRevenue = analytics.topProducts.reduce((s: number, p: any) => s + p.receita, 0);
-                                            const shareRevenue = totalProductRevenue > 0 ? prod.receita / totalProductRevenue : 0;
-                                            const totalInvest = gadsKpis?.spend || 0;
-                                            const investEstimado = totalInvest * shareRevenue * 0.3; // 30% of ads budget for top products
-                                            const productRoas = investEstimado > 0 ? prod.receita / investEstimado : 0;
+                                            const productRoas = prod.roas;
+                                            const investEstimado = prod.investimento;
 
                                             return (
                                                 <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50">
-                                                    <td className="py-2 px-2 text-xs max-w-[150px] truncate" title={prod.name}>{prod.name}</td>
+                                                    <td className="py-2 px-2 text-xs max-w-[150px] truncate" title={prod.fullName}>{prod.name}</td>
                                                     <td className="py-2 px-2 text-right text-xs font-medium text-emerald-600">
                                                         R$ {prod.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
                                                     </td>
@@ -657,7 +699,7 @@ export default function EcommercePage() {
                                 </table>
                             </div>
                             <p className="text-[10px] text-muted-foreground mt-2">
-                                * Investimento estimado proporcionalmente à participação de receita
+                                * Investimento calculado via cruzamento de Campanhas (BD Mag x GAds)
                             </p>
                         </CardContent>
                     </Card>
