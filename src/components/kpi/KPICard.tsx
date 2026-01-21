@@ -13,9 +13,10 @@ interface KPICardProps {
     onClick?: () => void;
     compact?: boolean;
     invertedVariation?: boolean;
+    className?: string;
 }
 
-export function KPICard({ data, onClick, compact = false, invertedVariation = false }: KPICardProps) {
+export function KPICard({ data, onClick, compact = false, invertedVariation = false, className }: KPICardProps) {
     const isPositive = data.tendencia === 'up' ? !invertedVariation : (data.tendencia === 'down' ? invertedVariation : true);
     const isNegative = data.tendencia === 'up' ? invertedVariation : (data.tendencia === 'down' ? !invertedVariation : false);
 
@@ -32,7 +33,8 @@ export function KPICard({ data, onClick, compact = false, invertedVariation = fa
                 "border border-zinc-200/50 dark:border-zinc-800/50",
                 "bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl",
                 "hover:shadow-2xl hover:shadow-zinc-200/50 dark:hover:shadow-black/50 hover:-translate-y-1",
-                onClick && "cursor-pointer"
+                onClick && "cursor-pointer",
+                className
             )}
             onClick={onClick}
             style={{

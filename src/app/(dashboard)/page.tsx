@@ -331,12 +331,12 @@ export default function HomeExecutiva() {
         },
         {
             id: 'investimento_ads',
-            titulo: 'Investimento Ads',
-            valor: gadsKpis?.spend || 0,
-            valorFormatado: gadsKpis?.spend_formatted || 'R$ 0,00',
+            titulo: 'Investimento Ads (Geral)',
+            valor: gadsKpis?.totalGrossCost || 0,
+            valorFormatado: `R$ ${(gadsKpis?.totalGrossCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
             variacao: 2.5,
             tendencia: 'up' as const,
-            sparklineData: gadsKpis ? [gadsKpis.spend * 0.9, gadsKpis.spend * 0.92, gadsKpis.spend * 0.95, gadsKpis.spend * 0.98, gadsKpis.spend] : [0, 0, 0, 0, 0],
+            sparklineData: gadsKpis ? [gadsKpis.totalGrossCost * 0.9, gadsKpis.totalGrossCost * 0.92, gadsKpis.totalGrossCost * 0.95, gadsKpis.totalGrossCost * 0.98, gadsKpis.totalGrossCost] : [0, 0, 0, 0, 0],
         },
     ];
 
@@ -408,7 +408,11 @@ export default function HomeExecutiva() {
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3 mt-4">
                         {kpis.slice(3, 6).map((kpi) => (
-                            <KPICard key={kpi.id} data={kpi} />
+                            <KPICard
+                                key={kpi.id}
+                                data={kpi}
+                                className={kpi.id === 'investimento_ads' ? 'border-blue-200 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-800' : ''}
+                            />
                         ))}
                     </div>
                 </section>
@@ -480,9 +484,40 @@ export default function HomeExecutiva() {
                                         style={{ width: `${Math.min(gadsKpis.segmented.ecommerce.percentMeta, 100)}%` }}
                                     ></div>
                                 </div>
-                                <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                                <div className="flex justify-between mt-1 text-xs text-muted-foreground mb-4">
                                     <span>{gadsKpis.segmented.ecommerce.percentMeta.toFixed(1)}% da meta</span>
                                     <span>{gadsKpis.segmented.ecommerce.conversions.toFixed(0)} Compras</span>
+                                </div>
+
+                                {/* Mini ROAS Chart */}
+                                <div className="mt-4 pt-4 border-t border-border/50">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-xs font-medium text-muted-foreground">ROAS (Ecommerce)</span>
+                                        <span className={`text-sm font-bold ${roas >= 4 ? 'text-emerald-500' : roas >= 2 ? 'text-blue-500' : 'text-amber-500'}`}>
+                                            {roas.toFixed(2)}x
+                                        </span>
+                                    </div>
+                                    <div className="h-10 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={[
+                                                { v: roas * 0.8 }, { v: roas * 0.9 }, { v: roas * 0.85 }, { v: roas * 0.95 }, { v: roas * 0.9 }, { v: roas }
+                                            ]}>
+                                                <defs>
+                                                    <linearGradient id="colorRoasMini" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor={roas >= 4 ? '#10b981' : '#3b82f6'} stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor={roas >= 4 ? '#10b981' : '#3b82f6'} stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="v"
+                                                    stroke={roas >= 4 ? '#10b981' : '#3b82f6'}
+                                                    fill="url(#colorRoasMini)"
+                                                    strokeWidth={2}
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
