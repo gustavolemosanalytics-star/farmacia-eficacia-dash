@@ -10,8 +10,9 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart as RechartsPie, Pie, Cell, Legend, AreaChart, Area, LabelList, Line, LineChart
 } from 'recharts';
-import { useCatalogoData, useGoogleAdsKPIs, useCatalogoYoYData } from '@/hooks/useSheetData';
+import { useCatalogoData, useGoogleAdsKPIs, useCatalogoYoYData, useGA4KPIs } from '@/hooks/useSheetData';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
+import { cn } from '@/lib/utils';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -21,12 +22,13 @@ export default function HomeExecutiva() {
     const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
     const { data: yoyRawData, loading: loadingYoY } = useCatalogoYoYData();
     const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
+    const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
 
     // Filter states
     const [filterStatus, setFilterStatus] = useState<string | null>(null);
     const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
 
-    const loading = loadingCatalogo || loadingGads || loadingYoY;
+    const loading = loadingCatalogo || loadingGads || loadingYoY || loadingGA4;
 
     // Filter options from API
     const filterOptions = catalogoData?.filterOptions || {
@@ -543,16 +545,14 @@ export default function HomeExecutiva() {
                                 const cliques = gadsKpis.clicks || 0;
                                 const conversoes = gadsKpis.conversions || 0;
                                 const pedidos = displayData.totalPedidos || 0;
+                                const sessoesGoogle = ga4Kpis?.googleSessions || 0;
 
                                 // Market benchmarks (industry averages)
                                 const benchmarks = {
-                                    conversionRate: 2.5, // 2.5% click to conversion
-                                    cartToOrder: 65, // 65% conversion to order
+                                    clickToSession: 80, // 80% of clicks should become sessions
+                                    sessionToConv: 3,   // 3% of sessions should become conversions
+                                    convToOrder: 65,    // 65% of conversions should become orders
                                 };
-
-                                // Actual rates
-                                const actualConvRate = cliques > 0 ? (conversoes / cliques) * 100 : 0;
-                                const actualClosureRate = conversoes > 0 ? (pedidos / conversoes) * 100 : 0;
 
                                 const funnelSteps = [
                                     {
@@ -560,73 +560,91 @@ export default function HomeExecutiva() {
                                         value: cliques,
                                         rate: 100,
                                         benchmark: 100,
-                                        gap: 0,
-                                        color: '#4285F4'
+                                        color: '#3b82f6'
+                                    },
+                                    {
+                                        name: 'Sessões (Google)',
+                                        value: sessoesGoogle,
+                                        rate: cliques > 0 ? (sessoesGoogle / cliques) * 100 : 0,
+                                        benchmark: benchmarks.clickToSession,
+                                        label: 'Engajamento (Sessões/Cliques)',
+                                        color: '#8b5cf6'
                                     },
                                     {
                                         name: 'Conversões GAds',
                                         value: Math.round(conversoes),
-                                        rate: actualConvRate,
-                                        benchmark: benchmarks.conversionRate,
-                                        gap: actualConvRate - benchmarks.conversionRate,
-                                        color: '#FBBC05'
+                                        rate: sessoesGoogle > 0 ? (conversoes / sessoesGoogle) * 100 : 0,
+                                        benchmark: benchmarks.sessionToConv,
+                                        label: 'Taxa Conv. (Sessão)',
+                                        color: '#f59e0b'
                                     },
                                     {
                                         name: 'Pedidos Fechados',
                                         value: pedidos,
-                                        rate: actualClosureRate,
-                                        benchmark: benchmarks.cartToOrder,
-                                        gap: actualClosureRate - benchmarks.cartToOrder,
-                                        color: '#34A853'
+                                        rate: conversoes > 0 ? (pedidos / conversoes) * 100 : 0,
+                                        benchmark: benchmarks.convToOrder,
+                                        label: 'Custo de Oportunidade',
+                                        color: '#10b981'
                                     },
                                 ];
 
                                 const maxValue = Math.max(...funnelSteps.map(s => s.value));
 
                                 return (
-                                    <div className="space-y-4">
+                                    <div className="space-y-6">
                                         {funnelSteps.map((step, idx) => (
-                                            <div key={step.name} className="relative">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className="font-medium text-sm">{step.name}</span>
-                                                    <div className="flex items-center gap-4 text-sm">
-                                                        <span className="font-mono">{step.value.toLocaleString('pt-BR')}</span>
+                                            <div key={step.name} className="relative group/funnel">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-xs uppercase tracking-wider text-zinc-500">{step.name}</span>
+                                                        {step.label && (
+                                                            <span className="text-[10px] text-muted-foreground">{step.label}</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-6">
+                                                        <div className="text-right">
+                                                            <p className="text-lg font-black tracking-tighter">{step.value.toLocaleString('pt-BR')}</p>
+                                                        </div>
                                                         {idx > 0 && (
-                                                            <span className={`font-bold ${step.gap >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                                                {step.rate.toFixed(1)}%
-                                                                <span className="text-xs ml-1">
-                                                                    ({step.gap >= 0 ? '+' : ''}{step.gap.toFixed(1)}% vs mercado)
-                                                                </span>
-                                                            </span>
+                                                            <div className={cn(
+                                                                "flex flex-col items-end min-w-[80px]",
+                                                                step.rate >= step.benchmark ? "text-emerald-500" : "text-rose-500"
+                                                            )}>
+                                                                <span className="text-lg font-black tracking-tighter">{step.rate.toFixed(1)}%</span>
+                                                                <span className="text-[9px] font-bold opacity-70 uppercase tracking-tighter">vs {step.benchmark}% benchmark</span>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="h-8 bg-slate-100 dark:bg-zinc-800 rounded-lg overflow-hidden relative">
+
+                                                <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden relative shadow-inner border border-zinc-200/20">
                                                     <div
-                                                        className="h-full rounded-lg transition-all duration-500"
+                                                        className="h-full rounded-full transition-all duration-1000 ease-in-out group-hover/funnel:brightness-110"
                                                         style={{
                                                             width: `${(step.value / maxValue) * 100}%`,
-                                                            backgroundColor: step.color
+                                                            backgroundColor: step.color,
+                                                            boxShadow: `0 0 15px ${step.color}33`
                                                         }}
                                                     />
                                                 </div>
-                                                {idx > 0 && step.gap < 0 && (
-                                                    <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
+
+                                                {idx > 0 && step.rate < step.benchmark && (
+                                                    <div className="flex items-center gap-1.5 mt-2 text-[10px] font-medium text-rose-500/80 bg-rose-500/5 p-1 px-2 rounded-md w-fit">
                                                         <AlertTriangle className="h-3 w-3" />
-                                                        <span>Gap de {Math.abs(step.gap).toFixed(1)} pontos percentuais abaixo do mercado</span>
-                                                    </div>
-                                                )}
-                                                {idx > 0 && step.gap >= 0 && (
-                                                    <div className="flex items-center gap-1 mt-1 text-xs text-green-600">
-                                                        <CheckCircle className="h-3 w-3" />
-                                                        <span>Acima do benchmark de mercado (+{step.gap.toFixed(1)}pp)</span>
+                                                        <span>Identificamos um gap de {(step.benchmark - step.rate).toFixed(1)}pp em relação ao benchmark</span>
                                                     </div>
                                                 )}
                                             </div>
                                         ))}
-                                        <p className="text-xs text-muted-foreground mt-4">
-                                            Benchmarks: Taxa de Conversão 2.5%, Fechamento de Pedidos 65%.
-                                        </p>
+
+                                        <div className="mt-8 p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                                            <p className="text-[10px] text-muted-foreground leading-relaxed text-center">
+                                                * Benchmarks baseados em médias de mercado para o segmento de Farmácias/Drogaria: <br />
+                                                <strong>Click to Session: 80%</strong> |
+                                                <strong> Session to Conversion: 3%</strong> |
+                                                <strong> Conversion to Order: 65%</strong>
+                                            </p>
+                                        </div>
                                     </div>
                                 );
                             })()}

@@ -611,11 +611,23 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
     const totalEngagedSum = filteredSessions.reduce((sum, s) => sum + (s.sessions * (s.engagementRate || 0)), 0);
     const avgEngagementRate = totalSessions > 0 ? totalEngagedSum / totalSessions : 0;
 
+    // Google Specific Sessions (for funnel)
+    const googleSessionsData = filteredSessions.filter(s => s.source?.toLowerCase().includes('google'));
+    const googleSessions = googleSessionsData.reduce((sum, s) => sum + s.sessions, 0);
+    const googleEngagedSum = googleSessionsData.reduce((sum, s) => sum + (s.sessions * (s.engagementRate || 0)), 0);
+    const googleEngagementRate = googleSessions > 0 ? googleEngagedSum / googleSessions : 0;
+
+    const totalGadsClicks = filteredGads.reduce((sum, g) => sum + (g.clicks || 0), 0);
+    const clickToSessionRate = totalGadsClicks > 0 ? googleSessions / totalGadsClicks : 0;
+
     return {
         totalRevenue,
         totalRevenue_formatted: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         totalTransactions,
         totalSessions,
+        googleSessions,
+        googleEngagementRate,
+        clickToSessionRate,
         avgEngagementRate,
         dailyTrend,
         ticketMedio,

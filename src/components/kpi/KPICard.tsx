@@ -16,80 +16,98 @@ interface KPICardProps {
 }
 
 export function KPICard({ data, onClick, compact = false, invertedVariation = false }: KPICardProps) {
-    const sparklineColor = data.tendencia === 'up'
-        ? (invertedVariation ? 'red' : 'green')
-        : data.tendencia === 'down'
-            ? (invertedVariation ? 'green' : 'red')
-            : 'yellow';
+    const isPositive = data.tendencia === 'up' ? !invertedVariation : (data.tendencia === 'down' ? invertedVariation : true);
+    const isNegative = data.tendencia === 'up' ? invertedVariation : (data.tendencia === 'down' ? !invertedVariation : false);
 
-    const metaPercentual = data.meta ? (data.valor / data.meta) * 100 : null;
+    const trendColor = isPositive ? 'text-emerald-500' : (isNegative ? 'text-rose-500' : 'text-amber-500');
+    const trendBg = isPositive ? 'bg-emerald-500/10' : (isNegative ? 'bg-rose-500/10' : 'bg-amber-500/10');
+    const glowColor = isPositive ? 'rgba(16, 185, 129, 0.15)' : (isNegative ? 'rgba(244, 63, 94, 0.15)' : 'rgba(245, 158, 11, 0.15)');
+
+    const sparklineColor = isPositive ? '#10b981' : (isNegative ? '#f43f5e' : '#f59e0b');
 
     return (
         <Card
             className={cn(
-                "group relative overflow-hidden border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 transition-all hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 shadow-sm",
+                "group relative overflow-hidden transition-all duration-300",
+                "border border-zinc-200/50 dark:border-zinc-800/50",
+                "bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl",
+                "hover:shadow-2xl hover:shadow-zinc-200/50 dark:hover:shadow-black/50 hover:-translate-y-1",
                 onClick && "cursor-pointer"
             )}
             onClick={onClick}
+            style={{
+                boxShadow: `0 10px 30px -15px ${glowColor}`
+            } as any}
         >
-            <CardContent className={compact ? "p-3" : "p-4"}>
+            {/* Background Glow */}
+            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-10 blur-3xl transition-all group-hover:opacity-20"
+                style={{ backgroundColor: sparklineColor }} />
+
+            <CardContent className={compact ? "p-4" : "p-6"}>
                 {/* Header */}
-                <div className="flex items-start justify-between mb-2">
-                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{data.titulo}</span>
-                    <VariationBadge value={data.variacao} inverted={invertedVariation} />
+                <div className="flex items-start justify-between mb-4">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500 mb-1">
+                            {data.titulo}
+                        </span>
+                        <div className="flex items-baseline gap-1">
+                            <span className={cn(
+                                "font-black tracking-tight text-zinc-900 dark:text-white leading-none",
+                                compact ? "text-2xl" : "text-3xl"
+                            )}>
+                                {data.valorFormatado}
+                            </span>
+                            {data.unidade === 'R$' && !data.valorFormatado.includes('R$') && (
+                                <span className="text-xs font-bold text-zinc-400">BRL</span>
+                            )}
+                        </div>
+                    </div>
+                    <div className={cn("rounded-full px-2 py-1 text-[10px] font-bold flex items-center gap-1 shadow-sm", trendBg, trendColor)}>
+                        {data.variacao > 0 ? '+' : ''}{data.variacao.toFixed(1)}%
+                    </div>
                 </div>
 
-                {/* Valor Principal */}
-                <div className="mb-3">
-                    <span className={cn(
-                        "font-bold text-zinc-900 dark:text-white",
-                        compact ? "text-xl" : "text-2xl"
-                    )}>
-                        {data.valorFormatado}
-                    </span>
+                {/* Sparkline Space */}
+                <div className="relative h-12 w-full mt-2 overflow-hidden rounded-md transition-all group-hover:scale-105">
+                    <Sparkline data={data.sparklineData} color={sparklineColor} height={48} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-white/20 dark:from-zinc-900/20 to-transparent pointer-events-none" />
                 </div>
 
-                {/* Sparkline */}
-                <div className="mb-3">
-                    <Sparkline data={data.sparklineData} color={sparklineColor} height={compact ? 24 : 32} />
-                </div>
-
-                {/* Meta */}
+                {/* Meta Indicator */}
                 {data.meta && (
-                    <div className="flex items-center justify-between text-[10px]">
-                        <span className="flex items-center gap-1 text-zinc-400 dark:text-zinc-500">
-                            <Target className="h-3 w-3" />
-                            Meta: {data.unidade === 'R$' ? `R$ ${(data.meta / 1000).toFixed(0)}k` :
-                                data.unidade === '%' ? `${data.meta}%` :
-                                    data.meta.toLocaleString('pt-BR')}
-                        </span>
-                        <span className={cn(
-                            "font-medium",
-                            metaPercentual && metaPercentual >= 100 ? "text-emerald-600 dark:text-emerald-400" :
-                                metaPercentual && metaPercentual >= 80 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400"
-                        )}>
-                            {metaPercentual?.toFixed(0)}%
-                        </span>
+                    <div className="mt-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/50">
+                        <div className="flex items-center justify-between text-[10px] mb-1.5">
+                            <span className="flex items-center gap-1.5 font-medium text-zinc-500">
+                                <Target className="h-3 w-3" />
+                                Meta: {data.unidade === 'R$' ? `R$ ${(data.meta / 1000).toFixed(0)}k` : data.meta.toLocaleString()}
+                            </span>
+                            <span className={cn(
+                                "font-bold",
+                                (data.valor / data.meta) >= 1 ? "text-emerald-500" : "text-zinc-400"
+                            )}>
+                                {((data.valor / data.meta) * 100).toFixed(0)}%
+                            </span>
+                        </div>
+                        <div className="h-1 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                            <div
+                                className={cn(
+                                    "h-full transition-all duration-1000 ease-out rounded-full",
+                                    (data.valor / data.meta) >= 1 ? "bg-emerald-500" : "bg-primary"
+                                )}
+                                style={{ width: `${Math.min((data.valor / data.meta) * 100, 100)}%` }}
+                            />
+                        </div>
                     </div>
                 )}
 
-                {/* Ver Drivers Button */}
-                {onClick && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-3 h-7 w-full justify-between bg-zinc-100 dark:bg-zinc-800/50 text-[10px] text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                        Ver Drivers
-                        <ChevronRight className="h-3 w-3" />
-                    </Button>
+                {/* Bottom Detail */}
+                {!data.meta && (
+                    <div className="mt-4 flex items-center justify-between">
+                        <div className="h-1 w-12 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+                        <span className="text-[9px] font-medium text-zinc-400 uppercase tracking-tighter">Live Period Analysis</span>
+                    </div>
                 )}
             </CardContent>
-
-            {/* Indicador de tendência crítica */}
-            {data.variacao < -30 && !invertedVariation && (
-                <div className="absolute right-0 top-0 h-full w-1 bg-gradient-to-b from-red-500 to-transparent" />
-            )}
         </Card>
     );
 }

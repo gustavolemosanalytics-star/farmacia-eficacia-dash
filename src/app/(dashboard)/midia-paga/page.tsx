@@ -13,6 +13,7 @@ import {
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, Legend, LabelList
 } from 'recharts';
+import { cn } from '@/lib/utils';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -245,11 +246,11 @@ export default function MidiaPagaPage() {
         {
             id: 'engajamento',
             titulo: 'Engajamento (GA4)',
-            valor: (ga4Kpis?.avgEngagementRate || 0) * 100,
-            valorFormatado: `${((ga4Kpis?.avgEngagementRate || 0) * 100).toFixed(1)}%`,
+            valor: (ga4Kpis?.clickToSessionRate || 0) * 100,
+            valorFormatado: `${((ga4Kpis?.clickToSessionRate || 0) * 100).toFixed(1)}%`,
             variacao: 0.1,
             tendencia: 'stable' as const,
-            sparklineData: [1, 1.01, 1, 1.02, 1],
+            sparklineData: [1, 1.01, 1.02, 1, 1.01],
             unidade: '%',
         },
     ] : [];
@@ -308,31 +309,47 @@ export default function MidiaPagaPage() {
             {/* KPIs de Mídia */}
             {!loading && (
                 <section>
-                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                        KPIs de Google Ads
+                    <h2 className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">
+                        <div className="h-px w-8 bg-zinc-200 dark:bg-zinc-800" />
+                        Status da Operação Google Ads
                     </h2>
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                        {/* ROAS Card */}
-                        <Card className="rounded-xl border border-border bg-card shadow-sm">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground">ROAS (Retorno)</CardTitle>
-                                <DollarSign className={`h-4 w-4 ${roas >= 1 ? 'text-emerald-500' : 'text-red-500'}`} />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{roas.toFixed(2)}x</div>
-                                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                    <span className={roas >= 1 ? "text-emerald-500 font-medium" : "text-red-500 font-medium"}>
-                                        {roas >= 1 ? 'Positivo' : 'Atenção'}
-                                    </span>
-                                    <span className="opacity-70">
-                                        (Rec: R$ {receitaGoogleAds.toLocaleString('pt-BR', { notation: 'compact' } as any)})
-                                    </span>
-                                </p>
-                            </CardContent>
-                        </Card>
-                        {kpis.map((kpi) => (
-                            <KPICard key={kpi.id} data={kpi} invertedVariation={['cpc', 'cpa', 'cpm'].includes(kpi.id)} />
-                        ))}
+
+                    <div className="space-y-4">
+                        {/* Top row - 4 items */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {/* ROAS Card - Specialized */}
+                            <Card className="group relative overflow-hidden transition-all duration-300 border border-zinc-200/50 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1">
+                                <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-10 blur-3xl transition-all group-hover:opacity-20 bg-emerald-500" />
+                                <CardContent className="p-6">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500 mb-1">ROAS (Retorno)</span>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="font-black tracking-tight text-zinc-900 dark:text-white leading-none text-3xl">{roas.toFixed(2)}x</span>
+                                            </div>
+                                        </div>
+                                        <div className={cn("rounded-full px-2 py-1 text-[10px] font-bold flex items-center gap-1 shadow-sm", roas >= 1.5 ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500")}>
+                                            {roas >= 1.5 ? 'Positivo' : 'Atenção'}
+                                        </div>
+                                    </div>
+                                    <div className="h-1 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
+                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((roas / 3) * 100, 100)}%` }} />
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">Rec. Atribuída: R$ {receitaGoogleAds.toLocaleString('pt-BR')}</p>
+                                </CardContent>
+                            </Card>
+
+                            {kpis.filter(k => ['impressoes', 'cliques', 'conversoes'].includes(k.id)).map((kpi) => (
+                                <KPICard key={kpi.id} data={kpi} />
+                            ))}
+                        </div>
+
+                        {/* Bottom row - 4 items */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {kpis.filter(k => ['ctr', 'cpc', 'cpm', 'engajamento'].includes(k.id)).map((kpi) => (
+                                <KPICard key={kpi.id} data={kpi} invertedVariation={['cpc', 'cpm'].includes(kpi.id)} />
+                            ))}
+                        </div>
                     </div>
                 </section>
             )}
@@ -542,33 +559,36 @@ export default function MidiaPagaPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {ga4Kpis.campaignCrossAnalysis.slice(0, 15).map((row: any, i: number) => {
-                                            const costPerSession = row.sessions > 0 ? row.cost / row.sessions : 0;
-                                            return (
-                                                <tr key={i} className="hover:bg-muted/30 transition-colors">
-                                                    <td className="px-4 py-3 font-medium text-foreground max-w-[250px] truncate" title={row.campaign}>
-                                                        {row.campaign}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-bold text-foreground">
-                                                        {row.sessions.toLocaleString()}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        <Badge variant="outline" className={row.engagementRate > 0.6 ? "border-emerald-500 text-emerald-500" : ""}>
-                                                            {(row.engagementRate * 100).toFixed(1)}%
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        {row.cost > 0 ? `R$ ${row.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        {row.clicks > 0 ? row.clicks.toLocaleString() : '-'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-medium">
-                                                        {costPerSession > 0 ? `R$ ${costPerSession.toFixed(2)}` : '-'}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                                        {ga4Kpis.campaignCrossAnalysis
+                                            .filter((row: any) => row.sessions > 0)
+                                            .slice(0, 15)
+                                            .map((row: any, i: number) => {
+                                                const costPerSession = row.sessions > 0 ? row.cost / row.sessions : 0;
+                                                return (
+                                                    <tr key={i} className="hover:bg-muted/30 transition-colors">
+                                                        <td className="px-4 py-3 font-medium text-foreground max-w-[250px] truncate" title={row.campaign}>
+                                                            {row.campaign}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-bold text-foreground">
+                                                            {row.sessions.toLocaleString()}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <Badge variant="outline" className={row.engagementRate > 0.6 ? "border-emerald-500 text-emerald-500" : ""}>
+                                                                {(row.engagementRate * 100).toFixed(1)}%
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            {row.cost > 0 ? `R$ ${row.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            {row.clicks > 0 ? row.clicks.toLocaleString() : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-medium">
+                                                            {costPerSession > 0 ? `R$ ${costPerSession.toFixed(2)}` : '-'}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                     </tbody>
                                 </table>
                             </div>
