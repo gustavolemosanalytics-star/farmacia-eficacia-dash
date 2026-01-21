@@ -22,18 +22,14 @@ export default function HomeExecutiva() {
     const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
 
     // Filter states
-    const [filterOrigem, setFilterOrigem] = useState<string | null>(null);
-    const [filterMidia, setFilterMidia] = useState<string | null>(null);
-    const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
+    const [filterStatus, setFilterStatus] = useState<string | null>(null);
     const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
 
     const loading = loadingCatalogo || loadingGads;
 
     // Filter options from API
     const filterOptions = catalogoData?.filterOptions || {
-        origens: [],
-        midias: [],
-        categorias: [],
+        status: [],
         atribuicoes: [],
     };
 
@@ -41,18 +37,22 @@ export default function HomeExecutiva() {
     const filteredData = useMemo(() => {
         if (!catalogoData?.rawData) return null;
 
-        let filtered = catalogoData.rawData.filter((d: any) =>
-            d.status?.toLowerCase().includes('complete') ||
-            d.status?.toLowerCase().includes('completo') ||
-            d.status?.toLowerCase().includes('pago') ||
-            d.status?.toLowerCase().includes('enviado') ||
-            d.status?.toLowerCase().includes('faturado') ||
-            !d.status
-        );
+        let filtered = catalogoData.rawData;
 
-        if (filterOrigem) filtered = filtered.filter((d: any) => d.origem === filterOrigem);
-        if (filterMidia) filtered = filtered.filter((d: any) => d.midia === filterMidia);
-        if (filterCategoria) filtered = filtered.filter((d: any) => d.categoria === filterCategoria);
+        if (filterStatus) {
+            filtered = filtered.filter((d: any) => d.status === filterStatus);
+        } else {
+            // Default active statuses if no filter is selected
+            filtered = filtered.filter((d: any) =>
+                d.status?.toLowerCase().includes('complete') ||
+                d.status?.toLowerCase().includes('completo') ||
+                d.status?.toLowerCase().includes('pago') ||
+                d.status?.toLowerCase().includes('enviado') ||
+                d.status?.toLowerCase().includes('faturado') ||
+                !d.status
+            );
+        }
+
         if (filterAtribuicao) filtered = filtered.filter((d: any) => d.atribuicao === filterAtribuicao);
 
         // Calculate KPIs from filtered data
@@ -114,8 +114,9 @@ export default function HomeExecutiva() {
             byAtribuicao,
             byCategory,
             dailyRevenue,
+            filteredRaw: filtered // Pass filtered rows for campaign analysis
         };
-    }, [catalogoData, filterOrigem, filterMidia, filterCategoria, filterAtribuicao]);
+    }, [catalogoData, filterStatus, filterAtribuicao]);
 
     // Use filtered data or default from API
     const displayData = filteredData || {
@@ -127,12 +128,13 @@ export default function HomeExecutiva() {
         byAtribuicao: catalogoData?.byAtribuicao || [],
         byCategory: catalogoData?.byCategory || [],
         dailyRevenue: catalogoData?.dailyRevenue || [],
+        filteredRaw: []
     };
 
-    // Receita Geral: Sempre o total do período sem filtros de atribuição
-    const receitaGeral = catalogoData?.totalReceita || 0;
-    // Receita Mídia Paga: Sempre o total com atribuição Google_Ads
-    const receitaMidiaPaga = catalogoData?.receitaGoogleAds || 0;
+    // Receita Geral: Agora reflete os filtros de Status e Atribuição selecionados
+    const receitaGeral = displayData.totalReceita;
+    // Receita Mídia Paga: Agora reflete os filtros (Status) e a atribuição Google_Ads
+    const receitaMidiaPaga = displayData.receitaGoogleAds;
 
     // Main KPIs
     const kpis = [
@@ -230,9 +232,7 @@ export default function HomeExecutiva() {
                 title="Visão Geral Executiva"
                 description="Visão consolidada de performance • Dados do Magento (BD Mag) e Google Ads"
             >
-                <FilterDropdown label="Origem" options={filterOptions.origens} value={filterOrigem} onChange={setFilterOrigem} />
-                <FilterDropdown label="Mídia" options={filterOptions.midias} value={filterMidia} onChange={setFilterMidia} />
-                <FilterDropdown label="Categoria" options={filterOptions.categorias} value={filterCategoria} onChange={setFilterCategoria} />
+                <FilterDropdown label="Status" options={filterOptions.status} value={filterStatus} onChange={setFilterStatus} />
                 <FilterDropdown label="Atribuição" options={filterOptions.atribuicoes} value={filterAtribuicao} onChange={setFilterAtribuicao} />
             </PageFilters>
 
@@ -439,37 +439,27 @@ export default function HomeExecutiva() {
                     <Card className="border-border bg-card">
                         <CardContent className="pt-6">
                             {(() => {
-                                const impressoes = (gadsKpis.clicks || 0) * 15; // Estimativa
                                 const cliques = gadsKpis.clicks || 0;
                                 const conversoes = gadsKpis.conversions || 0;
                                 const pedidos = displayData.totalPedidos || 0;
 
                                 // Market benchmarks (industry averages)
                                 const benchmarks = {
-                                    ctr: 3.5, // 3.5% CTR benchmark for e-commerce
-                                    conversionRate: 2.5, // 2.5% session to purchase
-                                    cartToOrder: 65, // 65% cart to order completion
+                                    conversionRate: 2.5, // 2.5% click to conversion
+                                    cartToOrder: 65, // 65% conversion to order
                                 };
 
                                 // Actual rates
-                                const actualCTR = impressoes > 0 ? (cliques / impressoes) * 100 : 0;
                                 const actualConvRate = cliques > 0 ? (conversoes / cliques) * 100 : 0;
+                                const actualClosureRate = conversoes > 0 ? (pedidos / conversoes) * 100 : 0;
 
                                 const funnelSteps = [
                                     {
-                                        name: 'Impressões',
-                                        value: impressoes,
+                                        name: 'Cliques Ads',
+                                        value: cliques,
                                         rate: 100,
                                         benchmark: 100,
                                         gap: 0,
-                                        color: '#94a3b8'
-                                    },
-                                    {
-                                        name: 'Cliques',
-                                        value: cliques,
-                                        rate: actualCTR,
-                                        benchmark: benchmarks.ctr,
-                                        gap: actualCTR - benchmarks.ctr,
                                         color: '#4285F4'
                                     },
                                     {
@@ -483,9 +473,9 @@ export default function HomeExecutiva() {
                                     {
                                         name: 'Pedidos Fechados',
                                         value: pedidos,
-                                        rate: conversoes > 0 ? (pedidos / conversoes) * 100 : 0,
+                                        rate: actualClosureRate,
                                         benchmark: benchmarks.cartToOrder,
-                                        gap: conversoes > 0 ? ((pedidos / conversoes) * 100) - benchmarks.cartToOrder : 0,
+                                        gap: actualClosureRate - benchmarks.cartToOrder,
                                         color: '#34A853'
                                     },
                                 ];
@@ -518,15 +508,6 @@ export default function HomeExecutiva() {
                                                             backgroundColor: step.color
                                                         }}
                                                     />
-                                                    {idx > 0 && (
-                                                        <div
-                                                            className="absolute top-0 h-full border-l-2 border-dashed border-red-400"
-                                                            style={{
-                                                                left: `${(funnelSteps[idx - 1].value * (step.benchmark / 100) / maxValue) * 100}%`
-                                                            }}
-                                                            title={`Benchmark: ${step.benchmark}%`}
-                                                        />
-                                                    )}
                                                 </div>
                                                 {idx > 0 && step.gap < 0 && (
                                                     <div className="flex items-center gap-1 mt-1 text-xs text-red-500">
@@ -543,13 +524,102 @@ export default function HomeExecutiva() {
                                             </div>
                                         ))}
                                         <p className="text-xs text-muted-foreground mt-4">
-                                            Benchmarks de mercado: CTR 3.5%, Taxa de Conversão 2.5%, Fechamento de Carrinho 65%. Linha tracejada = benchmark.
+                                            Benchmarks: Taxa de Conversão 2.5%, Fechamento de Pedidos 65%.
                                         </p>
                                     </div>
                                 );
                             })()}
                         </CardContent>
                     </Card>
+                </section>
+            )}
+
+            {/* Análise por Campanha e Tipo de Cliente (BD Mag - Camp) */}
+            {!loading && displayData.filteredRaw && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Análise de Campanhas e Clientes (Fonte: Magento)
+                    </h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Receita por Campanha (Coluna Camp) */}
+                        <Card className="border-border bg-card">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">Top Campanhas (Magento - Coluna Camp)</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {(() => {
+                                        const campStats: Record<string, { receita: number; pedidos: number }> = {};
+                                        displayData.filteredRaw.forEach((d: any) => {
+                                            const camp = d.campanha || 'Outras / Direto';
+                                            if (!campStats[camp]) campStats[camp] = { receita: 0, pedidos: 0 };
+                                            campStats[camp].receita += d.receitaProduto || 0;
+                                            campStats[camp].pedidos += 1;
+                                        });
+
+                                        const sortedStats = Object.entries(campStats)
+                                            .map(([name, data]) => ({ name, ...data }))
+                                            .sort((a, b) => b.receita - a.receita)
+                                            .slice(0, 5);
+
+                                        const totalReceita = sortedStats.reduce((s, d) => s + d.receita, 0);
+
+                                        return sortedStats.map((item, i) => (
+                                            <div key={item.name} className="space-y-1">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="font-medium truncate max-w-[200px]">{item.name}</span>
+                                                    <span className="text-muted-foreground">R$ {item.receita.toLocaleString('pt-BR')} • {item.pedidos} ped.</span>
+                                                </div>
+                                                <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-primary"
+                                                        style={{ width: `${(item.receita / sortedStats[0].receita) * 100}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Status dos Pedidos */}
+                        <Card className="border-border bg-card">
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">Status dos Pedidos (Resumo)</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {(() => {
+                                        const statusStats: Record<string, { receita: number; count: number }> = {};
+                                        displayData.filteredRaw.forEach((d: any) => {
+                                            const status = d.status || 'Sem Status';
+                                            if (!statusStats[status]) statusStats[status] = { receita: 0, count: 0 };
+                                            statusStats[status].receita += d.receitaProduto || 0;
+                                            statusStats[status].count += 1;
+                                        });
+
+                                        const sortedStatus = Object.entries(statusStats)
+                                            .map(([name, data]) => ({ name, ...data }))
+                                            .sort((a, b) => b.receita - a.receita);
+
+                                        return sortedStatus.map((item) => (
+                                            <div key={item.name} className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 dark:bg-zinc-800/50">
+                                                <div className="flex items-center gap-2">
+                                                    <Activity className="h-3 w-3 text-muted-foreground" />
+                                                    <span className="capitalize">{item.name}</span>
+                                                </div>
+                                                <div className="flex gap-4">
+                                                    <span className="font-medium">R$ {item.receita.toLocaleString('pt-BR')}</span>
+                                                    <span className="text-muted-foreground">{item.count} ped.</span>
+                                                </div>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </section>
             )}
 

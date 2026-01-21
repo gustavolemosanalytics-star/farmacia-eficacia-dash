@@ -165,46 +165,53 @@ export default function CrmPage() {
             });
         });
 
-        // Better Logic for LTV Curve: 
-        // Group customers by Cohort Month. Calculate their avg cumulative LTV at month 0, 1, 2...
-        // Then average across cohorts or show aggregate line.
-        const ltvPerAgeMap: { [age: number]: number[] } = {};
-
-        customers.forEach(cust => {
-            let currentLTV = 0;
-            const customerLTVAtAge: { [age: number]: number } = {};
-
-            const sortedOrders = cust.orders.sort((a, b) => a.orderDate.getTime() - b.orderDate.getTime());
-
-            sortedOrders.forEach(order => {
-                const diffMonths = Math.floor((order.orderDate.getTime() - cust.firstOrder.getTime()) / (1000 * 60 * 60 * 24 * 30));
-                if (diffMonths > 12) return; // Limit to 12 months
-                currentLTV += order.receitaProduto || 0;
-                customerLTVAtAge[diffMonths] = currentLTV;
+        // Create keys for months 0 to 6
+        const months = [0, 1, 2, 3, 4, 5, 6];
+        const ltvEvolutionData = months.map(age => {
+            // Only average customers who joined long enough ago to have reached this 'age'
+            const currentPeriodEnd = new Date();
+            const validCustomers = customers.filter(cust => {
+                const custAgeMonths = Math.floor((currentPeriodEnd.getTime() - cust.firstOrder.getTime()) / (1000 * 60 * 60 * 24 * 30));
+                return custAgeMonths >= age;
             });
 
-            // Fill gaps (carry over LTV)
-            let maxAge = Math.max(...Object.keys(customerLTVAtAge).map(Number));
-            if (maxAge < 0) maxAge = 0;
+            if (validCustomers.length === 0) return { age, avgLTV: 0 };
 
-            let lastVal = 0;
-            for (let i = 0; i <= 6; i++) { // Show 6 months curve
-                if (customerLTVAtAge[i] !== undefined) lastVal = customerLTVAtAge[i];
-                // Only add if the customer has "lived" this long? 
-                // To avoid dropping off, we assume LTV holds steady if no churn.
-                // But we should only count customers who satisfy the age condition (e.g. joined > i months ago)
-                // For simplicity with this dataset: assume all customers contribute to averages
-                if (!ltvPerAgeMap[i]) ltvPerAgeMap[i] = [];
-                ltvPerAgeMap[i].push(lastVal);
-            }
-        });
+            const sumLTV = validCustomers.reduce((sum, cust) => {
+                let ltvAtAge = 0;
+                cust.orders.forEach(o => {
+                    const oAge = Math.floor((o.orderDate.getTime() - cust.firstOrder.getTime()) / (1000 * 60 * 60 * 24 * 30));
+                    if (oAge <= age) ltvAtAge += o.receitaProduto || 0;
+                });
+                return sum + ltvAtAge;
+            }, 0);
 
-        const ltvEvolutionData = Object.keys(ltvPerAgeMap).map(key => {
-            const age = Number(key);
-            const values = ltvPerAgeMap[age];
-            const avg = values.reduce((a, b) => a + b, 0) / values.length;
-            return { age, avgLTV: avg };
+            return { age, avgLTV: sumLTV / validCustomers.length };
+        }).filter(d => d.avgLTV > 0);
+
+        // --- Category Affinity ---
+        const categoryAffinityMap: { [cat: string]: { total: number, uniqueCust: Set<string> } } = {};
+        filtered.forEach((d: any) => {
+            const cat = d.categoria?.split(',')[0]?.trim() || 'Outros';
+            if (!categoryAffinityMap[cat]) categoryAffinityMap[cat] = { total: 0, uniqueCust: new Set() };
+            categoryAffinityMap[cat].total += d.receitaProduto || 0;
+            categoryAffinityMap[cat].uniqueCust.add(d.cpfCliente);
         });
+        const categoryAffinity = Object.entries(categoryAffinityMap).map(([name, data]) => ({
+            name,
+            value: data.total,
+            customers: data.uniqueCust.size
+        })).sort((a, b) => b.value - a.value).slice(0, 8);
+
+        // --- Purchase Frequency Distribution ---
+        const freqDist = {
+            '1 pedido': customers.filter(c => c.totalPedidos === 1).length,
+            '2 pedidos': customers.filter(c => c.totalPedidos === 2).length,
+            '3-5 pedidos': customers.filter(c => c.totalPedidos >= 3 && c.totalPedidos <= 5).length,
+            '6-10 pedidos': customers.filter(c => c.totalPedidos >= 6 && c.totalPedidos <= 10).length,
+            '10+ pedidos': customers.filter(c => c.totalPedidos > 10).length,
+        };
+        const freqDistData = Object.entries(freqDist).map(([name, value]) => ({ name, value }));
 
         // --- RFM Analysis Data for Scatter ---
         const rfmData = customers.map(c => {
@@ -277,7 +284,9 @@ export default function CrmPage() {
             topLTVCustomers,
             cohortData,
             ltvEvolutionData,
-            rfmData
+            rfmData,
+            categoryAffinity,
+            freqDistData
         };
     }, [catalogoData]);
 
@@ -419,6 +428,58 @@ export default function CrmPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Category Affinity */}
+                        <Card className="border-border bg-card">
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <ShoppingCart className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-sm font-medium">Afinidade por Categoria (Volume Monetário)</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart data={analytics.categoryAffinity} layout="vertical" margin={{ left: 10, right: 30, top: 10, bottom: 10 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                        <XAxis type="number" hide />
+                                        <YAxis type="category" dataKey="name" width={120} stroke="var(--muted-foreground)" fontSize={11} />
+                                        <Tooltip formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR')}`]} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                                            {analytics.categoryAffinity.map((_, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+
+                        {/* Frequency Distribution */}
+                        <Card className="border-border bg-card">
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <RefreshCw className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-sm font-medium">Distribuição de Frequência de Pedidos</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <PieChart>
+                                        <Pie
+                                            data={analytics.freqDistData}
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {analytics.freqDistData.map((_, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Card className="border-border bg-card">

@@ -55,13 +55,14 @@ export function DateRangePicker({
     // Sync from props when opening (or when props change while closed, though usually unmounted if conditional)
     // Actually, improved sync logic: only sync if !isOpen or if props changed meaningfully.
     // But simplest is: sync when opening.
+    // Sync from props ONLY when opening to avoid interrupting user selection
     React.useEffect(() => {
         if (isOpen) {
             setTempDate(date);
-            if (compareDate) setTempCompareDate(compareDate); // Sync compare date
+            if (compareDate) setTempCompareDate(compareDate);
             setTempIsComparing(isComparing);
         }
-    }, [isOpen, date, compareDate, isComparing]);
+    }, [isOpen]); // Only trigger on open state change
 
     // Auto-calculate comparison period
     // Auto-calculate comparison period (LOCALLY)

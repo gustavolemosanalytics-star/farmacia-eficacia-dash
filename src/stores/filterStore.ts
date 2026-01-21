@@ -42,11 +42,17 @@ interface FilterState {
 // Use fixed dates to avoid hydration mismatch (server vs client time difference)
 const getInitialDates = () => {
     const now = new Date();
-    // Set to start of today to avoid time component causing hydration issues
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-    return { inicio: thirtyDaysAgo, fim: today };
+    // Start of current month
+    const inicio = new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0, 0);
+    // Yesterday
+    const fim = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12, 0, 0, 0);
+
+    // Safety check: if today is the 1st, set 'inicio' to 1st of previous month
+    if (now.getDate() === 1) {
+        inicio.setMonth(now.getMonth() - 1);
+    }
+
+    return { inicio, fim };
 };
 
 const dates = getInitialDates();

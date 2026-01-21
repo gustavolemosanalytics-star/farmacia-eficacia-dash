@@ -761,6 +761,7 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
     const filterMidias = [...new Set(data.map(d => d.midia).filter(Boolean))].sort();
     const filterCategorias = [...new Set(data.map(d => d.categoria).filter(Boolean))].sort();
     const filterAtribuicoes = [...new Set(data.map(d => d.atribuicao).filter(Boolean))].sort();
+    const filterStatus = [...new Set(data.map(d => d.status).filter(Boolean))].sort();
 
     // Daily Revenue (Real Data)
     const dailyRevenueMap: { [key: string]: { receita: number; pedidos: number } } = {};
@@ -813,6 +814,7 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
             midias: filterMidias,
             categorias: filterCategorias,
             atribuicoes: filterAtribuicoes,
+            status: filterStatus,
         },
         rawData: data,
     };

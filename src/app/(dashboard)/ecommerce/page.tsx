@@ -24,28 +24,32 @@ export default function EcommercePage() {
 
     const loading = loadingGads || loadingCatalogo || loadingGA4;
 
-    const [filterOrigem, setFilterOrigem] = useState<string | null>(null);
+    const [filterStatus, setFilterStatus] = useState<string | null>(null);
     const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
-    const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
 
-    const filterOptions = catalogoData?.filterOptions || { origens: [], atribuicoes: [], categorias: [] };
+    const filterOptions = catalogoData?.filterOptions || { status: [], atribuicoes: [] };
 
     // Analytics and Insights
     const analytics = useMemo(() => {
         if (!catalogoData?.rawData) return null;
 
-        let filtered = catalogoData.rawData.filter((d: any) =>
-            d.status?.toLowerCase().includes('complete') ||
-            d.status?.toLowerCase().includes('completo') ||
-            d.status?.toLowerCase().includes('pago') ||
-            d.status?.toLowerCase().includes('enviado') ||
-            d.status?.toLowerCase().includes('faturado') ||
-            !d.status
-        );
+        let filtered = catalogoData.rawData;
 
-        if (filterOrigem) filtered = filtered.filter((d: any) => d.origem === filterOrigem);
+        if (filterStatus) {
+            filtered = filtered.filter((d: any) => d.status === filterStatus);
+        } else {
+            // Default active statuses
+            filtered = filtered.filter((d: any) =>
+                d.status?.toLowerCase().includes('complete') ||
+                d.status?.toLowerCase().includes('completo') ||
+                d.status?.toLowerCase().includes('pago') ||
+                d.status?.toLowerCase().includes('enviado') ||
+                d.status?.toLowerCase().includes('faturado') ||
+                !d.status
+            );
+        }
+
         if (filterAtribuicao) filtered = filtered.filter((d: any) => d.atribuicao === filterAtribuicao);
-        if (filterCategoria) filtered = filtered.filter((d: any) => d.categoria?.includes(filterCategoria));
 
         // Basic metrics
         const totalReceita = filtered.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
@@ -163,14 +167,37 @@ export default function EcommercePage() {
             .sort((a, b) => b.value - a.value)
             .slice(0, 10);
 
-        // ROAS calculation (specifically for Google_Ads)
-        const receitaGoogleAds = (catalogoData?.rawData as any[])?.filter(d =>
-            d.atribuicao?.toLowerCase().includes('google_ads')
-        ).reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0) || 0;
+        // For totalReceitaGeral, we want to respect the Status filter but NOT the attribution filter
+        // We already have 'filtered' which respects Status. If filterAtribuicao is ON, 
+        // totalReceitaGeral should probably be the sum of all orders with that Status.
+        // But the user's intent with "Geral" is usually the total of the PERIOD/STATUS.
+        const totalReceitaGeral = catalogoData.rawData.filter((d: any) => {
+            if (filterStatus) return d.status === filterStatus;
+            return d.status?.toLowerCase().includes('complete') ||
+                d.status?.toLowerCase().includes('completo') ||
+                d.status?.toLowerCase().includes('pago') ||
+                d.status?.toLowerCase().includes('enviado') ||
+                d.status?.toLowerCase().includes('faturado') ||
+                !d.status;
+        }).reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+
+        // ROAS calculation (specifically for Google_Ads, respecting current Status)
+        const receitaGoogleAds = catalogoData.rawData.filter((d: any) => {
+            const matchesAtrib = d.atribuicao?.toLowerCase().includes('google_ads');
+            const matchesStatus = filterStatus ? (d.status === filterStatus) : (
+                d.status?.toLowerCase().includes('complete') ||
+                d.status?.toLowerCase().includes('completo') ||
+                d.status?.toLowerCase().includes('pago') ||
+                d.status?.toLowerCase().includes('enviado') ||
+                d.status?.toLowerCase().includes('faturado') ||
+                !d.status
+            );
+            return matchesAtrib && matchesStatus;
+        }).reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
 
         return {
             totalReceita,
-            totalReceitaGeral: catalogoData?.totalReceita || 0,
+            totalReceitaGeral,
             totalPedidos,
             ticketMedio,
             totalClientes: uniqueClients.size,
@@ -185,20 +212,18 @@ export default function EcommercePage() {
             byState,
             receitaGoogleAds,
         };
-    }, [catalogoData, filterOrigem, filterAtribuicao, filterCategoria]);
+    }, [catalogoData, filterStatus, filterAtribuicao]);
 
     // Funnel data
     const funnelMetrics = {
         clicks: gadsKpis?.clicks || 0,
-        impressions: (gadsKpis?.clicks || 0) * 50,
         conversionsGads: gadsKpis?.conversions || 0,
         pedidos: analytics?.totalPedidos || 0,
     };
 
     const funnelData = [
-        { name: 'Impressões', value: funnelMetrics.impressions, fill: FUNNEL_COLORS[0] },
         { name: 'Cliques', value: funnelMetrics.clicks, fill: FUNNEL_COLORS[1] },
-        { name: 'Conversões GAds', value: Math.round(funnelMetrics.conversionsGads), fill: FUNNEL_COLORS[2] },
+        { name: 'Conv. GAds', value: Math.round(funnelMetrics.conversionsGads), fill: FUNNEL_COLORS[2] },
         { name: 'Pedidos', value: funnelMetrics.pedidos, fill: FUNNEL_COLORS[4] },
     ];
 
@@ -208,7 +233,6 @@ export default function EcommercePage() {
 
     // Conversion rates
     const rates = {
-        ctr: funnelMetrics.impressions > 0 ? (funnelMetrics.clicks / funnelMetrics.impressions * 100).toFixed(2) : '0',
         conversionRate: funnelMetrics.clicks > 0 ? (funnelMetrics.conversionsGads / funnelMetrics.clicks * 100).toFixed(2) : '0',
     };
 
@@ -327,12 +351,11 @@ export default function EcommercePage() {
     return (
         <div className="space-y-6">
             <PageFilters
-                title="Ecommerce"
-                description="Análise completa de vendas e performance • Dados do BD Mag, Google Ads e GA4"
+                title="Performance de Ecommerce"
+                description="Painel tático de performance e comportamento de compra"
             >
-                <FilterDropdown label="Origem" options={filterOptions.origens} value={filterOrigem} onChange={setFilterOrigem} />
+                <FilterDropdown label="Status" options={filterOptions.status} value={filterStatus} onChange={setFilterStatus} />
                 <FilterDropdown label="Atribuição" options={filterOptions.atribuicoes} value={filterAtribuicao} onChange={setFilterAtribuicao} />
-                <FilterDropdown label="Categoria" options={filterOptions.categorias} value={filterCategoria} onChange={setFilterCategoria} />
             </PageFilters>
 
             {loading && (
@@ -393,22 +416,20 @@ export default function EcommercePage() {
                             {(() => {
                                 // Market benchmarks
                                 const benchmarks = {
-                                    ctr: 3.5,
                                     convRate: 2.5,
                                     orderRate: 65
                                 };
 
-                                const actualCTR = funnelMetrics.impressions > 0 ? (funnelMetrics.clicks / funnelMetrics.impressions) * 100 : 0;
                                 const actualConvRate = funnelMetrics.clicks > 0 ? (funnelMetrics.conversionsGads / funnelMetrics.clicks) * 100 : 0;
                                 const actualOrderRate = funnelMetrics.conversionsGads > 0 ? (funnelMetrics.pedidos / funnelMetrics.conversionsGads) * 100 : 0;
 
                                 const funnelWithGaps = [
-                                    { name: 'Impressões', value: funnelMetrics.impressions, rate: null, benchmark: null, gap: null, fill: FUNNEL_COLORS[0] },
-                                    { name: 'Cliques', value: funnelMetrics.clicks, rate: actualCTR, benchmark: benchmarks.ctr, gap: actualCTR - benchmarks.ctr, fill: FUNNEL_COLORS[1] },
+                                    { name: 'Cliques Ads', value: funnelMetrics.clicks, rate: null, benchmark: null, gap: null, fill: FUNNEL_COLORS[1] },
                                     { name: 'Conv. GAds', value: Math.round(funnelMetrics.conversionsGads), rate: actualConvRate, benchmark: benchmarks.convRate, gap: actualConvRate - benchmarks.convRate, fill: FUNNEL_COLORS[2] },
                                     { name: 'Pedidos', value: funnelMetrics.pedidos, rate: actualOrderRate, benchmark: benchmarks.orderRate, gap: actualOrderRate - benchmarks.orderRate, fill: FUNNEL_COLORS[4] },
                                 ];
 
+                                const maxValue = Math.max(...funnelWithGaps.map(s => s.value));
                                 return (
                                     <div className="space-y-3">
                                         {funnelWithGaps.map((step, idx) => (
@@ -419,9 +440,9 @@ export default function EcommercePage() {
                                                         <div
                                                             className="h-full rounded transition-all"
                                                             style={{
-                                                                width: `${(step.value / funnelMetrics.impressions) * 100}%`,
+                                                                width: `${(step.value / maxValue) * 100}%`,
                                                                 backgroundColor: step.fill,
-                                                                minWidth: step.value > 0 ? '20px' : '0'
+                                                                minWidth: step.value > 0 ? '5px' : '0'
                                                             }}
                                                         />
                                                     </div>
@@ -442,7 +463,7 @@ export default function EcommercePage() {
                                             </div>
                                         ))}
                                         <p className="text-[10px] text-muted-foreground mt-2">
-                                            Benchmarks: CTR 3.5% | Conv 2.5% | Fechamento 65%
+                                            Benchmarks: Conv (Ads) 2.5% | Fechamento 65%
                                         </p>
                                     </div>
                                 );
@@ -457,17 +478,13 @@ export default function EcommercePage() {
                             <CardTitle className="text-sm font-medium">Taxas de Conversão</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg text-center">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">CTR</p>
-                                    <p className="text-2xl font-bold">{rates.ctr}%</p>
-                                </div>
-                                <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg text-center">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Conv. Rate</p>
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Taxa Conv. Ads</p>
                                     <p className="text-2xl font-bold">{rates.conversionRate}%</p>
                                 </div>
                                 <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg text-center">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">ROAS</p>
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">ROAS (Pago)</p>
                                     <p className="text-2xl font-bold text-emerald-600">{roas.toFixed(2)}x</p>
                                 </div>
                                 <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg text-center">
@@ -544,16 +561,38 @@ export default function EcommercePage() {
                             <CardTitle className="text-sm font-medium">Top Categorias por Receita</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={analytics.topCategories} margin={{ top: 20, right: 30, left: 0, bottom: 80 }}>
+                            <ResponsiveContainer width="100%" height={320}>
+                                <BarChart data={analytics.topCategories} margin={{ top: 40, right: 30, left: 10, bottom: 90 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={9} angle={-45} textAnchor="end" height={80} />
-                                    <YAxis stroke="var(--muted-foreground)" fontSize={10} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                                    <Tooltip formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                                    <Bar dataKey="receita" fill="#10b981" radius={[4, 4, 0, 0]} name="Receita">
+                                    <XAxis
+                                        dataKey="name"
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={10}
+                                        angle={-35}
+                                        textAnchor="end"
+                                        height={100}
+                                        interval={0}
+                                    />
+                                    <YAxis
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={10}
+                                        tickFormatter={(v) => `R$${(v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)}`}
+                                    />
+                                    <Tooltip
+                                        formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Bar dataKey="receita" radius={[6, 6, 0, 0]} name="Receita" barSize={40}>
                                         {analytics.topCategories.map((_, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
+                                        <LabelList
+                                            dataKey="receita"
+                                            position="top"
+                                            formatter={(v: any) => `R$ ${(Number(v) / 1000).toFixed(1)}k`}
+                                            style={{ fill: 'var(--muted-foreground)', fontSize: '11px', fontWeight: '500' }}
+                                            offset={10}
+                                        />
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
