@@ -19,9 +19,9 @@ const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'
 import { BrazilMap } from '@/components/charts/BrazilMap';
 
 export default function HomeExecutiva() {
-    const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
+    const { data: catalogoData, comparisonData: catalogoComparisonData, loading: loadingCatalogo } = useCatalogoData();
     const { data: yoyRawData, loading: loadingYoY } = useCatalogoYoYData();
-    const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
+    const { kpis: gadsKpis, comparisonKpis: gadsComparisonKpis, loading: loadingGads } = useGoogleAdsKPIs();
     const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
 
     // Filter states
@@ -40,81 +40,140 @@ export default function HomeExecutiva() {
     const filteredData = useMemo(() => {
         if (!catalogoData?.rawData) return null;
 
-        let filtered = catalogoData.rawData;
+        // Helper function to aggregate data
+        const aggregateData = (data: any[]) => {
+            if (!data) return null;
 
-        if (filterStatus) {
-            filtered = filtered.filter((d: any) => d.status === filterStatus);
-        } else {
-            // Default active statuses if no filter is selected
-            filtered = filtered.filter((d: any) =>
-                d.status?.toLowerCase().includes('complete') ||
-                d.status?.toLowerCase().includes('completo') ||
-                d.status?.toLowerCase().includes('pago') ||
-                d.status?.toLowerCase().includes('enviado') ||
-                d.status?.toLowerCase().includes('faturado') ||
-                !d.status
-            );
-        }
+            let filtered = data;
 
-        if (filterAtribuicao) filtered = filtered.filter((d: any) => d.atribuicao === filterAtribuicao);
-
-        // Calculate KPIs from filtered data
-        const totalReceita = filtered.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
-        const uniqueOrders = new Set(filtered.map((d: any) => d.pedido).filter(Boolean));
-        const totalPedidos = uniqueOrders.size || filtered.length;
-        const ticketMedio = totalPedidos > 0 ? totalReceita / totalPedidos : 0;
-        const uniqueClients = new Set(filtered.map((d: any) => d.cpfCliente).filter(Boolean));
-
-        // Revenue from Google Ads attribution for ROAS calculation
-        const receitaGoogleAds = filtered
-            .filter((d: any) => d.atribuicao === 'Google_Ads')
-            .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
-
-        // Revenue for ROAS calculation (Atribuição != Vendedor and != Outros)
-        const receitaParaROAS = filtered
-            .filter((d: any) => {
-                const atrib = (d.atribuicao || '').toLowerCase();
-                return atrib !== 'vendedor' && atrib !== 'outros' && atrib !== '';
-            })
-            .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
-
-        // Revenue by Atribuição for chart
-        const atribuicaoRevenue: { [key: string]: number } = {};
-        filtered.forEach((d: any) => {
-            const atrib = d.atribuicao || 'Não identificado';
-            atribuicaoRevenue[atrib] = (atribuicaoRevenue[atrib] || 0) + (d.receitaProduto || 0);
-        });
-        const byAtribuicao = Object.entries(atribuicaoRevenue)
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value);
-
-        // Revenue by Category (excluding items without category)
-        const categoryRevenue: { [key: string]: number } = {};
-        filtered.forEach((d: any) => {
-            const cat = d.categoria;
-            if (cat && cat.trim() !== '') {
-                categoryRevenue[cat] = (categoryRevenue[cat] || 0) + (d.receitaProduto || 0);
+            if (filterStatus) {
+                filtered = filtered.filter((d: any) => d.status === filterStatus);
+            } else {
+                filtered = filtered.filter((d: any) =>
+                    d.status?.toLowerCase().includes('complete') ||
+                    d.status?.toLowerCase().includes('completo') ||
+                    d.status?.toLowerCase().includes('pago') ||
+                    d.status?.toLowerCase().includes('enviado') ||
+                    d.status?.toLowerCase().includes('faturado') ||
+                    !d.status
+                );
             }
-        });
-        const byCategory = Object.entries(categoryRevenue)
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 8);
 
-        // Daily Revenue
-        const dailyRevenueMap: { [key: string]: { receita: number; pedidos: number } } = {};
-        filtered.forEach((d: any) => {
-            const dateRaw = d.data || d.dataTransacao;
-            if (dateRaw) {
-                const key = dateRaw.split(' ')[0];
-                if (!dailyRevenueMap[key]) dailyRevenueMap[key] = { receita: 0, pedidos: 0 };
-                dailyRevenueMap[key].receita += d.receitaProduto || 0;
-                dailyRevenueMap[key].pedidos += 1;
-            }
-        });
-        const dailyRevenue = Object.entries(dailyRevenueMap)
-            .map(([date, val]) => ({ date, receita: val.receita, pedidos: val.pedidos }))
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            if (filterAtribuicao) filtered = filtered.filter((d: any) => d.atribuicao === filterAtribuicao);
+
+            const totalReceita = filtered.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+            const uniqueOrders = new Set(filtered.map((d: any) => d.pedido).filter(Boolean));
+            const totalPedidos = uniqueOrders.size || filtered.length;
+            const ticketMedio = totalPedidos > 0 ? totalReceita / totalPedidos : 0;
+            const uniqueClients = new Set(filtered.map((d: any) => d.cpfCliente).filter(Boolean));
+
+            const receitaGoogleAds = filtered
+                .filter((d: any) => d.atribuicao === 'Google_Ads')
+                .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+
+            const receitaParaROAS = filtered
+                .filter((d: any) => {
+                    const atrib = (d.atribuicao || '').toLowerCase();
+                    return atrib !== 'vendedor' && atrib !== 'outros' && atrib !== '';
+                })
+                .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+
+            // Additional aggregations for charts (only needed for main data, but harmless here)
+            const atribuicaoRevenue: { [key: string]: number } = {};
+            filtered.forEach((d: any) => {
+                const atrib = d.atribuicao || 'Não identificado';
+                atribuicaoRevenue[atrib] = (atribuicaoRevenue[atrib] || 0) + (d.receitaProduto || 0);
+            });
+            const byAtribuicao = Object.entries(atribuicaoRevenue)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value);
+
+            const categoryRevenue: { [key: string]: number } = {};
+            filtered.forEach((d: any) => {
+                const cat = d.categoria;
+                if (cat && cat.trim() !== '') {
+                    categoryRevenue[cat] = (categoryRevenue[cat] || 0) + (d.receitaProduto || 0);
+                }
+            });
+            const byCategory = Object.entries(categoryRevenue)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 8);
+
+            const dailyRevenueMap: { [key: string]: { receita: number; pedidos: number } } = {};
+            filtered.forEach((d: any) => {
+                const dateRaw = d.data || d.dataTransacao;
+                if (dateRaw) {
+                    const key = dateRaw.split(' ')[0];
+                    if (!dailyRevenueMap[key]) dailyRevenueMap[key] = { receita: 0, pedidos: 0 };
+                    dailyRevenueMap[key].receita += d.receitaProduto || 0;
+                    dailyRevenueMap[key].pedidos += 1;
+                }
+            });
+            const dailyRevenue = Object.entries(dailyRevenueMap)
+                .map(([date, val]) => ({ date, receita: val.receita, pedidos: val.pedidos }))
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+            const dailyAtribuicaoMap: { [key: string]: { [atrib: string]: number } } = {};
+            filtered.forEach((d: any) => {
+                const dateRaw = d.data || d.dataTransacao;
+                if (dateRaw) {
+                    const key = dateRaw.split(' ')[0];
+                    const atrib = d.atribuicao || 'Não identificado';
+                    if (!dailyAtribuicaoMap[key]) {
+                        dailyAtribuicaoMap[key] = {};
+                    }
+                    dailyAtribuicaoMap[key][atrib] = (dailyAtribuicaoMap[key][atrib] || 0) + (d.receitaProduto || 0);
+                }
+            });
+
+            const allAtribuicoes: string[] = Array.from(new Set(filtered.map((d: any) => (d.atribuicao || 'Não identificado') as string)));
+            const dailyRevenueByAtribuicao = Object.entries(dailyAtribuicaoMap)
+                .map(([date, atribData]) => {
+                    const entry: any = { date };
+                    allAtribuicoes.forEach((atrib: string) => {
+                        entry[atrib] = atribData[atrib] || 0;
+                    });
+                    return entry;
+                })
+                .sort((a, b) => {
+                    const dateA = a.date.includes('/') ? new Date(a.date.split('/').reverse().join('-')) : new Date(a.date);
+                    const dateB = b.date.includes('/') ? new Date(b.date.split('/').reverse().join('-')) : new Date(b.date);
+                    return dateA.getTime() - dateB.getTime();
+                });
+
+            return {
+                totalReceita,
+                totalPedidos,
+                ticketMedio,
+                totalClientes: uniqueClients.size,
+                receitaGoogleAds,
+                receitaParaROAS,
+                byAtribuicao,
+                byCategory,
+                dailyRevenue,
+                dailyRevenueByAtribuicao,
+                allAtribuicoes,
+                filteredRaw: filtered,
+            };
+        };
+
+        // Current Period Aggregation
+        const current = aggregateData(catalogoData.rawData);
+
+        // Comparison Period Aggregation
+        const comparison = catalogoComparisonData?.rawData ? aggregateData(catalogoComparisonData.rawData) : null;
+
+        // Calculate Variations
+        const calcVar = (curr: number, prev: number) => prev > 0 ? ((curr - prev) / prev) * 100 : 0;
+
+        const variations = {
+            totalReceita: comparison ? calcVar(current?.totalReceita || 0, comparison.totalReceita) : 0,
+            receitaGoogleAds: comparison ? calcVar(current?.receitaGoogleAds || 0, comparison.receitaGoogleAds) : 0,
+            totalPedidos: comparison ? calcVar(current?.totalPedidos || 0, comparison.totalPedidos) : 0,
+            ticketMedio: comparison ? calcVar(current?.ticketMedio || 0, comparison.ticketMedio) : 0,
+            totalClientes: comparison ? calcVar(current?.totalClientes || 0, comparison.totalClientes) : 0,
+        };
 
         // ======= YoY ANALYSIS DATA =======
         const currentYear = new Date().getFullYear(); // 2026
@@ -200,48 +259,9 @@ export default function HomeExecutiva() {
             .sort((a, b) => b.growth - a.growth)
             .slice(0, 6);
 
-        // Daily Revenue by Atribuição for line chart
-        const dailyAtribuicaoMap: { [key: string]: { [atrib: string]: number } } = {};
-        filtered.forEach((d: any) => {
-            const dateRaw = d.data || d.dataTransacao;
-            if (dateRaw) {
-                const key = dateRaw.split(' ')[0];
-                const atrib = d.atribuicao || 'Não identificado';
-                if (!dailyAtribuicaoMap[key]) {
-                    dailyAtribuicaoMap[key] = {};
-                }
-                dailyAtribuicaoMap[key][atrib] = (dailyAtribuicaoMap[key][atrib] || 0) + (d.receitaProduto || 0);
-            }
-        });
-
-        const allAtribuicoes: string[] = Array.from(new Set(filtered.map((d: any) => (d.atribuicao || 'Não identificado') as string)));
-        const dailyRevenueByAtribuicao = Object.entries(dailyAtribuicaoMap)
-            .map(([date, atribData]) => {
-                const entry: any = { date };
-                allAtribuicoes.forEach((atrib: string) => {
-                    entry[atrib] = atribData[atrib] || 0;
-                });
-                return entry;
-            })
-            .sort((a, b) => {
-                const dateA = a.date.includes('/') ? new Date(a.date.split('/').reverse().join('-')) : new Date(a.date);
-                const dateB = b.date.includes('/') ? new Date(b.date.split('/').reverse().join('-')) : new Date(b.date);
-                return dateA.getTime() - dateB.getTime();
-            });
-
         return {
-            totalReceita,
-            totalPedidos,
-            ticketMedio,
-            totalClientes: uniqueClients.size,
-            receitaGoogleAds,
-            receitaParaROAS,
-            byAtribuicao,
-            byCategory,
-            dailyRevenue,
-            dailyRevenueByAtribuicao,
-            allAtribuicoes,
-            filteredRaw: filtered,
+            ...current,
+            variations,
             // YoY Data
             yoy: {
                 monthlyComparison,
@@ -257,7 +277,7 @@ export default function HomeExecutiva() {
                 previousYear,
             }
         };
-    }, [catalogoData, yoyRawData, filterStatus, filterAtribuicao]);
+    }, [catalogoData, catalogoComparisonData, yoyRawData, filterStatus, filterAtribuicao]);
 
 
     // Use filtered data or default from API
@@ -274,13 +294,32 @@ export default function HomeExecutiva() {
         dailyRevenueByAtribuicao: catalogoData?.dailyRevenueByAtribuicao || [],
         allAtribuicoes: catalogoData?.allAtribuicoes || [],
         filteredRaw: [],
-        yoy: null
+        yoy: null,
+        variations: {
+            totalReceita: 0,
+            receitaGoogleAds: 0,
+            totalPedidos: 0,
+            ticketMedio: 0,
+            totalClientes: 0,
+        }
     };
 
     // Receita Geral: Agora reflete os filtros de Status e Atribuição selecionados
     const receitaGeral = displayData.totalReceita;
     // Receita Mídia Paga: Agora reflete os filtros (Status) e a atribuição Google_Ads
     const receitaMidiaPaga = displayData.receitaGoogleAds;
+
+    // Variations
+    const varReceita = displayData.variations?.totalReceita || 0;
+    const varMidiaPaga = displayData.variations?.receitaGoogleAds || 0;
+    const varPedidos = displayData.variations?.totalPedidos || 0;
+    const varTicket = displayData.variations?.ticketMedio || 0;
+    const varClientes = displayData.variations?.totalClientes || 0;
+
+    // Ads variation
+    const gadsSpend = gadsKpis?.totalGrossCost || 0;
+    const gadsComparisonSpend = gadsComparisonKpis?.totalGrossCost || 0;
+    const varAdsSpend = gadsComparisonSpend > 0 ? ((gadsSpend - gadsComparisonSpend) / gadsComparisonSpend) * 100 : 0;
 
     // Main KPIs
     const kpis = [
@@ -289,8 +328,8 @@ export default function HomeExecutiva() {
             titulo: 'Receita Geral Magento',
             valor: receitaGeral,
             valorFormatado: `R$ ${receitaGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            variacao: 0,
-            tendencia: 'up' as const,
+            variacao: varReceita,
+            tendencia: varReceita >= 0 ? 'up' as const : 'down' as const,
             sparklineData: [receitaGeral * 0.8, receitaGeral * 0.85, receitaGeral * 0.9, receitaGeral * 0.95, receitaGeral],
         },
         {
@@ -298,8 +337,8 @@ export default function HomeExecutiva() {
             titulo: 'Receita Mídia Paga (GAds)',
             valor: receitaMidiaPaga,
             valorFormatado: `R$ ${receitaMidiaPaga.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            variacao: 0,
-            tendencia: 'up' as const,
+            variacao: varMidiaPaga,
+            tendencia: varMidiaPaga >= 0 ? 'up' as const : 'down' as const,
             sparklineData: [receitaMidiaPaga * 0.8, receitaMidiaPaga * 0.85, receitaMidiaPaga * 0.9, receitaMidiaPaga * 0.95, receitaMidiaPaga],
         },
         {
@@ -307,8 +346,8 @@ export default function HomeExecutiva() {
             titulo: 'Pedidos',
             valor: displayData.totalPedidos,
             valorFormatado: displayData.totalPedidos.toLocaleString('pt-BR'),
-            variacao: 5.2,
-            tendencia: 'up' as const,
+            variacao: varPedidos,
+            tendencia: varPedidos >= 0 ? 'up' as const : 'down' as const,
             sparklineData: [displayData.totalPedidos * 0.8, displayData.totalPedidos * 0.85, displayData.totalPedidos * 0.9, displayData.totalPedidos * 0.95, displayData.totalPedidos],
         },
         {
@@ -316,8 +355,8 @@ export default function HomeExecutiva() {
             titulo: 'Ticket Médio',
             valor: displayData.ticketMedio,
             valorFormatado: `R$ ${displayData.ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            variacao: 3.1,
-            tendencia: 'up' as const,
+            variacao: varTicket,
+            tendencia: varTicket >= 0 ? 'up' as const : 'down' as const,
             sparklineData: [displayData.ticketMedio * 0.95, displayData.ticketMedio * 0.97, displayData.ticketMedio * 0.98, displayData.ticketMedio * 0.99, displayData.ticketMedio],
         },
         {
@@ -325,8 +364,8 @@ export default function HomeExecutiva() {
             titulo: 'Clientes Únicos',
             valor: displayData.totalClientes,
             valorFormatado: displayData.totalClientes.toLocaleString('pt-BR'),
-            variacao: 4.2,
-            tendencia: 'up' as const,
+            variacao: varClientes,
+            tendencia: varClientes >= 0 ? 'up' as const : 'down' as const,
             sparklineData: [displayData.totalClientes * 0.85, displayData.totalClientes * 0.88, displayData.totalClientes * 0.92, displayData.totalClientes * 0.96, displayData.totalClientes],
         },
         {
@@ -334,8 +373,8 @@ export default function HomeExecutiva() {
             titulo: 'Investimento Ads (Geral)',
             valor: gadsKpis?.totalGrossCost || 0,
             valorFormatado: `R$ ${(gadsKpis?.totalGrossCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            variacao: 2.5,
-            tendencia: 'up' as const,
+            variacao: varAdsSpend,
+            tendencia: varAdsSpend >= 0 ? 'up' as const : 'down' as const,
             sparklineData: gadsKpis ? [gadsKpis.totalGrossCost * 0.9, gadsKpis.totalGrossCost * 0.92, gadsKpis.totalGrossCost * 0.95, gadsKpis.totalGrossCost * 0.98, gadsKpis.totalGrossCost] : [0, 0, 0, 0, 0],
         },
     ];
@@ -525,45 +564,37 @@ export default function HomeExecutiva() {
                 </section>
             )}
 
-            {/* Margem de Contribuição por Canal */}
+            {/* Eficiência de Mídia (ROAS Real) */}
             {!loading && displayData.byAtribuicao.length > 0 && gadsKpis && (
                 <section>
                     <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                        Margem de Contribuição por Canal
+                        Eficiência de Mídia por Canal (ROAS)
                     </h2>
                     <Card className="border-border bg-card">
                         <CardContent className="pt-6">
                             {(() => {
-                                const totalReceita = displayData.byAtribuicao.reduce((sum: number, c: any) => sum + c.value, 0);
                                 const totalInvestimento = gadsKpis?.spend || 0;
 
-                                // Assumption: Average product margin is 40%, CAC varies by channel
-                                const channelMetrics = displayData.byAtribuicao.slice(0, 6).map((channel: any, idx: number) => {
-                                    const shareReceita = totalReceita > 0 ? channel.value / totalReceita : 0;
-                                    // Estimate CAC distribution by channel type
-                                    const isGoogleAds = channel.name?.toLowerCase().includes('google');
-                                    const isMeta = channel.name?.toLowerCase().includes('meta') || channel.name?.toLowerCase().includes('facebook') || channel.name?.toLowerCase().includes('instagram');
-                                    const isOrganic = channel.name?.toLowerCase().includes('organic') || channel.name?.toLowerCase().includes('direto');
+                                // Filter and map real data
+                                const channelMetrics = displayData.byAtribuicao.slice(0, 8).map((channel: any, idx: number) => {
+                                    // Identify Google Ads channel
+                                    const isGoogleAds = channel.name === 'Google_Ads';
 
-                                    // CAC estimation based on channel type
-                                    let cacMultiplier = 1;
-                                    if (isGoogleAds) cacMultiplier = 0.45;
-                                    else if (isMeta) cacMultiplier = 0.30;
-                                    else if (isOrganic) cacMultiplier = 0.05;
-                                    else cacMultiplier = 0.20;
+                                    // Attribution: We only have cost data for Google Ads currently
+                                    const investimentoCanal = isGoogleAds ? totalInvestimento : 0;
 
-                                    const investimentoCanal = totalInvestimento * shareReceita * cacMultiplier;
-                                    const margemBruta = channel.value * 0.40; // 40% gross margin assumption
-                                    const margemContribuicao = margemBruta - investimentoCanal;
-                                    const margemPercentual = channel.value > 0 ? (margemContribuicao / channel.value) * 100 : 0;
+                                    // "Marketing Contribution" = Revenue - Ad Spend
+                                    // This ignores COGS (Product Cost) as we don't have it in the database
+                                    const receitaLiquidaAds = channel.value - investimentoCanal;
+
+                                    const roas = investimentoCanal > 0 ? channel.value / investimentoCanal : 0;
 
                                     return {
                                         name: channel.name,
                                         receita: channel.value,
                                         investimento: investimentoCanal,
-                                        margemBruta,
-                                        margemContribuicao,
-                                        margemPercentual,
+                                        receitaLiquidaAds,
+                                        roas,
                                         color: COLORS[idx % COLORS.length]
                                     };
                                 });
@@ -574,11 +605,10 @@ export default function HomeExecutiva() {
                                             <thead>
                                                 <tr className="border-b border-border">
                                                     <th className="text-left py-3 px-2 font-medium text-muted-foreground">Canal</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">CAC (Est.)</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Margem Bruta</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Margem Contrib.</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">MC %</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita Captada</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Investimento (Ads)</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita Líquida (Ads)</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">ROAS</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -587,24 +617,33 @@ export default function HomeExecutiva() {
                                                         <td className="py-3 px-2">
                                                             <div className="flex items-center gap-2">
                                                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: ch.color }}></div>
-                                                                <span className="font-medium">{ch.name}</span>
+                                                                <span className="font-medium truncate max-w-[150px]">{ch.name}</span>
                                                             </div>
                                                         </td>
-                                                        <td className="text-right py-3 px-2 font-mono">R$ {ch.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</td>
-                                                        <td className="text-right py-3 px-2 font-mono text-red-500">R$ {ch.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</td>
-                                                        <td className="text-right py-3 px-2 font-mono">R$ {ch.margemBruta.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</td>
-                                                        <td className={`text-right py-3 px-2 font-mono font-bold ${ch.margemContribuicao >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                            R$ {ch.margemContribuicao.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                                                        <td className="text-right py-3 px-2 font-mono">R$ {ch.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                                        <td className="text-right py-3 px-2 font-mono text-red-500">
+                                                            {ch.investimento > 0 ? `R$ ${ch.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
                                                         </td>
-                                                        <td className={`text-right py-3 px-2 font-bold ${ch.margemPercentual >= 25 ? 'text-green-600' : ch.margemPercentual >= 15 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                                            {ch.margemPercentual.toFixed(1)}%
+                                                        <td className={`text-right py-3 px-2 font-mono font-bold ${ch.receitaLiquidaAds >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                            R$ {ch.receitaLiquidaAds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="text-right py-3 px-2">
+                                                            {ch.roas > 0 ? (
+                                                                <span className={`font-bold ${ch.roas >= 4 ? 'text-green-600' : ch.roas >= 2 ? 'text-blue-500' : 'text-amber-500'}`}>
+                                                                    {ch.roas.toFixed(2)}x
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-muted-foreground">-</span>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
-                                        <p className="text-xs text-muted-foreground mt-3">
-                                            * Margem Bruta estimada em 40%. CAC estimado proporcionalmente ao tipo de canal. MC = Margem Bruta - CAC.
+                                        <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                                            * <strong>Investimento (Ads):</strong> Valor gasto reportado pelo Google Ads. Atribuído apenas ao canal 'Google_Ads'.<br />
+                                            * <strong>Receita Líquida (Ads):</strong> Receita Total - Custo de Mídia. Não inclui CMV (Custo do Produto) ou impostos.<br />
+                                            * Demais canais exibem apenas Receita pois não possuem custo de mídia vinculado na base de dados atual.
                                         </p>
                                     </div>
                                 );

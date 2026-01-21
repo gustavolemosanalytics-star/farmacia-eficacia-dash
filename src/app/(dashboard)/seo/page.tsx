@@ -155,11 +155,25 @@ export default function SeoPage() {
         pos: parseInt(kw.Po || 0)
     }));
 
-    const competitorsData = competitors.slice(0, 8).map(c => ({
-        name: c.Dn,
-        traffic: parseInt(c.Ot || 0),
-        commonKeywords: parseInt(c.Cr || 0)
-    })).sort((a, b) => b.traffic - a.traffic);
+    const competitorsData = (() => {
+        const list = competitors.slice(0, 8).map(c => ({
+            name: c.Dn,
+            traffic: parseInt(c.Ot || 0),
+            commonKeywords: parseInt(c.Cr || 0),
+            isMain: false
+        }));
+
+        if (overview) {
+            list.push({
+                name: overview.Dn || 'farmaciaeficacia.com.br',
+                traffic: parseInt(overview.Ot || 0),
+                commonKeywords: parseInt(overview.Or || 0),
+                isMain: true
+            });
+        }
+
+        return list.sort((a, b) => b.traffic - a.traffic);
+    })();
 
     const posDistribution = [
         { range: 'Top 3', count: keywords.filter(k => parseInt(k.Po) <= 3).length, color: '#10b981' },
@@ -349,8 +363,11 @@ export default function SeoPage() {
                                     }}
                                 />
                                 <Bar dataKey="traffic" name="Tráfego Estimado" radius={[0, 6, 6, 0]}>
-                                    {competitorsData.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={index === 0 ? '#3b82f6' : '#94a3b833'} />
+                                    {competitorsData.map((entry, index) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.isMain ? '#10b981' : '#94a3b833'}
+                                        />
                                     ))}
                                     <LabelList dataKey="traffic" position="right" formatter={v => `${(Number(v) / 1000).toFixed(1)}k`} style={{ fill: '#888', fontSize: '10px' }} />
                                 </Bar>
