@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useFilterStore } from '@/stores/filterStore';
 import { DateRangePicker } from './DateRangePicker';
 import { DateRange } from 'react-day-picker';
@@ -33,11 +33,14 @@ export function GlobalDatePicker() {
         setComparePeriod(range?.from, range?.to);
     }, [setComparePeriod]);
 
+    const dateRange = useMemo(() => ({ from: periodoInicio, to: periodoFim }), [periodoInicio, periodoFim]);
+    const compareDateRange = useMemo(() => ({ from: compareStart, to: compareEnd }), [compareStart, compareEnd]);
+
     return (
         <DateRangePicker
-            date={{ from: periodoInicio, to: periodoFim }}
+            date={dateRange}
             setDate={handleDateChange}
-            compareDate={{ from: compareStart, to: compareEnd }}
+            compareDate={compareDateRange}
             setCompareDate={handleCompareChange}
             isComparing={isComparing}
             setIsComparing={setIsComparing}

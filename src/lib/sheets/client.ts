@@ -527,9 +527,38 @@ export const fetchMagData = async () => {
         });
 
         // Parse numeric values
+        // Parse numeric values 
         const parseNumber = (val: string) => {
             if (!val) return 0;
-            return parseFloat(val.toString().replace(/[^\d,.-]/g, '').replace(',', '.')) || 0;
+            let clean = val.toString().replace(/[^\d.,-]/g, '');
+
+            // If it has a comma, assume BR format (1.234,56)
+            if (clean.includes(',')) {
+                clean = clean.replace(/\./g, '').replace(',', '.');
+            } else {
+                // No comma. Check if dot is a thousands separator or decimal
+                // Heuristic: if there's more than one dot, or exactly one dot followed by 3 digits, 
+                // it's likely a thousands separator (e.g., 1.234 or 1.234.567)
+                // BUT if it's like 12.34 it's likely a decimal.
+                const dotParts = clean.split('.');
+                if (dotParts.length > 2) {
+                    // Multiple dots: 1.234.567 -> 1234567
+                    clean = clean.replace(/\./g, '');
+                } else if (dotParts.length === 2) {
+                    // One dot. If 3 digits after dot, it's ambiguous. 
+                    // However, in Magento/Sheets, usually if no comma is present, dot is decimal or value < 1000.
+                    // For the sake of safety, let's assume one dot with 2 digits is decimal.
+                    if (dotParts[1].length === 2) {
+                        // Keep the dot as decimal
+                    } else if (dotParts[1].length === 3) {
+                        // Likely thousands: 1.234 -> 1234
+                        clean = clean.replace(/\./g, '');
+                    }
+                    // If 1 digit, likely decimal: 1.5
+                }
+            }
+
+            return parseFloat(clean) || 0;
         };
 
         return {
@@ -566,10 +595,46 @@ export const fetchMagData = async () => {
 
 // Aggregate Catalogo/Magento KPIs
 export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) => {
-    const data = await fetchMagData();
+    let data = await fetchMagData();
+
+    // Filter by Date Range if provided
+    if (startDate && endDate) {
+        // Adjust bounds to cover full days
+        const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+
+        data = data.filter(order => {
+            const dateStr = order.data; // Prioritize 'Data' column as requested
+            if (!dateStr) return false;
+
+            try {
+                let orderDate: Date | null = null;
+                const datePart = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr;
+
+                // BD Mag format: DD/MM/YYYY
+                if (datePart.includes('/')) {
+                    const parts = datePart.split('/');
+                    if (parts.length === 3) {
+                        orderDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                    }
+                } else if (datePart.includes('-')) {
+                    // Fallback for YYYY-MM-DD
+                    orderDate = new Date(datePart);
+                    if (orderDate) orderDate.setHours(12, 0, 0, 0);
+                }
+
+                if (orderDate && !isNaN(orderDate.getTime())) {
+                    return orderDate >= start && orderDate <= end;
+                }
+                return false;
+            } catch (e) {
+                return false;
+            }
+        });
+    }
 
     // Filter only completed orders (status validation)
-    let completedOrders = data.filter(d =>
+    const completedOrders = data.filter(d =>
         d.status?.toLowerCase().includes('complete') ||
         d.status?.toLowerCase().includes('completo') ||
         d.status?.toLowerCase().includes('pago') ||
@@ -578,51 +643,15 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
         !d.status // Include if no status
     );
 
-    // Filter by Date Range if provided
-    // Filter by Date Range if provided
-    if (startDate && endDate) {
-        completedOrders = completedOrders.filter(order => {
-            const dateStr = order.data || order.dataTransacao;
-            if (!dateStr) return false;
-
-            try {
-                // Normaliza a data para objeto Date
-                let orderDate: Date | null = null;
-                const datePart = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr;
-
-                if (datePart.includes('/')) {
-                    // Formato DD/MM/YYYY
-                    const parts = datePart.split('/');
-                    if (parts.length === 3) {
-                        orderDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-                    }
-                } else if (datePart.includes('-')) {
-                    // Formato YYYY-MM-DD
-                    orderDate = new Date(datePart);
-                    // Adjust for timezone if needed, usually new Date('YYYY-MM-DD') is UTC, 
-                    // but simple comparison usually works if we reset hours.
-                    // For safety, assume local time if it's simple date string
-                    if (orderDate) orderDate.setHours(12, 0, 0, 0);
-                }
-
-                if (orderDate && !isNaN(orderDate.getTime())) {
-                    // Reset hours for comparison
-                    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
-                    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
-                    return orderDate >= start && orderDate <= end;
-                }
-
-                return true;
-            } catch (e) {
-                return true;
-            }
-        });
-    }
-
     // Total revenue
     const totalReceita = completedOrders.reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0);
     const totalValorSemFrete = completedOrders.reduce((sum, entry) => sum + (entry.valorTotalSemFrete || 0), 0);
     const totalValorComFrete = completedOrders.reduce((sum, entry) => sum + (entry.valorTotalComFrete || 0), 0);
+
+    // Receita específica do canal Google_Ads (Mídia Paga)
+    const receitaGoogleAds = completedOrders
+        .filter(d => d.atribuicao?.toLowerCase().includes('google_ads'))
+        .reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0);
 
     // Unique orders count
     const uniqueOrders = new Set(completedOrders.map(d => d.pedido).filter(Boolean));
@@ -760,6 +789,8 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
     return {
         totalReceita,
         totalReceita_formatted: `R$ ${totalReceita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        receitaGoogleAds,
+        receitaGoogleAds_formatted: `R$ ${receitaGoogleAds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         totalValorSemFrete,
         totalValorSemFrete_formatted: `R$ ${totalValorSemFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         totalValorComFrete,

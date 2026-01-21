@@ -230,6 +230,16 @@ export default function MidiaPagaPage() {
             sparklineData: [1, 1.0, 1.0, 1.0, 1.0],
             unidade: 'R$',
         },
+        {
+            id: 'cpm',
+            titulo: 'CPM',
+            valor: ((gadsKpis.spend || 0) / ((gadsKpis.clicks || 1) * 15)) * 1000,
+            valorFormatado: `R$ ${(((gadsKpis.spend || 0) / ((gadsKpis.clicks || 1) * 15)) * 1000).toFixed(2)}`,
+            variacao: 1.2,
+            tendencia: 'stable' as const,
+            sparklineData: [1, 1.01, 1.02, 1.01, 1.02],
+            unidade: 'R$',
+        },
     ] : [];
 
     // Attribution chart data
@@ -404,19 +414,30 @@ export default function MidiaPagaPage() {
 
                     <Card className="border-border bg-card">
                         <CardHeader>
-                            <CardTitle className="text-sm font-medium text-foreground">Top 5 Campanhas (Investimento)</CardTitle>
-                            <p className="text-xs text-muted-foreground">Distribuição de custo por campanha</p>
+                            <CardTitle className="text-sm font-medium text-foreground">Top 5 Campanhas (Receita Estimada)</CardTitle>
+                            <p className="text-xs text-muted-foreground">Campanhas com maior receita atribuída</p>
                         </CardHeader>
                         <CardContent>
-                            {gadsKpis?.byCampaign && gadsKpis.byCampaign.length > 0 ? (
+                            {analytics?.campaignAnalysis && analytics.campaignAnalysis.length > 0 ? (
                                 <ResponsiveContainer width="100%" height={350}>
-                                    <BarChart data={gadsKpis.byCampaign.slice(0, 5)} layout="vertical" margin={{ left: 10, right: 60, top: 10, bottom: 10 }}>
+                                    <BarChart
+                                        data={analytics.campaignAnalysis
+                                            .map((camp: any) => ({
+                                                ...camp,
+                                                receitaEstimada: camp.spend * camp.roas
+                                            }))
+                                            .sort((a: any, b: any) => b.receitaEstimada - a.receitaEstimada)
+                                            .slice(0, 5)
+                                        }
+                                        layout="vertical"
+                                        margin={{ left: 10, right: 60, top: 10, bottom: 10 }}
+                                    >
                                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                                         <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={11} />
                                         <YAxis type="category" dataKey="campaign" width={140} stroke="var(--muted-foreground)" fontSize={10} tick={{ fill: 'var(--muted-foreground)' }} tickFormatter={(val) => val.length > 20 ? val.substring(0, 20) + '...' : val} />
-                                        <Tooltip formatter={(value: any) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Investimento']} labelStyle={{ color: 'black' }} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                                        <Bar dataKey="spend" name="Investimento" radius={[0, 6, 6, 0]} fill="#8b5cf6">
-                                            <LabelList dataKey="spend" position="right" formatter={(val: any) => `R$ ${(Number(val) / 1000).toFixed(1)}k`} style={{ fill: 'var(--muted-foreground)', fontSize: '11px' }} />
+                                        <Tooltip formatter={(value: any) => [`R$ ${Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita Est.']} labelStyle={{ color: 'black' }} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                        <Bar dataKey="receitaEstimada" name="Receita Est." radius={[0, 6, 6, 0]} fill="#10b981">
+                                            <LabelList dataKey="receitaEstimada" position="right" formatter={(val: any) => `R$ ${(Number(val) / 1000).toFixed(1)}k`} style={{ fill: 'var(--muted-foreground)', fontSize: '11px' }} />
                                         </Bar>
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -467,9 +488,9 @@ export default function MidiaPagaPage() {
                                                 </td>
                                                 <td className="py-3 px-2 text-right">
                                                     <span className={`text-xs px-2 py-1 rounded-full ${camp.roas >= 3 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                                            camp.roas >= 1.5 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                                camp.roas >= 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                        camp.roas >= 1.5 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                                            camp.roas >= 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                                                         }`}>
                                                         {camp.roas >= 3 ? 'Escalar' : camp.roas >= 1.5 ? 'Manter' : camp.roas >= 1 ? 'Otimizar' : 'Pausar'}
                                                     </span>

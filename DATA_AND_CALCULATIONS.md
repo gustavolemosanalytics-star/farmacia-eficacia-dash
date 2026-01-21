@@ -57,5 +57,5 @@ Todas as informações são extraídas de uma planilha Google Sheets principal (
 ---
 
 ## Observações Técnicas
-- **Cache:** Os dados são cacheados (Redis/Memory) por padrão para performance (`src/lib/cache.ts`).
+- **Cache:** Os dados são cacheados em memória (node-cache) para performance (`src/lib/cache.ts`).
 - **Datas:** Filtros de data (`periodoInicio`, `periodoFim`) são aplicados no backend (`client.ts`) comparando com colunas de data (`Day`, `Date`, `Data Transação`).

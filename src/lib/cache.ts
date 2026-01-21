@@ -1,13 +1,9 @@
 // Cache utility library
 
 import NodeCache from 'node-cache';
-import Redis from 'ioredis';
 
 // ===========================================
-// MULTI-LAYER CACHE SYSTEM
-// ===========================================
-// Layer 1: In-Memory (fastest, smallest, short TTL)
-// Layer 2: Redis (fast, shared across instances, medium TTL)
+// IN-MEMORY CACHE SYSTEM
 // ===========================================
 
 // In-memory cache (60 seconds for hot data)
@@ -16,52 +12,6 @@ const memoryCache = new NodeCache({
     checkperiod: 30,
     useClones: false // Better performance
 });
-
-// Redis client singleton
-let redis: Redis | null = null;
-let redisReady = false;
-
-const initRedis = () => {
-    if (redis) return redis;
-
-    if (process.env.REDIS_URL) {
-        console.log('[Cache] Initializing Redis...');
-        redis = new Redis(process.env.REDIS_URL, {
-            maxRetriesPerRequest: 3,
-            retryStrategy: (times) => {
-                if (times > 3) return null; // Stop retrying after 3 attempts
-                return Math.min(times * 100, 3000);
-            },
-            connectTimeout: 5000,
-            lazyConnect: true,
-        });
-
-        redis.on('error', (err) => {
-            console.error('[Cache] Redis Error:', err.message);
-            redisReady = false;
-        });
-
-        redis.on('connect', () => {
-            console.log('[Cache] Redis Connected');
-            redisReady = true;
-        });
-
-        redis.on('ready', () => {
-            console.log('[Cache] Redis Ready');
-            redisReady = true;
-        });
-
-        // Connect lazily
-        redis.connect().catch(() => {
-            console.warn('[Cache] Redis connection failed, using memory only');
-        });
-    }
-
-    return redis;
-};
-
-// Initialize on module load
-initRedis();
 
 // ===========================================
 // CACHE CONFIGURATION
@@ -103,15 +53,15 @@ const isHistoricalRequest = (startDate?: Date, endDate?: Date): boolean => {
 };
 
 // ===========================================
-// MULTI-LAYER GET
+// CACHE GET
 // ===========================================
 
 export const getCachedData = async <T>(
     key: string,
     options: CacheOptions = {}
-): Promise<{ data: T | undefined; source: 'memory' | 'redis' | 'miss'; stale?: boolean }> => {
+): Promise<{ data: T | undefined; source: 'memory' | 'miss'; stale?: boolean }> => {
 
-    // Layer 1: Check memory cache first (fastest)
+    // Check memory cache
     const memoryData = memoryCache.get<{ data: T; timestamp: number }>(key);
     if (memoryData) {
         const age = Date.now() - memoryData.timestamp;
@@ -128,37 +78,11 @@ export const getCachedData = async <T>(
         }
     }
 
-    // Layer 2: Check Redis
-    if (redis && redisReady) {
-        try {
-            const redisData = await redis.get(key);
-            if (redisData) {
-                const parsed = JSON.parse(redisData) as { data: T; timestamp: number };
-
-                // Store in memory cache for faster subsequent access
-                memoryCache.set(key, parsed, 60);
-
-                const age = Date.now() - parsed.timestamp;
-                const ttl = (options.ttlSeconds || DEFAULT_TTL) * 1000;
-
-                if (age < ttl) {
-                    return { data: parsed.data, source: 'redis' };
-                }
-
-                if (options.staleWhileRevalidate && age < ttl * 2) {
-                    return { data: parsed.data, source: 'redis', stale: true };
-                }
-            }
-        } catch (e) {
-            console.error('[Cache] Redis get error:', e);
-        }
-    }
-
     return { data: undefined, source: 'miss' };
 };
 
 // ===========================================
-// MULTI-LAYER SET
+// CACHE SET
 // ===========================================
 
 export const setCachedData = async <T>(
@@ -169,18 +93,8 @@ export const setCachedData = async <T>(
     const ttl = options.ttlSeconds || DEFAULT_TTL;
     const wrapper = { data, timestamp: Date.now() };
 
-    // Layer 1: Always set in memory (fast access)
-    const memoryTtl = Math.min(ttl, 120); // Max 2 minutes in memory
-    memoryCache.set(key, wrapper, memoryTtl);
-
-    // Layer 2: Set in Redis for shared/persistent cache
-    if (redis && redisReady) {
-        try {
-            await redis.set(key, JSON.stringify(wrapper), 'EX', ttl);
-        } catch (e) {
-            console.error('[Cache] Redis set error:', e);
-        }
-    }
+    // Always set in memory with full TTL since Redis is gone
+    memoryCache.set(key, wrapper, ttl);
 };
 
 // ===========================================
@@ -188,28 +102,12 @@ export const setCachedData = async <T>(
 // ===========================================
 
 export const invalidateCache = async (pattern: string): Promise<number> => {
-    let count = 0;
-
     // Clear memory cache
     const memKeys = memoryCache.keys().filter(k => k.includes(pattern));
     memKeys.forEach(k => memoryCache.del(k));
-    count += memKeys.length;
 
-    // Clear Redis cache
-    if (redis && redisReady) {
-        try {
-            const keys = await redis.keys(`farm:*${pattern}*`);
-            if (keys.length > 0) {
-                await redis.del(...keys);
-                count += keys.length;
-            }
-        } catch (e) {
-            console.error('[Cache] Redis invalidation error:', e);
-        }
-    }
-
-    console.log(`[Cache] Invalidated ${count} keys matching "${pattern}"`);
-    return count;
+    console.log(`[Cache] Invalidated ${memKeys.length} keys matching "${pattern}"`);
+    return memKeys.length;
 };
 
 // ===========================================
@@ -282,30 +180,15 @@ export const setCachedAggregation = async <T>(
 
 export const getCacheStats = async (): Promise<{
     memory: { keys: number; hits: number; misses: number };
-    redis: { connected: boolean; keys?: number };
 }> => {
     const memStats = memoryCache.getStats();
-
-    let redisKeys = 0;
-    if (redis && redisReady) {
-        try {
-            const keys = await redis.keys('farm:*');
-            redisKeys = keys.length;
-        } catch (e) {
-            // Ignore
-        }
-    }
 
     return {
         memory: {
             keys: memoryCache.keys().length,
             hits: memStats.hits,
             misses: memStats.misses,
-        },
-        redis: {
-            connected: redisReady,
-            keys: redisKeys,
-        },
+        }
     };
 };
 

@@ -47,27 +47,39 @@ export function DateRangePicker({
 }: DateRangePickerProps) {
     const [isOpen, setIsOpen] = React.useState(false);
     const [tempDate, setTempDate] = React.useState<DateRange | undefined>(date);
+    const [tempCompareDate, setTempCompareDate] = React.useState<DateRange | undefined>(compareDate); // Add local state
     const [tempIsComparing, setTempIsComparing] = React.useState(isComparing);
     const [comparisonType, setComparisonType] = React.useState<ComparisonType>('previous_period');
     const ref = React.useRef<HTMLDivElement>(null);
 
+    // Sync from props when opening (or when props change while closed, though usually unmounted if conditional)
+    // Actually, improved sync logic: only sync if !isOpen or if props changed meaningfully.
+    // But simplest is: sync when opening.
     React.useEffect(() => {
         if (isOpen) {
             setTempDate(date);
+            if (compareDate) setTempCompareDate(compareDate); // Sync compare date
             setTempIsComparing(isComparing);
         }
-    }, [isOpen, date, isComparing]);
+    }, [isOpen, date, compareDate, isComparing]);
 
     // Auto-calculate comparison period
+    // Auto-calculate comparison period (LOCALLY)
     React.useEffect(() => {
-        if (!tempIsComparing || !tempDate?.from || !tempDate.to || !setCompareDate || comparisonType === 'custom') return;
+        if (!tempIsComparing || !tempDate?.from || !tempDate.to || comparisonType === 'custom') return;
+
+        let newCompare: DateRange | undefined;
         if (comparisonType === 'previous_period') {
             const days = differenceInDays(tempDate.to, tempDate.from) + 1;
-            setCompareDate({ from: subDays(tempDate.from, days), to: subDays(tempDate.to, days) });
+            newCompare = { from: subDays(tempDate.from, days), to: subDays(tempDate.to, days) };
         } else if (comparisonType === 'previous_year') {
-            setCompareDate({ from: subYears(tempDate.from, 1), to: subYears(tempDate.to, 1) });
+            newCompare = { from: subYears(tempDate.from, 1), to: subYears(tempDate.to, 1) };
         }
-    }, [tempDate, tempIsComparing, comparisonType, setCompareDate]);
+
+        if (newCompare) {
+            setTempCompareDate(newCompare);
+        }
+    }, [tempDate, tempIsComparing, comparisonType]);
 
     React.useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -80,6 +92,7 @@ export function DateRangePicker({
     const handleApply = () => {
         setDate(tempDate);
         if (setIsComparing) setIsComparing(tempIsComparing);
+        if (setCompareDate && tempCompareDate) setCompareDate(tempCompareDate); // Commit compare date
         setIsOpen(false);
     };
 

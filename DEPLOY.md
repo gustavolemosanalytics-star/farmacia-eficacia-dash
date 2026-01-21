@@ -2,14 +2,7 @@
 
 Para que a aplicação funcione corretamente na Vercel (Production), você precisa configurar as **Variáveis de Ambiente** no painel do projeto (Settings > Environment Variables).
 
-## 1. Redis (Cache)
-
-Adicione a variável `REDIS_URL` com o valor de conexão (o mesmo configurado localmente):
-
-- **Key**: `REDIS_URL`
-- **Value**: `redis://default:REDIS_PASSWORD@REDIS_HOST:REDIS_PORT` (Copie do seu `.env.local`)
-
-## 2. Google Sheets (Credenciais)
+## 1. Google Sheets (Credenciais)
 
 A aplicação espera uma variável chamada `GOOGLE_CREDENTIALS` contendo o JSON completo das credenciais de serviço.
 
@@ -21,7 +14,7 @@ A aplicação espera uma variável chamada `GOOGLE_CREDENTIALS` contendo o JSON 
 
 > **Dica**: A Vercel geralmente aceita o JSON com quebras de linha na interface web, mas se tiver problemas, remova as quebras de linha e deixe tudo em uma linha só.
 
-## 3. Configurações de Build (Padrão)
+## 2. Configurações de Build (Padrão)
 
 Não é necessário alterar nada, a Vercel detecta Next.js automaticamente.
 - **Framework Preset**: Next.js
