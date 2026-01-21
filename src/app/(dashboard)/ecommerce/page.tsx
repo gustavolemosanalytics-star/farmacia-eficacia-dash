@@ -619,7 +619,7 @@ export default function EcommercePage() {
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={320}>
-                                <BarChart data={analytics.topCategories} margin={{ top: 40, right: 10, left: 0, bottom: 90 }}>
+                                <BarChart data={analytics.topCategories} margin={{ top: 40, right: 10, left: 60, bottom: 90 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                                     <XAxis
                                         dataKey="name"
@@ -633,9 +633,8 @@ export default function EcommercePage() {
                                     <YAxis
                                         stroke="var(--muted-foreground)"
                                         fontSize={10}
-                                        tickFormatter={(v) => `R$${(v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)}`}
-                                        width={60}
-                                        tick={{ dx: -5 }}
+                                        tickFormatter={(v) => `R$ ${(v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)}`}
+                                        width={75}
                                     />
                                     <Tooltip
                                         formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
@@ -671,7 +670,7 @@ export default function EcommercePage() {
                                         <tr className="border-b border-border">
                                             <th className="text-left py-2 px-2 font-medium text-muted-foreground">Produto</th>
                                             <th className="text-right py-2 px-2 font-medium text-muted-foreground">Receita</th>
-                                            <th className="text-right py-2 px-2 font-medium text-muted-foreground">Invest. Est.</th>
+                                            <th className="text-right py-2 px-2 font-medium text-muted-foreground">Investimento</th>
                                             <th className="text-right py-2 px-2 font-medium text-muted-foreground">ROAS</th>
                                         </tr>
                                     </thead>
