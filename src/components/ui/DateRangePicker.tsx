@@ -147,7 +147,9 @@ export function DateRangePicker({
                         .compact-rdp .rdp-nav { gap: 2px; }
                         .compact-rdp .rdp-nav_button { width: 24px; height: 24px; }
                         .compact-rdp .rdp-head_cell { font-size: 10px; font-weight: 500; color: #94a3b8; }
-                        .compact-rdp .rdp-day { font-size: 11px; }
+                        .compact-rdp .rdp-tbody { background: transparent !important; }
+                        .compact-rdp .rdp-cell { background: transparent !important; }
+                        .compact-rdp .rdp-day { font-size: 11px; background: transparent; }
                         .compact-rdp .rdp-day_selected { background-color: #7c3aed !important; color: white !important; font-weight: 600; }
                         .compact-rdp .rdp-day_range_middle { background-color: rgba(124, 58, 237, 0.15) !important; }
                         .compact-rdp .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: rgba(139, 92, 246, 0.1); }
