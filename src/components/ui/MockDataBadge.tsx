@@ -11,12 +11,7 @@ interface MockDataBadgeProps {
 // Minimalist badge to indicate mock data
 export function MockDataBadge({ variant = 'sidebar', className }: MockDataBadgeProps) {
     if (variant === 'sidebar') {
-        return (
-            <AlertCircle
-                className={cn("h-3.5 w-3.5 text-amber-500", className)}
-                aria-label="Dados de demonstração"
-            />
-        );
+        return null;
     }
 
     return (

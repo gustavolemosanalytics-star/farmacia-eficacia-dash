@@ -132,9 +132,6 @@ Baseado nos dados reais das suas planilhas, aqui está o diagnóstico atual:
                                     <p className="text-xs text-muted-foreground">{metric.label}</p>
                                     <p className="text-xl font-bold text-foreground">{metric.value}</p>
                                 </div>
-                                <div className={`w-3 h-3 rounded-full ${metric.status === 'good' ? 'bg-emerald-500' :
-                                    metric.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'
-                                    }`} />
                             </div>
                         </CardContent>
                     </Card>

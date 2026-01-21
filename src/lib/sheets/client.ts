@@ -15,6 +15,7 @@ const HISTORICAL_SPREADSHEET_ID = '1nZaUBP-7DhI1iXhAnDOJsQs8aJlkb9x_BGGfRfIinK8'
 export const SHEETS = {
     BD_GADS: 'BD GAds',
     BD_GA4: 'BD GA4',
+    GA4_SESSOES: 'GA4 sessões',
     BD_TV: 'bd tv',
     VENDA_DIARIA: 'Venda Diaria',
     META_2026: 'Meta 2026',
@@ -216,6 +217,29 @@ export const fetchGA4Data = async () => {
             midia: obj['Mídia'] || '',
             status: obj['Status'] || '',
             data: obj['Data'] || '',
+        };
+    });
+};
+// Fetch GA4 Sessions data (from GA4 sessões tab)
+export const fetchGA4SessionsData = async () => {
+    // Header starts on line 2 (index 1) according to user
+    const data = await getSheetData(SHEETS.GA4_SESSOES);
+
+    if (data.length < 2) return [];
+
+    const headers = data[1];
+    const rows = data.slice(2);
+
+    return rows.map(row => {
+        const obj: any = {};
+        headers.forEach((header, index) => {
+            obj[header] = row[index] || '';
+        });
+        return {
+            date: obj['Date'] || '',
+            sessions: parseInt(obj['Sessions'] || '0'),
+            sourceMedium: obj['Session source / medium'] || '',
+            campaign: obj['Session campaign'] || '',
         };
     });
 };
@@ -465,38 +489,66 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
 
 // Aggregate GA4 KPIs
 export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
-    let data = await fetchGA4Data();
+    const [transactionData, sessionData] = await Promise.all([
+        fetchGA4Data(),
+        fetchGA4SessionsData()
+    ]);
+
+    let filteredTransactions = transactionData;
+    let filteredSessions = sessionData;
 
     if (startDate && endDate) {
-        data = data.filter(entry => {
+        filteredTransactions = transactionData.filter(entry => {
             const entryDate = parseDate(entry.transactionDate || entry.data);
+            if (!entryDate) return true;
+            return entryDate >= startDate && entryDate <= endDate;
+        });
+
+        filteredSessions = sessionData.filter(entry => {
+            const entryDate = parseDate(entry.date);
             if (!entryDate) return true;
             return entryDate >= startDate && entryDate <= endDate;
         });
     }
 
-    const totalRevenue = data.reduce((sum, entry) => sum + (entry.purchaseRevenue || 0), 0);
-    const totalTransactions = data.length;
+    const totalRevenue = filteredTransactions.reduce((sum, entry) => sum + (entry.purchaseRevenue || 0), 0);
+    const totalTransactions = filteredTransactions.length;
     const ticketMedio = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+    const totalSessions = filteredSessions.reduce((sum, entry) => sum + (entry.sessions || 0), 0);
 
-    // Group by channel
-    const googleCPC = data.filter(e => e.eventSourceMedium?.includes('google') && e.eventSourceMedium?.includes('cpc'))
+    // Group by channel (Transactions)
+    const googleCPC = filteredTransactions.filter(e => e.eventSourceMedium?.includes('google') && e.eventSourceMedium?.includes('cpc'))
         .reduce((sum, e) => sum + (e.purchaseRevenue || 0), 0);
-    const blueCPC = data.filter(e => e.eventSourceMedium?.includes('blue'))
+    const blueCPC = filteredTransactions.filter(e => e.eventSourceMedium?.includes('blue'))
         .reduce((sum, e) => sum + (e.purchaseRevenue || 0), 0);
-    const organic = data.filter(e => e.eventSourceMedium?.includes('organic'))
+    const organic = filteredTransactions.filter(e => e.eventSourceMedium?.includes('organic'))
         .reduce((sum, e) => sum + (e.purchaseRevenue || 0), 0);
-    const direct = data.filter(e => e.eventSourceMedium?.includes('direct'))
+    const direct = filteredTransactions.filter(e => e.eventSourceMedium?.includes('direct'))
         .reduce((sum, e) => sum + (e.purchaseRevenue || 0), 0);
-    const email = data.filter(e => e.eventSourceMedium?.toLowerCase().includes('email') || e.eventSourceMedium?.toLowerCase().includes('activecampaign'))
+    const email = filteredTransactions.filter(e => e.eventSourceMedium?.toLowerCase().includes('email') || e.eventSourceMedium?.toLowerCase().includes('activecampaign'))
         .reduce((sum, e) => sum + (e.purchaseRevenue || 0), 0);
-    const social = data.filter(e => e.eventSourceMedium?.includes('social') || e.eventSourceMedium?.includes('ig'))
+    const social = filteredTransactions.filter(e => e.eventSourceMedium?.includes('social') || e.eventSourceMedium?.includes('ig'))
         .reduce((sum, e) => sum + (e.purchaseRevenue || 0), 0);
+
+    // Daily Trend (Sessions)
+    const dailySessionsMap: { [key: string]: number } = {};
+    filteredSessions.forEach(s => {
+        const d = parseDate(s.date);
+        if (d) {
+            const key = d.toISOString().split('T')[0];
+            dailySessionsMap[key] = (dailySessionsMap[key] || 0) + s.sessions;
+        }
+    });
+    const dailyTrend = Object.entries(dailySessionsMap)
+        .map(([date, sessions]) => ({ date, sessions }))
+        .sort((a, b) => a.date.localeCompare(b.date));
 
     return {
         totalRevenue,
         totalRevenue_formatted: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         totalTransactions,
+        totalSessions,
+        dailyTrend,
         ticketMedio,
         ticketMedio_formatted: `R$ ${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         byChannel: {

@@ -504,10 +504,10 @@ export const timeSeriesSessoes = gerarTimeSeries(30, 10333, 'down');
 // ============================================
 export const navegacaoItems = [
     { titulo: 'Home Executiva', href: '/', icone: 'LayoutDashboard', grupo: 'ceo' as const, isMockData: false },
-    { titulo: 'Diagnóstico IA', href: '/diagnostico', icone: 'Brain', grupo: 'dados' as const, badge: '3', isMockData: true },
+    { titulo: 'Diagnóstico IA', href: '/diagnostico', icone: 'Brain', grupo: 'dados' as const, isMockData: true },
     { titulo: 'Ecommerce', href: '/ecommerce', icone: 'ShoppingCart', grupo: 'marketing' as const, isMockData: false },
     { titulo: 'Mídia Paga', href: '/midia-paga', icone: 'Target', grupo: 'marketing' as const, isMockData: true },
-    { titulo: 'SEO & Demanda', href: '/seo', icone: 'Search', grupo: 'marketing' as const, badge: '!', isMockData: true },
+    { titulo: 'SEO & Demanda', href: '/seo', icone: 'Search', grupo: 'marketing' as const, isMockData: true },
 
     { titulo: 'CRM & Retenção', href: '/crm', icone: 'Heart', grupo: 'crm' as const, isMockData: false },
     { titulo: 'E-mail & Automação', href: '/email', icone: 'Mail', grupo: 'crm' as const, isMockData: true },
