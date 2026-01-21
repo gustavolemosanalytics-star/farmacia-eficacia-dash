@@ -55,6 +55,7 @@ export default function EmailPage() {
             <PageFilters
                 title="E-mail & Automação"
                 description="Performance de campanhas e fluxos automatizados"
+                isMocked={true}
             />
 
             {/* KPIs */}

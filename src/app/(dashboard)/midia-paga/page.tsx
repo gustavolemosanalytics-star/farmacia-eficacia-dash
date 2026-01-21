@@ -70,19 +70,39 @@ export default function MidiaPagaPage() {
             .sort((a, b) => b.receita - a.receita)
             .slice(0, 6);
 
-        // Campaign analysis with ROAS per campaign
-        const campaignAnalysis = gadsKpis.byCampaign?.map((camp: any) => {
-            const campaignRoas = camp.spend > 0 ? (receitaGoogleAds * (camp.spend / gadsKpis.spend)) / camp.spend : 0;
+        // Revenue per Campaign (Actual from Magento)
+        const revenueByCampaign: { [name: string]: number } = {};
+        googleAdsOrders.forEach((d: any) => {
+            const campName = d.campanha?.toLowerCase().trim();
+            if (campName) {
+                revenueByCampaign[campName] = (revenueByCampaign[campName] || 0) + (d.receitaProduto || 0);
+            }
+        });
+
+        // Campaign analysis with ACTUAL ROAS per campaign
+        const campaignAnalysis = (gadsKpis.byCampaign || []).map((camp: any) => {
+            const campName = camp.campaign?.toLowerCase().trim();
+            const campaignRevenue = revenueByCampaign[campName] || 0;
+            const campaignRoas = camp.spend > 0 ? campaignRevenue / camp.spend : 0;
+
+            // Sessions from Cross Analysis (GA4)
+            const ga4Camp = ga4Kpis?.campaignCrossAnalysis?.find((c: any) => c.campaign?.toLowerCase().trim() === campName);
+            const sessions = ga4Camp?.sessions || 0;
+            const costPerSession = sessions > 0 ? camp.spend / sessions : 0;
+
             return {
                 ...camp,
-                roas: campaignRoas || (gadsKpis.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0),
+                revenue: campaignRevenue,
+                roas: campaignRoas,
+                sessions,
+                costPerSession,
                 efficiency: camp.clicks > 0 ? (camp.conversions / camp.clicks * 100) : 0,
             };
-        }).sort((a: any, b: any) => b.roas - a.roas) || [];
+        }).sort((a: any, b: any) => b.roas - a.roas);
 
         // Best and worst campaigns
         const bestCampaign = campaignAnalysis[0];
-        const worstCampaign = campaignAnalysis.filter((c: any) => c.spend > 100).slice(-1)[0];
+        const worstCampaign = campaignAnalysis.filter((c: any) => c.spend > 100).sort((a: any, b: any) => a.roas - b.roas)[0];
 
         // Daily performance
         const dailyMap: { [date: string]: { receita: number; custo: number } } = {};
@@ -112,11 +132,12 @@ export default function MidiaPagaPage() {
             .filter(d => d.receita > 0 || d.custo > 0)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        // ROAS
+        // Dashboard Level ROAS (following exclusion logic from gadsKpis.spend)
         const roas = receitaGoogleAds > 0 && gadsKpis.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
 
         return {
             receitaGoogleAds,
+            googleAdsOrdersCount: googleAdsOrders.length,
             roas,
             byAtribuicao,
             topCategoriesGads,
@@ -125,7 +146,7 @@ export default function MidiaPagaPage() {
             worstCampaign,
             combinedDailyData,
         };
-    }, [catalogoData, gadsKpis]);
+    }, [catalogoData, gadsKpis, ga4Kpis]);
 
     // Intelligent Insights
     const insights = useMemo(() => {
@@ -234,16 +255,6 @@ export default function MidiaPagaPage() {
             unidade: 'R$',
         },
         {
-            id: 'cpm',
-            titulo: 'CPM',
-            valor: ((gadsKpis.spend || 0) / ((gadsKpis.clicks || 1) * 15)) * 1000,
-            valorFormatado: `R$ ${(((gadsKpis.spend || 0) / ((gadsKpis.clicks || 1) * 15)) * 1000).toFixed(2)}`,
-            variacao: 1.2,
-            tendencia: 'stable' as const,
-            sparklineData: [1, 1.01, 1.02, 1.01, 1.02],
-            unidade: 'R$',
-        },
-        {
             id: 'engajamento',
             titulo: 'Engajamento (GA4)',
             valor: (ga4Kpis?.clickToSessionRate || 0) * 100,
@@ -251,6 +262,26 @@ export default function MidiaPagaPage() {
             variacao: 0.1,
             tendencia: 'stable' as const,
             sparklineData: [1, 1.01, 1.02, 1, 1.01],
+            unidade: '%',
+        },
+        {
+            id: 'custo_sessao',
+            titulo: 'Custo por Sessão',
+            valor: ga4Kpis?.googleSessions > 0 ? (gadsKpis.spend / ga4Kpis.googleSessions) : 0,
+            valorFormatado: `R$ ${(ga4Kpis?.googleSessions > 0 ? (gadsKpis.spend / ga4Kpis.googleSessions) : 0).toFixed(2)}`,
+            variacao: -2.5,
+            tendencia: 'up' as const,
+            sparklineData: [1, 0.98, 0.97, 0.98, 0.96],
+            unidade: 'R$',
+        },
+        {
+            id: 'taxa_conv_pago',
+            titulo: 'Taxa Conv. Ads (Final)',
+            valor: gadsKpis.clicks > 0 ? (analytics?.googleAdsOrdersCount / gadsKpis.clicks) * 100 : 0,
+            valorFormatado: `${(gadsKpis.clicks > 0 ? (analytics?.googleAdsOrdersCount / gadsKpis.clicks) * 100 : 0).toFixed(2)}%`,
+            variacao: 1.2,
+            tendencia: 'up' as const,
+            sparklineData: [1, 1.01, 1.02, 1.03, 1.04],
             unidade: '%',
         },
     ] : [];

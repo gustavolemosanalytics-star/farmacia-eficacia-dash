@@ -28,6 +28,7 @@ export default function OperacaoPage() {
             <PageFilters
                 title="Operação & Experiência"
                 description="Métricas logísticas, prazos de entrega e satisfação"
+                isMocked={true}
             />
 
             {/* KPIs */}

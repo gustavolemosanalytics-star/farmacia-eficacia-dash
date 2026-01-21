@@ -35,6 +35,7 @@ export default function DataQualityPage() {
             <PageFilters
                 title="Data Quality & Governança"
                 description="Monitoramento de integridade e qualidade dos dados"
+                isMocked={true}
             />
 
             {/* KPIs */}

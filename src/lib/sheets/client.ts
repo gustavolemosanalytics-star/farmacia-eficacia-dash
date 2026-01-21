@@ -325,16 +325,22 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         });
     }
 
-    const totalCost = data.reduce((sum, entry) => sum + (entry.cost || 0), 0);
-    const totalConversions = data.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
-    const totalClicks = data.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
-    const totalImpressions = data.reduce((sum, entry) => sum + (entry.impressions || 0), 0);
+    // Excluindo campanhas "Lead" e "Visita" para custo do ROAS conforme solicitado
+    const isLeadsCampaign = (campaign: string) => (campaign || '').toLowerCase().includes('lead');
+    const isVisitaCampaign = (campaign: string) => (campaign || '').toLowerCase().includes('visita');
 
-    // Weighted CTR (Total Clicks / Total Impressions) is more accurate than avg of CTRs
-    const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+    const totalGrossCost = data.reduce((sum, entry) => sum + (entry.cost || 0), 0);
+    const ecommerceData = data.filter(entry => !isLeadsCampaign(entry.campaign) && !isVisitaCampaign(entry.campaign));
+    const totalCost = ecommerceData.reduce((sum, entry) => sum + (entry.cost || 0), 0); // Este será o "Investimento Google Ads" principal para o ROAS
+
+    const totalConversions = data.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
+    const totalEcommerceClicks = ecommerceData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
+    const totalEcommerceImpressions = ecommerceData.reduce((sum, entry) => sum + (entry.impressions || 0), 0);
+
+    // Weighted CTR (Total Clicks / Total Impressions) using filtered ecommerce data
+    const avgCTR = totalEcommerceImpressions > 0 ? (totalEcommerceClicks / totalEcommerceImpressions) * 100 : 0;
 
     const costPerConversion = totalConversions > 0 ? totalCost / totalConversions : 0;
-    const avgCPM = totalImpressions > 0 ? (totalCost / totalImpressions) * 1000 : 0;
 
     // Daily Cost Aggregation
     const dailyCostMap: { [key: string]: number } = {};
@@ -349,35 +355,17 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         .map(([date, cost]) => ({ date, cost }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-    // ==========================================
-    // SEGMENTAÇÃO: Leads vs Ecommerce
-    // ==========================================
-    // Campanhas de Leads: contém "Lead" no nome da campanha
-    // Campanhas Ecommerce: NÃO contém "Lead" E NÃO contém "Visita"
-    const isLeadsCampaign = (campaign: string) => {
-        const lowerCampaign = campaign?.toLowerCase() || '';
-        return lowerCampaign.includes('lead');
-    };
-
-    const isVisitaCampaign = (campaign: string) => {
-        const lowerCampaign = campaign?.toLowerCase() || '';
-        return lowerCampaign.includes('visita');
-    };
+    // Metas definidas pelo usuário
+    const LEADS_META = 28000;
+    const ECOMMERCE_META = 66000;
 
     const leadsData = data.filter(entry => isLeadsCampaign(entry.campaign));
-    // Ecommerce excludes Leads AND Visita
-    const ecommerceData = data.filter(entry => !isLeadsCampaign(entry.campaign) && !isVisitaCampaign(entry.campaign));
-
     const leadsSpend = leadsData.reduce((sum, entry) => sum + (entry.cost || 0), 0);
-    const ecommerceSpend = ecommerceData.reduce((sum, entry) => sum + (entry.cost || 0), 0);
+    const ecommerceSpend = totalCost;
     const leadsConversions = leadsData.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
     const ecommerceConversions = ecommerceData.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
     const leadsClicks = leadsData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
     const ecommerceClicks = ecommerceData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
-
-    // Metas definidas pelo usuário
-    const LEADS_META = 28000;
-    const ECOMMERCE_META = 66000;
 
     // ==========================================
     // CLASSIFICAÇÃO DE CAMPANHAS (5 tipos)
@@ -442,7 +430,6 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         .map(c => ({
             ...c,
             ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
-            cpm: c.impressions > 0 ? (c.spend / c.impressions) * 1000 : 0,
             cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
             cpa: c.conversions > 0 ? c.spend / c.conversions : 0,
         }))
@@ -450,16 +437,15 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
 
     return {
         spend: totalCost,
+        totalGrossCost,
         spend_formatted: `R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         conversions: totalConversions,
-        clicks: totalClicks,
-        impressions: totalImpressions,
+        clicks: totalEcommerceClicks,
+        impressions: totalEcommerceImpressions,
         ctr: avgCTR,
         ctr_formatted: `${avgCTR.toFixed(2)}%`,
-        cpm: avgCPM,
-        cpm_formatted: `R$ ${avgCPM.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         costPerConversion,
-        cpc: totalClicks > 0 ? totalCost / totalClicks : 0,
+        cpc: totalEcommerceClicks > 0 ? totalCost / totalEcommerceClicks : 0,
         dailyData,
         // Segmentação Leads vs Ecommerce
         segmented: {
@@ -1134,6 +1120,53 @@ export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
         }
     });
 
+    // Repeat Customers & Loyalty
+    const totalRevenue = completedOrders.reduce((sum, order) => sum + (order.receitaProduto || 0), 0);
+    const totalOrdersCount = new Set(completedOrders.map(d => d.pedido).filter(Boolean)).size || completedOrders.length;
+
+    const repeatCustomersCount = Object.values(customerRFM).filter(c => c.frequencia > 1).length;
+    const repurchaseRate = totalClientes > 0 ? (repeatCustomersCount / totalClientes) * 100 : 0;
+    const avgOrdersPerCustomer = totalClientes > 0 ? totalOrdersCount / totalClientes : 0;
+    const ltv = totalClientes > 0 ? totalRevenue / totalClientes : 0;
+
+    // Cohort Analysis (Simplified: Month of first order)
+    const cohorts: Record<string, { count: number, revenue: number, months: Record<number, number> }> = {};
+    const customerFirstVisit: Record<string, string> = {};
+
+    // Sort orders by date to find first visit
+    const sortedOrders = [...data]
+        .map(d => {
+            let date: Date | null = null;
+            if (d.data?.includes('/')) {
+                date = new Date(d.data.split('/').reverse().join('-'));
+            } else if (d.data) {
+                date = new Date(d.data.split(' ')[0]);
+            }
+            return { ...d, parsedDate: date };
+        })
+        .filter(d => d.cpfCliente && d.parsedDate)
+        .sort((a: any, b: any) => a.parsedDate.getTime() - b.parsedDate.getTime());
+
+    sortedOrders.forEach(order => {
+        const cpf = order.cpfCliente;
+        const monthYear = (order as any).parsedDate.toISOString().slice(0, 7); // YYYY-MM
+
+        if (!customerFirstVisit[cpf]) {
+            customerFirstVisit[cpf] = monthYear;
+            if (!cohorts[monthYear]) {
+                cohorts[monthYear] = { count: 0, revenue: 0, months: {} };
+            }
+            cohorts[monthYear].count += 1;
+        }
+
+        const firstMonth = new Date(customerFirstVisit[cpf] + '-01');
+        const currentMonth = new Date(monthYear + '-01');
+        const monthsDiff = (currentMonth.getFullYear() - firstMonth.getFullYear()) * 12 + (currentMonth.getMonth() - firstMonth.getMonth());
+
+        cohorts[customerFirstVisit[cpf]].revenue += order.receitaProduto || 0;
+        cohorts[customerFirstVisit[cpf]].months[monthsDiff] = (cohorts[customerFirstVisit[cpf]].months[monthsDiff] || 0) + 1;
+    });
+
     // Format for frontend
     const segments = Object.entries(segmentsMap)
         .filter(([_, list]) => list.length > 0)
@@ -1154,16 +1187,14 @@ export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
 
     data.forEach(order => {
         // Parse date safely
-        let orderDate: Date;
-        try {
-            if (order.data?.includes('/')) {
-                orderDate = new Date(order.data.split('/').reverse().join('-'));
-            } else if (order.data) {
-                orderDate = new Date(order.data.split(' ')[0]);
-            } else {
-                return;
-            }
-        } catch (e) { return; }
+        let orderDate: Date | null = null;
+        if (order.data?.includes('/')) {
+            orderDate = new Date(order.data.split('/').reverse().join('-'));
+        } else if (order.data) {
+            orderDate = new Date(order.data.split(' ')[0]);
+        }
+
+        if (!orderDate) return;
 
         // Filter last 12 months and valid status
         if (orderDate >= oneYearAgo) {
@@ -1186,13 +1217,16 @@ export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
 
     return {
         totalClientes,
+        repurchaseRate,
+        avgOrdersPerCustomer,
+        ltv,
         topCustomers,
         bySeller,
         byState,
         byCity,
-        segments, // New RFM segments with full data
-        seasonality, // New seasonality data
-        // Include raw data for flexible client-side processing if needed
+        segments,
+        seasonality,
+        cohorts,
         rawData: data
     };
 };

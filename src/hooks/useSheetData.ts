@@ -3,7 +3,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useFilterStore } from '@/stores/filterStore';
 
 // Generic hook for fetching sheet data
-export function useSheetData<T>(endpoint: string, aggregated: boolean = false, skipFilters: boolean = false) {
+export function useSheetData<T>(
+    endpoint: string,
+    aggregated: boolean = false,
+    skipFilters: boolean = false,
+    customStart?: Date,
+    customEnd?: Date
+) {
     const [data, setData] = useState<T | null>(null);
     const [comparisonData, setComparisonData] = useState<T | null>(null);
     const [loading, setLoading] = useState(true);
@@ -15,11 +21,14 @@ export function useSheetData<T>(endpoint: string, aggregated: boolean = false, s
         setError(null);
 
         try {
+            const start = customStart || periodoInicio;
+            const end = customEnd || periodoFim;
+
             // Main Period Fetch
             const params = new URLSearchParams();
             if (aggregated) params.append('aggregated', 'true');
-            if (!skipFilters && periodoInicio) params.append('startDate', periodoInicio.toISOString());
-            if (!skipFilters && periodoFim) params.append('endDate', periodoFim.toISOString());
+            if (!skipFilters && start) params.append('startDate', start.toISOString());
+            if (!skipFilters && end) params.append('endDate', end.toISOString());
 
             const url = `${endpoint}?${params.toString()}`;
             const response = await fetch(url);
@@ -31,8 +40,8 @@ export function useSheetData<T>(endpoint: string, aggregated: boolean = false, s
                 setError(result.error || 'Failed to fetch data');
             }
 
-            // Comparison Period Fetch (Skip if skipFilters is true)
-            if (!skipFilters && isComparing && compareStart && compareEnd) {
+            // Comparison Period Fetch (Skip if skipFilters is true or custom range is used)
+            if (!skipFilters && !customStart && isComparing && compareStart && compareEnd) {
                 const compareParams = new URLSearchParams();
                 if (aggregated) compareParams.append('aggregated', 'true');
                 compareParams.append('startDate', compareStart.toISOString());
@@ -54,7 +63,7 @@ export function useSheetData<T>(endpoint: string, aggregated: boolean = false, s
         } finally {
             setLoading(false);
         }
-    }, [endpoint, aggregated, skipFilters, periodoInicio, periodoFim, isComparing, compareStart, compareEnd]);
+    }, [endpoint, aggregated, skipFilters, periodoInicio, periodoFim, isComparing, compareStart, compareEnd, customStart, customEnd]);
 
     useEffect(() => {
         fetchData();
@@ -103,8 +112,8 @@ export function useGA4KPIs() {
 }
 
 // Hook for Catalogo Data
-export function useCatalogoData() {
-    return useSheetData<any>('/api/sheets/catalogo');
+export function useCatalogoData(customStart?: Date, customEnd?: Date) {
+    return useSheetData<any>('/api/sheets/catalogo', false, false, customStart, customEnd);
 }
 
 // Hook for YoY Analysis (ignores global date filters to get historical context)
@@ -113,6 +122,6 @@ export function useCatalogoYoYData() {
 }
 
 // Hook for CRM Data
-export function useCRMData() {
-    return useSheetData<any>('/api/sheets/crm');
+export function useCRMData(customStart?: Date, customEnd?: Date) {
+    return useSheetData<any>('/api/sheets/crm', false, false, customStart, customEnd);
 }

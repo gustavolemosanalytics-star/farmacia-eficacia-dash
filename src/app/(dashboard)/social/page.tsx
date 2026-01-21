@@ -41,6 +41,7 @@ export default function SocialPage() {
             <PageFilters
                 title="Social & Marca"
                 description="Métricas de redes sociais e análise de sentimento"
+                isMocked={true}
             />
 
             {/* KPIs */}

@@ -16,8 +16,12 @@ import {
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
 export default function CrmPage() {
-    const { data: crmData, loading: loadingCRM } = useCRMData();
-    const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
+    // Definir período padrão de 2025 até hoje para esta página
+    const customStart = useMemo(() => new Date(2025, 0, 1), []);
+    const customEnd = useMemo(() => new Date(), []);
+
+    const { data: crmData, loading: loadingCRM } = useCRMData(customStart, customEnd);
+    const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData(customStart, customEnd);
 
     const loading = loadingCRM || loadingCatalogo;
 
@@ -310,6 +314,22 @@ export default function CrmPage() {
     return (
         <div className="space-y-6">
             <PageFilters title="CRM & Clientes" description="Fidelização, LTV e Análise de Comportamento" />
+
+            <div className="rounded-xl border border-blue-200/50 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-900/10 p-4 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-blue-500/10">
+                        <Calendar className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Monitoramento de Longo Prazo Ativo</p>
+                        <p className="text-xs text-blue-700/80 dark:text-blue-300/80">
+                            Para uma análise precisa de LTV e Retenção, os dados nesta página estão setados de
+                            <span className="font-bold mx-1">01/01/2025</span> até
+                            <span className="font-bold mx-1">{new Date().toLocaleDateString('pt-BR')}</span>.
+                        </p>
+                    </div>
+                </div>
+            </div>
 
             {loading && (<div className="flex items-center justify-center py-8"> <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div> </div>)}
 

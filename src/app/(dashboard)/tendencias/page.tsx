@@ -36,6 +36,7 @@ export default function TendenciasPage() {
             <PageFilters
                 title="Tendências & Oportunidades"
                 description="Growth Radar - Oportunidades priorizadas por impacto"
+                isMocked={true}
             />
 
             {/* Matriz de Oportunidades (Scatter Plot) */}

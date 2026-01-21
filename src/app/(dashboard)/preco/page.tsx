@@ -26,6 +26,7 @@ export default function PrecoPage() {
             <PageFilters
                 title="Preço & Concorrência"
                 description="Monitoramento de preços e posicionamento vs mercado"
+                isMocked={true}
             />
 
             {/* KPIs */}
