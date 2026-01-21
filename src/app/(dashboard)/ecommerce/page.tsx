@@ -508,7 +508,7 @@ export default function EcommercePage() {
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={280}>
-                                <AreaChart data={analytics.dailyTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <AreaChart data={analytics.dailyTrend} margin={{ top: 10, right: 10, left: 45, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="colorReceita2" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
@@ -516,8 +516,19 @@ export default function EcommercePage() {
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                                    <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={10} />
-                                    <YAxis stroke="var(--muted-foreground)" fontSize={10} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+                                    <XAxis dataKey="date" stroke="var(--muted-foreground)" fontSize={10} tickFormatter={(val) => {
+                                        if (typeof val === 'string' && val.includes('/')) {
+                                            const parts = val.split('/');
+                                            return `${parts[0]}/${parts[1]}`;
+                                        }
+                                        return val;
+                                    }} />
+                                    <YAxis
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={10}
+                                        tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                                        width={45}
+                                    />
                                     <Tooltip formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
                                     <Area type="monotone" dataKey="receita" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorReceita2)" name="Receita" />
                                 </AreaChart>
@@ -536,7 +547,7 @@ export default function EcommercePage() {
                                 <BarChart data={analytics.byAtribuicao.slice(0, 6)} layout="vertical" margin={{ left: 10, right: 60, top: 10, bottom: 10 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                                     <XAxis type="number" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} stroke="var(--muted-foreground)" fontSize={10} />
-                                    <YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)" fontSize={10} />
+                                    <YAxis type="category" dataKey="name" width={90} stroke="var(--muted-foreground)" fontSize={10} />
                                     <Tooltip formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]} contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
                                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                                         {analytics.byAtribuicao.slice(0, 6).map((_, index) => (
@@ -562,7 +573,7 @@ export default function EcommercePage() {
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={320}>
-                                <BarChart data={analytics.topCategories} margin={{ top: 40, right: 30, left: 10, bottom: 90 }}>
+                                <BarChart data={analytics.topCategories} margin={{ top: 40, right: 20, left: 55, bottom: 90 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                                     <XAxis
                                         dataKey="name"
@@ -572,17 +583,19 @@ export default function EcommercePage() {
                                         textAnchor="end"
                                         height={100}
                                         interval={0}
+                                        padding={{ left: 10, right: 10 }}
                                     />
                                     <YAxis
                                         stroke="var(--muted-foreground)"
                                         fontSize={10}
                                         tickFormatter={(v) => `R$${(v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)}`}
+                                        width={55}
                                     />
                                     <Tooltip
                                         formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
                                         contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                     />
-                                    <Bar dataKey="receita" radius={[6, 6, 0, 0]} name="Receita" barSize={40}>
+                                    <Bar dataKey="receita" radius={[6, 6, 0, 0]} name="Receita" barSize={36}>
                                         {analytics.topCategories.map((_, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}

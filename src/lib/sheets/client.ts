@@ -267,19 +267,32 @@ export const fetchTVSalesData = async () => {
     });
 };
 
-// Helper to parse date
+// Helper to parse date consistently (always returns local time at midnight)
 const parseDate = (dateStr: string): Date | null => {
     if (!dateStr) return null;
-    // Try YYYY-MM-DD
-    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return new Date(dateStr);
-    // Try DD/MM/YYYY
-    if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}/)) {
-        const [d, m, y] = dateStr.split('/');
-        return new Date(Number(y), Number(m) - 1, Number(d));
+
+    let d: Date | null = null;
+
+    // Try YYYY-MM-DD (e.g. 2026-01-15)
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [y, m, day] = dateStr.split('-').map(Number);
+        d = new Date(y, m - 1, day);
     }
-    // Try parsing as is
-    const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? null : d;
+    // Try DD/MM/YYYY (e.g. 15/01/2026)
+    else if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+        const [day, month, year] = dateStr.split('/');
+        d = new Date(Number(year), Number(month) - 1, Number(day));
+    }
+    else {
+        // Fallback for other formats
+        d = new Date(dateStr);
+    }
+
+    if (!d || isNaN(d.getTime())) return null;
+
+    // Always normalize to start of day in local time for consistent comparison
+    d.setHours(0, 0, 0, 0);
+    return d;
 };
 
 // Aggregate Google Ads KPIs
@@ -287,10 +300,13 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     let data = await fetchGoogleAdsData();
 
     if (startDate && endDate) {
+        const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+
         data = data.filter(entry => {
             const entryDate = parseDate(entry.day || entry.data || entry.campaignStartDate);
-            if (!entryDate) return true; // Keep if no date (safe?) or false? false is safer.
-            return entryDate >= startDate && entryDate <= endDate;
+            if (!entryDate) return true;
+            return entryDate >= start && entryDate <= end;
         });
     }
 
@@ -498,16 +514,19 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
     let filteredSessions = sessionData;
 
     if (startDate && endDate) {
+        const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+
         filteredTransactions = transactionData.filter(entry => {
             const entryDate = parseDate(entry.transactionDate || entry.data);
             if (!entryDate) return true;
-            return entryDate >= startDate && entryDate <= endDate;
+            return entryDate >= start && entryDate <= end;
         });
 
         filteredSessions = sessionData.filter(entry => {
             const entryDate = parseDate(entry.date);
             if (!entryDate) return true;
-            return entryDate >= startDate && entryDate <= endDate;
+            return entryDate >= start && entryDate <= end;
         });
     }
 
@@ -651,37 +670,13 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
 
     // Filter by Date Range if provided
     if (startDate && endDate) {
-        // Adjust bounds to cover full days
         const start = new Date(startDate); start.setHours(0, 0, 0, 0);
         const end = new Date(endDate); end.setHours(23, 59, 59, 999);
 
         data = data.filter(order => {
-            const dateStr = order.data; // Prioritize 'Data' column as requested
-            if (!dateStr) return false;
-
-            try {
-                let orderDate: Date | null = null;
-                const datePart = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr;
-
-                // BD Mag format: DD/MM/YYYY
-                if (datePart.includes('/')) {
-                    const parts = datePart.split('/');
-                    if (parts.length === 3) {
-                        orderDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-                    }
-                } else if (datePart.includes('-')) {
-                    // Fallback for YYYY-MM-DD
-                    orderDate = new Date(datePart);
-                    if (orderDate) orderDate.setHours(12, 0, 0, 0);
-                }
-
-                if (orderDate && !isNaN(orderDate.getTime())) {
-                    return orderDate >= start && orderDate <= end;
-                }
-                return false;
-            } catch (e) {
-                return false;
-            }
+            const entryDate = parseDate(order.data || order.dataTransacao);
+            if (!entryDate) return false;
+            return entryDate >= start && entryDate <= end;
         });
     }
 
@@ -887,38 +882,13 @@ export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
 
     // Filter by Date Range if provided
     if (startDate && endDate) {
+        const start = new Date(startDate); start.setHours(0, 0, 0, 0);
+        const end = new Date(endDate); end.setHours(23, 59, 59, 999);
+
         completedOrders = completedOrders.filter(order => {
-            const dateStr = order.data || order.dataTransacao;
-            if (!dateStr) return false;
-
-            try {
-                // Normaliza a data para objeto Date
-                let orderDate: Date | null = null;
-                const datePart = dateStr.includes(' ') ? dateStr.split(' ')[0] : dateStr;
-
-                if (datePart.includes('/')) {
-                    // Formato DD/MM/YYYY
-                    const parts = datePart.split('/');
-                    if (parts.length === 3) {
-                        orderDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-                    }
-                } else if (datePart.includes('-')) {
-                    // Formato YYYY-MM-DD
-                    orderDate = new Date(datePart);
-                    if (orderDate) orderDate.setHours(12, 0, 0, 0);
-                }
-
-                if (orderDate && !isNaN(orderDate.getTime())) {
-                    // Reset hours for comparison
-                    const start = new Date(startDate); start.setHours(0, 0, 0, 0);
-                    const end = new Date(endDate); end.setHours(23, 59, 59, 999);
-                    return orderDate >= start && orderDate <= end;
-                }
-
-                return true;
-            } catch (e) {
-                return true;
-            }
+            const entryDate = parseDate(order.data || order.dataTransacao);
+            if (!entryDate) return false;
+            return entryDate >= start && entryDate <= end;
         });
     }
 
