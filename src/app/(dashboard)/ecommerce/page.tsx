@@ -573,7 +573,7 @@ export default function EcommercePage() {
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={320}>
-                                <BarChart data={analytics.topCategories} margin={{ top: 40, right: 20, left: 55, bottom: 90 }}>
+                                <BarChart data={analytics.topCategories} margin={{ top: 40, right: 10, left: 0, bottom: 90 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                                     <XAxis
                                         dataKey="name"
@@ -583,19 +583,19 @@ export default function EcommercePage() {
                                         textAnchor="end"
                                         height={100}
                                         interval={0}
-                                        padding={{ left: 10, right: 10 }}
                                     />
                                     <YAxis
                                         stroke="var(--muted-foreground)"
                                         fontSize={10}
                                         tickFormatter={(v) => `R$${(v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v)}`}
-                                        width={55}
+                                        width={60}
+                                        tick={{ dx: -5 }}
                                     />
                                     <Tooltip
                                         formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
                                         contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                     />
-                                    <Bar dataKey="receita" radius={[6, 6, 0, 0]} name="Receita" barSize={36}>
+                                    <Bar dataKey="receita" radius={[6, 6, 0, 0]} name="Receita" barSize={45}>
                                         {analytics.topCategories.map((_, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
