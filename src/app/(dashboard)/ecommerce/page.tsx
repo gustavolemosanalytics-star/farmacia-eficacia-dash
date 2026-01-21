@@ -618,8 +618,8 @@ export default function EcommercePage() {
                             <CardTitle className="text-sm font-medium">Top Categorias por Receita</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ResponsiveContainer width="100%" height={320}>
-                                <BarChart data={analytics.topCategories} margin={{ top: 40, right: 10, left: 60, bottom: 90 }}>
+                            <ResponsiveContainer width="100%" height={420}>
+                                <BarChart data={analytics.topCategories} margin={{ top: 40, right: 10, left: 60, bottom: 70 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                                     <XAxis
                                         dataKey="name"
@@ -627,7 +627,7 @@ export default function EcommercePage() {
                                         fontSize={10}
                                         angle={-35}
                                         textAnchor="end"
-                                        height={100}
+                                        height={80}
                                         interval={0}
                                     />
                                     <YAxis
@@ -640,7 +640,7 @@ export default function EcommercePage() {
                                         formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
                                         contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                     />
-                                    <Bar dataKey="receita" radius={[6, 6, 0, 0]} name="Receita" barSize={45}>
+                                    <Bar dataKey="receita" radius={[6, 6, 0, 0]} name="Receita" barSize={50}>
                                         {analytics.topCategories.map((_, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
