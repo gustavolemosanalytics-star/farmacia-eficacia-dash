@@ -70,6 +70,14 @@ export default function HomeExecutiva() {
             .filter((d: any) => d.atribuicao === 'Google_Ads')
             .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
 
+        // Revenue for ROAS calculation (Atribuição != Vendedor and != Outros)
+        const receitaParaROAS = filtered
+            .filter((d: any) => {
+                const atrib = (d.atribuicao || '').toLowerCase();
+                return atrib !== 'vendedor' && atrib !== 'outros' && atrib !== '';
+            })
+            .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+
         // Revenue by Atribuição for chart
         const atribuicaoRevenue: { [key: string]: number } = {};
         filtered.forEach((d: any) => {
@@ -192,15 +200,47 @@ export default function HomeExecutiva() {
             .sort((a, b) => b.growth - a.growth)
             .slice(0, 6);
 
+        // Daily Revenue by Atribuição for line chart
+        const dailyAtribuicaoMap: { [key: string]: { [atrib: string]: number } } = {};
+        filtered.forEach((d: any) => {
+            const dateRaw = d.data || d.dataTransacao;
+            if (dateRaw) {
+                const key = dateRaw.split(' ')[0];
+                const atrib = d.atribuicao || 'Não identificado';
+                if (!dailyAtribuicaoMap[key]) {
+                    dailyAtribuicaoMap[key] = {};
+                }
+                dailyAtribuicaoMap[key][atrib] = (dailyAtribuicaoMap[key][atrib] || 0) + (d.receitaProduto || 0);
+            }
+        });
+
+        const allAtribuicoes: string[] = Array.from(new Set(filtered.map((d: any) => (d.atribuicao || 'Não identificado') as string)));
+        const dailyRevenueByAtribuicao = Object.entries(dailyAtribuicaoMap)
+            .map(([date, atribData]) => {
+                const entry: any = { date };
+                allAtribuicoes.forEach((atrib: string) => {
+                    entry[atrib] = atribData[atrib] || 0;
+                });
+                return entry;
+            })
+            .sort((a, b) => {
+                const dateA = a.date.includes('/') ? new Date(a.date.split('/').reverse().join('-')) : new Date(a.date);
+                const dateB = b.date.includes('/') ? new Date(b.date.split('/').reverse().join('-')) : new Date(b.date);
+                return dateA.getTime() - dateB.getTime();
+            });
+
         return {
             totalReceita,
             totalPedidos,
             ticketMedio,
             totalClientes: uniqueClients.size,
             receitaGoogleAds,
+            receitaParaROAS,
             byAtribuicao,
             byCategory,
             dailyRevenue,
+            dailyRevenueByAtribuicao,
+            allAtribuicoes,
             filteredRaw: filtered,
             // YoY Data
             yoy: {
@@ -224,12 +264,15 @@ export default function HomeExecutiva() {
     const displayData = filteredData || {
         totalReceita: catalogoData?.totalReceita || 0,
         receitaGoogleAds: catalogoData?.receitaGoogleAds || 0,
+        receitaParaROAS: catalogoData?.receitaParaROAS || 0,
         totalPedidos: catalogoData?.totalPedidos || 0,
         ticketMedio: catalogoData?.ticketMedio || 0,
         totalClientes: catalogoData?.totalClientes || 0,
         byAtribuicao: catalogoData?.byAtribuicao || [],
         byCategory: catalogoData?.byCategory || [],
         dailyRevenue: catalogoData?.dailyRevenue || [],
+        dailyRevenueByAtribuicao: catalogoData?.dailyRevenueByAtribuicao || [],
+        allAtribuicoes: catalogoData?.allAtribuicoes || [],
         filteredRaw: [],
         yoy: null
     };
@@ -297,10 +340,13 @@ export default function HomeExecutiva() {
         },
     ];
 
-    // Calculate ROAS using only Ecommerce spend (campaigns without "Lead")
-    const ecommerceSpend = gadsKpis?.segmented?.ecommerce?.spend || 0;
-    const roas = receitaMidiaPaga > 0 && ecommerceSpend > 0
-        ? receitaMidiaPaga / ecommerceSpend
+    // Calculate ROAS using:
+    // - Custo: Campanhas que NÃO contêm "Lead" e NÃO contêm "Visita" (ecommerceSpend já é isso)
+    // - Receita: BD Mag com Atribuição diferente de "Vendedor" e diferente de "Outros"
+    const ecommerceSpend = gadsKpis?.spend || 0; // spend já exclui Lead e Visita no backend
+    const receitaParaROASCalc = displayData.receitaParaROAS || 0;
+    const roas = receitaParaROASCalc > 0 && ecommerceSpend > 0
+        ? receitaParaROASCalc / ecommerceSpend
         : 0;
 
     if (roas > 0) {
@@ -1023,6 +1069,112 @@ export default function HomeExecutiva() {
                             })()}
                         </CardContent>
                     </Card>
+                </section>
+            )}
+
+            {/* Receita por Atribuição - Pie Chart + Line Chart */}
+            {!loading && displayData.byAtribuicao.length > 0 && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Receita por Atribuição - Análise Detalhada
+                    </h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Pie Chart - Distribution */}
+                        <Card className="border-border bg-card">
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <PieChart className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-sm font-medium text-card-foreground">Distribuição por Canal de Atribuição</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={350}>
+                                    <RechartsPie>
+                                        <Pie
+                                            data={displayData.byAtribuicao.slice(0, 8).map((item: any, idx: number) => ({
+                                                ...item,
+                                                color: COLORS[idx % COLORS.length]
+                                            }))}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={120}
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                            nameKey="name"
+                                            label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(1)}%`}
+                                            labelLine={false}
+                                        >
+                                            {displayData.byAtribuicao.slice(0, 8).map((_: any, index: number) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            formatter={(value) => [`R$ ${(value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Receita']}
+                                            contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                        />
+                                        <Legend />
+                                    </RechartsPie>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+
+                        {/* Line Chart - Daily Evolution by Attribution */}
+                        <Card className="border-border bg-card">
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-primary" />
+                                <CardTitle className="text-sm font-medium text-card-foreground">Evolução Diária por Atribuição</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={350}>
+                                    <LineChart data={displayData.dailyRevenueByAtribuicao?.slice(-30) || []} margin={{ top: 10, right: 30, left: 0, bottom: 50 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke="var(--muted-foreground)"
+                                            fontSize={10}
+                                            angle={-45}
+                                            textAnchor="end"
+                                            height={60}
+                                            tickFormatter={(val) => {
+                                                if (typeof val === 'string' && val.includes('-')) {
+                                                    const parts = val.split('-');
+                                                    if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
+                                                }
+                                                if (typeof val === 'string' && val.includes('/')) {
+                                                    return val.slice(0, 5);
+                                                }
+                                                return val;
+                                            }}
+                                        />
+                                        <YAxis
+                                            stroke="var(--muted-foreground)"
+                                            fontSize={10}
+                                            tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                                        />
+                                        <Tooltip
+                                            formatter={(value, name) => [`R$ ${(value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, name]}
+                                            contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                        />
+                                        <Legend />
+                                        {(displayData.allAtribuicoes || []).slice(0, 6).map((atrib: string, idx: number) => (
+                                            <Line
+                                                key={atrib}
+                                                type="monotone"
+                                                dataKey={atrib}
+                                                name={atrib}
+                                                stroke={COLORS[idx % COLORS.length]}
+                                                strokeWidth={2}
+                                                dot={false}
+                                                activeDot={{ r: 4 }}
+                                            />
+                                        ))}
+                                    </LineChart>
+                                </ResponsiveContainer>
+                                <p className="text-xs text-muted-foreground text-center mt-2">
+                                    Últimos 30 dias • Receita diária por canal de atribuição
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </section>
             )}
 

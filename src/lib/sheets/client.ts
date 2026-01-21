@@ -761,6 +761,14 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
         .filter(d => d.atribuicao?.toLowerCase().includes('google_ads'))
         .reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0);
 
+    // Receita para cálculo do ROAS (Atribuição != Vendedor e != Outros)
+    const receitaParaROAS = completedOrders
+        .filter(d => {
+            const atrib = (d.atribuicao || '').toLowerCase();
+            return atrib !== 'vendedor' && atrib !== 'outros' && atrib !== '';
+        })
+        .reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0);
+
     // Unique orders count
     const uniqueOrders = new Set(completedOrders.map(d => d.pedido).filter(Boolean));
     const totalPedidos = uniqueOrders.size || completedOrders.length;
@@ -895,11 +903,44 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
         .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
         .map(({ date, receita, pedidos }) => ({ date, receita, pedidos }));
 
+    // Daily Revenue by Atribuição (for line chart showing evolution over time)
+    const dailyAtribuicaoMap: { [key: string]: { [atrib: string]: number } } = {};
+    completedOrders.forEach(order => {
+        const dateRaw = order.data || order.dataTransacao;
+        if (dateRaw) {
+            const key = dateRaw.split(' ')[0];
+            const atrib = order.atribuicao || 'Não identificado';
+            if (!dailyAtribuicaoMap[key]) {
+                dailyAtribuicaoMap[key] = {};
+            }
+            dailyAtribuicaoMap[key][atrib] = (dailyAtribuicaoMap[key][atrib] || 0) + (order.receitaProduto || 0);
+        }
+    });
+
+    // Get all unique attributions
+    const allAtribuicoes = [...new Set(completedOrders.map(o => o.atribuicao || 'Não identificado'))];
+
+    const dailyRevenueByAtribuicao = Object.entries(dailyAtribuicaoMap)
+        .map(([date, atribData]) => {
+            const entry: any = {
+                date,
+                sortDate: date.includes('/') ? new Date(date.split('/').reverse().join('-')) : new Date(date)
+            };
+            allAtribuicoes.forEach(atrib => {
+                entry[atrib] = atribData[atrib] || 0;
+            });
+            return entry;
+        })
+        .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
+        .map(({ sortDate, ...rest }) => rest);
+
     return {
         totalReceita,
         totalReceita_formatted: `R$ ${totalReceita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         receitaGoogleAds,
         receitaGoogleAds_formatted: `R$ ${receitaGoogleAds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        receitaParaROAS,
+        receitaParaROAS_formatted: `R$ ${receitaParaROAS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         totalValorSemFrete,
         totalValorSemFrete_formatted: `R$ ${totalValorSemFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         totalValorComFrete,
@@ -917,6 +958,8 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
         bySeller,
         byDayOfWeek,
         dailyRevenue,
+        dailyRevenueByAtribuicao,
+        allAtribuicoes,
         filterOptions: {
             origens: filterOrigens,
             midias: filterMidias,
