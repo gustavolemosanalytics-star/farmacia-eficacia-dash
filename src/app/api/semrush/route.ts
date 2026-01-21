@@ -69,13 +69,44 @@ export async function GET(request: Request) {
 
         const firstLine = lines[0];
         const separator = firstLine.includes(';') ? ';' : (firstLine.includes(',') ? ',' : '\t');
-        const headers = firstLine.split(separator);
+        const originalHeaders = firstLine.split(separator).map(h => h.trim());
+
+        // HEADER MAPPING LOGIC
+        const headerMap: { [key: string]: string } = {};
+
+        if (type === 'domain_rank') {
+            headerMap['Organic Keywords'] = 'Or';
+            headerMap['Organic Traffic'] = 'Ot';
+            headerMap['Organic Cost'] = 'Oc';
+            headerMap['Adwords Keywords'] = 'Ad';
+            headerMap['Adwords Traffic'] = 'At';
+            headerMap['Adwords Cost'] = 'Ac';
+        } else if (type === 'organic_keywords') {
+            headerMap['Keyword'] = 'Ph';
+            headerMap['Position'] = 'Po';
+            headerMap['Previous Position'] = 'Pp';
+            headerMap['Position Difference'] = 'Pd';
+            headerMap['Search Volume'] = 'Nq';
+            headerMap['CPC'] = 'Cp';
+            headerMap['Url'] = 'Ur';
+            headerMap['Traffic (%)'] = 'Tr';
+            headerMap['Traffic Cost (%)'] = 'Tc';
+            headerMap['Competition'] = 'Co';
+        } else if (type === 'competitors') {
+            headerMap['Domain'] = 'Dn';
+            headerMap['Competitor Relevance'] = 'Cr';
+            headerMap['Common Keywords'] = 'Np';
+            headerMap['Organic Traffic'] = 'Ot';
+            headerMap['Organic Cost'] = 'Oc';
+            headerMap['Adwords Keywords'] = 'Ad';
+        }
 
         const data = lines.slice(1).map(line => {
             const values = line.split(separator);
             const obj: any = {};
-            headers.forEach((header, i) => {
-                obj[header.trim()] = values[i] ? values[i].trim() : '';
+            originalHeaders.forEach((header, i) => {
+                const mappedHeader = headerMap[header] || header; // Use mapped key or original if not found
+                obj[mappedHeader] = values[i] ? values[i].trim() : '';
             });
             return obj;
         });
