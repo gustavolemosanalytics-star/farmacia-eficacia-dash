@@ -94,25 +94,25 @@ export default function SemrushPage() {
     const kpis = [
         {
             title: 'Organic Keywords',
-            value: overview?.['Organic Keywords'] ? Number(overview['Organic Keywords']).toLocaleString() : '0',
+            value: overview?.Or ? Number(overview.Or).toLocaleString() : '0',
             icon: Search,
             color: 'text-emerald-500',
         },
         {
             title: 'Organic Traffic',
-            value: overview?.['Organic Traffic'] ? Number(overview['Organic Traffic']).toLocaleString() : '0',
+            value: overview?.Ot ? Number(overview.Ot).toLocaleString() : '0',
             icon: MousePointer,
             color: 'text-blue-500',
         },
         {
             title: 'Organic Cost',
-            value: overview?.['Organic Cost'] ? `USD ${Number(overview['Organic Cost']).toLocaleString()}` : '0',
+            value: overview?.Oc ? `USD ${Number(overview.Oc).toLocaleString()}` : '0',
             icon: TrendingUp,
             color: 'text-primary',
         },
         {
             title: 'AdWords Keywords',
-            value: overview?.['Adwords Keywords'] ? Number(overview['Adwords Keywords']).toLocaleString() : '0',
+            value: overview?.Ad ? Number(overview.Ad).toLocaleString() : '0',
             icon: BarChart3,
             color: 'text-orange-500',
         }
@@ -122,24 +122,24 @@ export default function SemrushPage() {
     const keywordsChartData = keywords
         .slice(0, 10)
         .map(kw => ({
-            name: kw['Keyword'],
-            traffic: parseFloat(kw['Traffic (%)'] || 0),
-            volume: parseInt(kw['Search Volume'] || 0),
+            name: kw.Ph,
+            traffic: parseFloat(kw.Tr || 0),
+            volume: parseInt(kw.Nq || 0),
         }));
 
     // Pos Distribution
     const posDist = [
-        { name: 'Top 3', count: keywords.filter(k => parseInt(k['Position']) <= 3).length, fill: '#10b981' },
-        { name: 'Top 10', count: keywords.filter(k => parseInt(k['Position']) > 3 && parseInt(k['Position']) <= 10).length, fill: '#3b82f6' },
-        { name: 'Top 20', count: keywords.filter(k => parseInt(k['Position']) > 10 && parseInt(k['Position']) <= 20).length, fill: '#f59e0b' },
-        { name: 'Top 50', count: keywords.filter(k => parseInt(k['Position']) > 20).length, fill: '#94a3b8' },
+        { name: 'Top 3', count: keywords.filter(k => parseInt(k.Po) <= 3).length, fill: '#10b981' },
+        { name: 'Top 10', count: keywords.filter(k => parseInt(k.Po) > 3 && parseInt(k.Po) <= 10).length, fill: '#3b82f6' },
+        { name: 'Top 20', count: keywords.filter(k => parseInt(k.Po) > 10 && parseInt(k.Po) <= 20).length, fill: '#f59e0b' },
+        { name: 'Top 50', count: keywords.filter(k => parseInt(k.Po) > 20).length, fill: '#94a3b8' },
     ];
 
     // Competitors Chart
     const competitorsData = competitors.map(c => ({
-        name: c['Domain'],
-        overlap: parseInt(c['Competitor Relevance'] || 0),
-        traffic: parseInt(c['Organic Traffic'] || 0)
+        name: c.Dn,
+        overlap: parseInt(c.Cr || 0),
+        traffic: parseInt(c.Ot || 0)
     })).sort((a, b) => b.traffic - a.traffic);
 
     return (
@@ -254,15 +254,15 @@ export default function SemrushPage() {
                                 <tbody className="divide-y divide-border">
                                     {keywords.slice(0, 20).map((kw, i) => (
                                         <tr key={i} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-2 py-3 font-medium text-foreground truncate max-w-[150px]">{kw['Keyword']}</td>
+                                            <td className="px-2 py-3 font-medium text-foreground truncate max-w-[150px]">{kw.Ph}</td>
                                             <td className="px-2 py-3 text-center">
-                                                <Badge variant="outline" className={parseInt(kw['Position']) <= 3 ? "border-emerald-500 text-emerald-500 bg-emerald-500/5" : "bg-muted/30"}>
-                                                    {kw['Position']}
+                                                <Badge variant="outline" className={parseInt(kw.Po) <= 3 ? "border-emerald-500 text-emerald-500 bg-emerald-500/5" : "bg-muted/30"}>
+                                                    {kw.Po}
                                                 </Badge>
                                             </td>
-                                            <td className="px-2 py-3 text-center">{Number(kw['Search Volume']).toLocaleString()}</td>
-                                            <td className="px-2 py-3 text-center">{kw['CPC']}</td>
-                                            <td className="px-2 py-3 text-right font-bold text-foreground">{kw['Traffic (%)']}%</td>
+                                            <td className="px-2 py-3 text-center">{Number(kw.Nq).toLocaleString()}</td>
+                                            <td className="px-2 py-3 text-center">{kw.Cp}</td>
+                                            <td className="px-2 py-3 text-right font-bold text-foreground">{kw.Tr}%</td>
                                         </tr>
                                     ))}
                                 </tbody>

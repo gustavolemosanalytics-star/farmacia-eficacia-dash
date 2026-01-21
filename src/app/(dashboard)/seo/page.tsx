@@ -116,7 +116,7 @@ export default function SeoPage() {
     const kpiMetrics = [
         {
             title: 'Organic Keywords',
-            value: overview?.['Organic Keywords'] ? Number(overview['Organic Keywords']).toLocaleString() : '0',
+            value: overview?.Or ? Number(overview.Or).toLocaleString() : '0',
             description: 'Total de keywords indexadas',
             icon: Search,
             color: 'bg-emerald-500',
@@ -124,7 +124,7 @@ export default function SeoPage() {
         },
         {
             title: 'Tráfego Orgânico',
-            value: overview?.['Organic Traffic'] ? Number(overview['Organic Traffic']).toLocaleString() : '0',
+            value: overview?.Ot ? Number(overview.Ot).toLocaleString() : '0',
             description: 'Sessões estimadas p/ mês',
             icon: MousePointer,
             color: 'bg-blue-500',
@@ -132,7 +132,7 @@ export default function SeoPage() {
         },
         {
             title: 'Valor do Tráfego',
-            value: overview?.['Organic Cost'] ? `USD ${Number(overview['Organic Cost']).toLocaleString()}` : '0',
+            value: overview?.Oc ? `USD ${Number(overview.Oc).toLocaleString()}` : '0',
             description: 'Equivalente em Google Ads',
             icon: TrendingUp,
             color: 'bg-primary',
@@ -140,7 +140,7 @@ export default function SeoPage() {
         },
         {
             title: 'Ads Visibility',
-            value: overview?.['Adwords Keywords'] ? Number(overview['Adwords Keywords']).toLocaleString() : '0',
+            value: overview?.Ad ? Number(overview.Ad).toLocaleString() : '0',
             description: 'Keywords em Paid Search',
             icon: BarChart3,
             color: 'bg-orange-500',
@@ -149,24 +149,24 @@ export default function SeoPage() {
     ];
 
     const topKeywords = keywords.slice(0, 10).map(kw => ({
-        name: kw['Keyword'],
-        traffic: parseFloat(kw['Traffic (%)'] || 0),
-        volume: parseInt(kw['Search Volume'] || 0),
-        pos: parseInt(kw['Position'] || 0)
+        name: kw.Ph,
+        traffic: parseFloat(kw.Tr || 0),
+        volume: parseInt(kw.Nq || 0),
+        pos: parseInt(kw.Po || 0)
     }));
 
     const competitorsData = competitors.slice(0, 8).map(c => ({
-        name: c['Domain'],
-        traffic: parseInt(c['Organic Traffic'] || 0),
-        commonKeywords: parseInt(c['Competitor Relevance'] || 0)
+        name: c.Dn,
+        traffic: parseInt(c.Ot || 0),
+        commonKeywords: parseInt(c.Cr || 0)
     })).sort((a, b) => b.traffic - a.traffic);
 
     const posDistribution = [
-        { range: 'Top 3', count: keywords.filter(k => parseInt(k['Position']) <= 3).length, color: '#10b981' },
-        { range: '4-10', count: keywords.filter(k => parseInt(k['Position']) > 3 && parseInt(k['Position']) <= 10).length, color: '#3b82f6' },
-        { range: '11-20', count: keywords.filter(k => parseInt(k['Position']) > 10 && parseInt(k['Position']) <= 20).length, color: '#8b5cf6' },
-        { range: '21-50', count: keywords.filter(k => parseInt(k['Position']) > 20 && parseInt(k['Position']) <= 50).length, color: '#f59e0b' },
-        { range: '51-100', count: keywords.filter(k => parseInt(k['Position']) > 50).length, color: '#94a3b8' },
+        { range: 'Top 3', count: keywords.filter(k => parseInt(k.Po) <= 3).length, color: '#10b981' },
+        { range: '4-10', count: keywords.filter(k => parseInt(k.Po) > 3 && parseInt(k.Po) <= 10).length, color: '#3b82f6' },
+        { range: '11-20', count: keywords.filter(k => parseInt(k.Po) > 10 && parseInt(k.Po) <= 20).length, color: '#8b5cf6' },
+        { range: '21-50', count: keywords.filter(k => parseInt(k.Po) > 20 && parseInt(k.Po) <= 50).length, color: '#f59e0b' },
+        { range: '51-100', count: keywords.filter(k => parseInt(k.Po) > 50).length, color: '#94a3b8' },
     ];
 
     return (
@@ -302,17 +302,17 @@ export default function SeoPage() {
                             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                                 {keywords.slice(0, 15).map((kw, i) => (
                                     <tr key={i} className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                                        <td className="px-4 py-4 font-semibold text-zinc-900 dark:text-zinc-100">{kw['Keyword']}</td>
+                                        <td className="px-4 py-4 font-semibold text-zinc-900 dark:text-zinc-100">{kw.Ph}</td>
                                         <td className="px-4 py-4 text-center">
                                             <div className={cn(
                                                 "inline-flex items-center justify-center h-8 w-8 rounded-lg font-black",
-                                                parseInt(kw['Position']) <= 3 ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                                                parseInt(kw.Po) <= 3 ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
                                             )}>
-                                                {kw['Position']}
+                                                {kw.Po}
                                             </div>
                                         </td>
                                         <td className="px-4 py-4 text-center text-zinc-500 font-mono">
-                                            {Number(kw['Search Volume']).toLocaleString()}
+                                            {Number(kw.Nq).toLocaleString()}
                                         </td>
                                         <td className="px-4 py-4 text-right">
                                             <button className="p-2 rounded-lg hover:bg-white dark:hover:bg-zinc-700 shadow-sm opacity-0 group-hover:opacity-100 transition-all">
@@ -369,7 +369,7 @@ export default function SeoPage() {
                         </div>
                         <div>
                             <h2 className="text-xl font-black tracking-tight text-zinc-900 dark:text-zinc-100">Oportunidade SEO Identificada</h2>
-                            <p className="text-sm text-zinc-500 max-w-md mt-1">Existem {keywords.filter(k => parseInt(k['Position']) >= 4 && parseInt(k['Position']) <= 12).length} palavras-chave na "porta da frente" (pos 4-12). Otimizar estas páginas pode aumentar seu tráfego em até 40%.</p>
+                            <p className="text-sm text-zinc-500 max-w-md mt-1">Existem {keywords.filter(k => parseInt(k.Po) >= 4 && parseInt(k.Po) <= 12).length} palavras-chave na "porta da frente" (pos 4-12). Otimizar estas páginas pode aumentar seu tráfego em até 40%.</p>
                         </div>
                     </div>
                     <button className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:-translate-y-1 transition-all group">
