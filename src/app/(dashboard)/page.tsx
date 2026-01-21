@@ -10,7 +10,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart as RechartsPie, Pie, Cell, Legend, AreaChart, Area, LabelList, Line, LineChart
 } from 'recharts';
-import { useCatalogoData, useGoogleAdsKPIs } from '@/hooks/useSheetData';
+import { useCatalogoData, useGoogleAdsKPIs, useCatalogoYoYData } from '@/hooks/useSheetData';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
@@ -19,13 +19,14 @@ import { BrazilMap } from '@/components/charts/BrazilMap';
 
 export default function HomeExecutiva() {
     const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
+    const { data: yoyRawData, loading: loadingYoY } = useCatalogoYoYData();
     const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
 
     // Filter states
     const [filterStatus, setFilterStatus] = useState<string | null>(null);
     const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
 
-    const loading = loadingCatalogo || loadingGads;
+    const loading = loadingCatalogo || loadingGads || loadingYoY;
 
     // Filter options from API
     const filterOptions = catalogoData?.filterOptions || {
@@ -126,11 +127,14 @@ export default function HomeExecutiva() {
             return new Date(dateStr);
         };
 
-        // Aggregate by year and month
+        // Aggregate by year and month using FULL historical data
         const monthlyByYear: Record<number, Record<number, { receita: number; pedidos: Set<string> }>> = {};
         const categoryByYear: Record<number, Record<string, number>> = {};
 
-        filtered.forEach((d: any) => {
+        // Use yoyRawData for historical context, otherwise fall back to filtered (which might be empty for past years)
+        const historicalSource = yoyRawData?.rawData || [];
+
+        historicalSource.forEach((d: any) => {
             const dateStr = d.data || d.dataTransacao;
             const parsed = parseYoYDate(dateStr);
             if (!parsed || isNaN(parsed.getTime())) return;
@@ -211,7 +215,7 @@ export default function HomeExecutiva() {
                 previousYear,
             }
         };
-    }, [catalogoData, filterStatus, filterAtribuicao]);
+    }, [catalogoData, yoyRawData, filterStatus, filterAtribuicao]);
 
 
     // Use filtered data or default from API
@@ -224,7 +228,8 @@ export default function HomeExecutiva() {
         byAtribuicao: catalogoData?.byAtribuicao || [],
         byCategory: catalogoData?.byCategory || [],
         dailyRevenue: catalogoData?.dailyRevenue || [],
-        filteredRaw: []
+        filteredRaw: [],
+        yoy: null
     };
 
     // Receita Geral: Agora reflete os filtros de Status e Atribuição selecionados

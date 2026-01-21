@@ -508,6 +508,7 @@ export const navegacaoItems = [
     { titulo: 'Ecommerce', href: '/ecommerce', icone: 'ShoppingCart', grupo: 'marketing' as const, isMockData: false },
     { titulo: 'Mídia Paga', href: '/midia-paga', icone: 'Target', grupo: 'marketing' as const, isMockData: true },
     { titulo: 'SEO & Demanda', href: '/seo', icone: 'Search', grupo: 'marketing' as const, isMockData: true },
+    { titulo: 'Auditoria SEMRush', href: '/semrush', icone: 'Globe', grupo: 'marketing' as const, isMockData: false },
 
     { titulo: 'CRM & Retenção', href: '/crm', icone: 'Heart', grupo: 'crm' as const, isMockData: false },
     { titulo: 'E-mail & Automação', href: '/email', icone: 'Mail', grupo: 'crm' as const, isMockData: true },
