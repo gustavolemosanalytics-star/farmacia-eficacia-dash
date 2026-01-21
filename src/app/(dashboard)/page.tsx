@@ -8,7 +8,7 @@ import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { TrendingUp, DollarSign, ShoppingCart, Target, Activity, BarChart3, PieChart, Package, Users, Filter, AlertTriangle, CheckCircle } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart as RechartsPie, Pie, Cell, Legend, AreaChart, Area, LabelList, Line
+    PieChart as RechartsPie, Pie, Cell, Legend, AreaChart, Area, LabelList, Line, LineChart
 } from 'recharts';
 import { useCatalogoData, useGoogleAdsKPIs } from '@/hooks/useSheetData';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
@@ -105,6 +105,87 @@ export default function HomeExecutiva() {
             .map(([date, val]) => ({ date, receita: val.receita, pedidos: val.pedidos }))
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+        // ======= YoY ANALYSIS DATA =======
+        const currentYear = new Date().getFullYear(); // 2026
+        const previousYear = currentYear - 1; // 2025
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+        // Helper to parse date
+        const parseYoYDate = (dateStr: string): Date | null => {
+            if (!dateStr) return null;
+            // Try DD/MM/YYYY
+            if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+                const [day, month, year] = dateStr.split('/');
+                return new Date(Number(year), Number(month) - 1, Number(day));
+            }
+            // Try YYYY-MM-DD
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+                const [y, m, d] = dateStr.split('-').map(Number);
+                return new Date(y, m - 1, d);
+            }
+            return new Date(dateStr);
+        };
+
+        // Aggregate by year and month
+        const monthlyByYear: Record<number, Record<number, { receita: number; pedidos: Set<string> }>> = {};
+        const categoryByYear: Record<number, Record<string, number>> = {};
+
+        filtered.forEach((d: any) => {
+            const dateStr = d.data || d.dataTransacao;
+            const parsed = parseYoYDate(dateStr);
+            if (!parsed || isNaN(parsed.getTime())) return;
+
+            const year = parsed.getFullYear();
+            const month = parsed.getMonth();
+            const cat = d.categoria;
+
+            // Monthly aggregation
+            if (!monthlyByYear[year]) monthlyByYear[year] = {};
+            if (!monthlyByYear[year][month]) monthlyByYear[year][month] = { receita: 0, pedidos: new Set() };
+            monthlyByYear[year][month].receita += d.receitaProduto || 0;
+            if (d.pedido) monthlyByYear[year][month].pedidos.add(d.pedido);
+
+            // Category by year
+            if (cat && cat.trim() !== '') {
+                if (!categoryByYear[year]) categoryByYear[year] = {};
+                categoryByYear[year][cat] = (categoryByYear[year][cat] || 0) + (d.receitaProduto || 0);
+            }
+        });
+
+        // Build monthly comparison data for chart
+        const monthlyComparison = monthNames.map((name, idx) => ({
+            month: name,
+            currentYear: monthlyByYear[currentYear]?.[idx]?.receita || 0,
+            previousYear: monthlyByYear[previousYear]?.[idx]?.receita || 0,
+        }));
+
+        // Calculate YoY totals
+        const currentYearReceita = Object.values(monthlyByYear[currentYear] || {}).reduce((sum, m) => sum + m.receita, 0);
+        const previousYearReceita = Object.values(monthlyByYear[previousYear] || {}).reduce((sum, m) => sum + m.receita, 0);
+        const currentYearPedidos = Object.values(monthlyByYear[currentYear] || {}).reduce((sum, m) => sum + m.pedidos.size, 0);
+        const previousYearPedidos = Object.values(monthlyByYear[previousYear] || {}).reduce((sum, m) => sum + m.pedidos.size, 0);
+
+        const receitaYoYPercent = previousYearReceita > 0 ? ((currentYearReceita - previousYearReceita) / previousYearReceita) * 100 : 0;
+        const pedidosYoYPercent = previousYearPedidos > 0 ? ((currentYearPedidos - previousYearPedidos) / previousYearPedidos) * 100 : 0;
+
+        const currentYearTicket = currentYearPedidos > 0 ? currentYearReceita / currentYearPedidos : 0;
+        const previousYearTicket = previousYearPedidos > 0 ? previousYearReceita / previousYearPedidos : 0;
+        const ticketYoYPercent = previousYearTicket > 0 ? ((currentYearTicket - previousYearTicket) / previousYearTicket) * 100 : 0;
+
+        // Top growing categories
+        const currentCats = categoryByYear[currentYear] || {};
+        const previousCats = categoryByYear[previousYear] || {};
+        const allCats = new Set([...Object.keys(currentCats), ...Object.keys(previousCats)]);
+        const categoryGrowth = Array.from(allCats).map(cat => {
+            const curr = currentCats[cat] || 0;
+            const prev = previousCats[cat] || 0;
+            const growth = prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0);
+            return { name: cat, currentYear: curr, previousYear: prev, growth };
+        })
+            .filter(c => c.currentYear > 0 || c.previousYear > 0)
+            .sort((a, b) => b.growth - a.growth)
+            .slice(0, 6);
+
         return {
             totalReceita,
             totalPedidos,
@@ -114,9 +195,24 @@ export default function HomeExecutiva() {
             byAtribuicao,
             byCategory,
             dailyRevenue,
-            filteredRaw: filtered // Pass filtered rows for campaign analysis
+            filteredRaw: filtered,
+            // YoY Data
+            yoy: {
+                monthlyComparison,
+                receitaYoYPercent,
+                pedidosYoYPercent,
+                ticketYoYPercent,
+                currentYearReceita,
+                previousYearReceita,
+                currentYearPedidos,
+                previousYearPedidos,
+                categoryGrowth,
+                currentYear,
+                previousYear,
+            }
         };
     }, [catalogoData, filterStatus, filterAtribuicao]);
+
 
     // Use filtered data or default from API
     const displayData = filteredData || {
@@ -921,6 +1017,147 @@ export default function HomeExecutiva() {
             {!loading && catalogoData && catalogoData.rawData && (
                 <section>
                     <BrazilMap rawData={catalogoData.rawData} />
+                </section>
+            )}
+
+            {/* YoY Analysis Section */}
+            {!loading && filteredData?.yoy && (
+                <section className="space-y-6">
+                    {/* Monthly Comparison Chart */}
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium">Análise Ano a Ano (YoY) - Receita Mensal</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={320}>
+                                <LineChart data={filteredData.yoy.monthlyComparison} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                                    <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} />
+                                    <YAxis
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={10}
+                                        tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                                        width={70}
+                                    />
+                                    <Tooltip
+                                        formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Legend />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="currentYear"
+                                        name={`${filteredData.yoy.currentYear}`}
+                                        stroke="#8b5cf6"
+                                        strokeWidth={3}
+                                        dot={{ r: 4, fill: '#8b5cf6' }}
+                                        activeDot={{ r: 6 }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="previousYear"
+                                        name={`${filteredData.yoy.previousYear}`}
+                                        stroke="#94a3b8"
+                                        strokeWidth={2}
+                                        strokeDasharray="5 5"
+                                        dot={{ r: 3, fill: '#94a3b8' }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    {/* YoY KPI Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card className="border-border bg-card">
+                            <CardContent className="pt-6 text-center">
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Receita YoY</p>
+                                <p className={`text-3xl font-bold ${filteredData.yoy.receitaYoYPercent >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {filteredData.yoy.receitaYoYPercent >= 0 ? '+' : ''}{filteredData.yoy.receitaYoYPercent.toFixed(1)}%
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {filteredData.yoy.previousYear}: R$ {filteredData.yoy.previousYearReceita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-border bg-card">
+                            <CardContent className="pt-6 text-center">
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Pedidos YoY</p>
+                                <p className={`text-3xl font-bold ${filteredData.yoy.pedidosYoYPercent >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {filteredData.yoy.pedidosYoYPercent >= 0 ? '+' : ''}{filteredData.yoy.pedidosYoYPercent.toFixed(1)}%
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {filteredData.yoy.previousYear}: {filteredData.yoy.previousYearPedidos.toLocaleString('pt-BR')} pedidos
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card className="border-border bg-card">
+                            <CardContent className="pt-6 text-center">
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Ticket Médio YoY</p>
+                                <p className={`text-3xl font-bold ${filteredData.yoy.ticketYoYPercent >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {filteredData.yoy.ticketYoYPercent >= 0 ? '+' : ''}{filteredData.yoy.ticketYoYPercent.toFixed(1)}%
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Variação do ticket médio anual
+                                </p>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Top Growing Categories */}
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <BarChart3 className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium">Top Categorias em Crescimento (YoY)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={280}>
+                                <BarChart
+                                    data={filteredData.yoy.categoryGrowth}
+                                    layout="vertical"
+                                    margin={{ left: 20, right: 80, top: 10, bottom: 10 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                    <XAxis
+                                        type="number"
+                                        tickFormatter={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(0)}%`}
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={10}
+                                    />
+                                    <YAxis
+                                        type="category"
+                                        dataKey="name"
+                                        width={120}
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={10}
+                                        tickFormatter={(v) => v.length > 18 ? v.substring(0, 18) + '...' : v}
+                                    />
+                                    <Tooltip
+                                        formatter={(value: any, name: any) => [
+                                            `${Number(value) >= 0 ? '+' : ''}${Number(value).toFixed(1)}%`,
+                                            'Crescimento'
+                                        ]}
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    />
+                                    <Bar dataKey="growth" radius={[0, 4, 4, 0]}>
+                                        {filteredData.yoy.categoryGrowth.map((entry: any, index: number) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={entry.growth >= 0 ? '#10b981' : '#ef4444'}
+                                            />
+                                        ))}
+                                        <LabelList
+                                            dataKey="growth"
+                                            position="right"
+                                            formatter={(v: any) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(1)}%`}
+                                            style={{ fill: 'var(--muted-foreground)', fontSize: '10px', fontWeight: '500' }}
+                                        />
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
                 </section>
             )}
         </div>
