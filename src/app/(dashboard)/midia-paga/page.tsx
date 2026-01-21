@@ -14,6 +14,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, Legend, LabelList
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import { CampaignRankingTable } from '@/components/tables/CampaignRankingTable';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -393,7 +394,7 @@ export default function MidiaPagaPage() {
                     </h2>
                     <CampaignTypeBreakdown
                         byCampaignType={gadsKpis.byCampaignType}
-                        byCampaign={gadsKpis.byCampaign || []}
+                        byCampaign={analytics?.campaignAnalysis || []}
                     />
                 </section>
             )}
@@ -514,54 +515,7 @@ export default function MidiaPagaPage() {
             {/* Campaign ROAS Ranking - New Analysis */}
             {!loading && analytics && analytics.campaignAnalysis.length > 0 && (
                 <section>
-                    <Card className="border-border bg-card">
-                        <CardHeader className="flex flex-row items-center gap-2">
-                            <Trophy className="h-5 w-5 text-yellow-500" />
-                            <CardTitle className="text-sm font-medium">Ranking de Campanhas por ROAS</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b border-border">
-                                            <th className="text-left py-3 px-2 font-medium text-muted-foreground">#</th>
-                                            <th className="text-left py-3 px-2 font-medium text-muted-foreground">Campanha</th>
-                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Investimento</th>
-                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Cliques</th>
-                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Conv.</th>
-                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">ROAS</th>
-                                            <th className="text-right py-3 px-2 font-medium text-muted-foreground">Recomendação</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {analytics.campaignAnalysis.slice(0, 8).map((camp: any, i: number) => (
-                                            <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                                                <td className="py-3 px-2 font-medium">{i + 1}</td>
-                                                <td className="py-3 px-2 max-w-[200px] truncate" title={camp.campaign}>
-                                                    {camp.campaign?.substring(0, 30)}{camp.campaign?.length > 30 ? '...' : ''}
-                                                </td>
-                                                <td className="py-3 px-2 text-right">R$ {camp.spend?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                                <td className="py-3 px-2 text-right">{camp.clicks?.toLocaleString('pt-BR')}</td>
-                                                <td className="py-3 px-2 text-right">{camp.conversions?.toFixed(0)}</td>
-                                                <td className={`py-3 px-2 text-right font-medium ${camp.roas >= 2 ? 'text-green-600' : camp.roas >= 1 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                                    {camp.roas.toFixed(2)}x
-                                                </td>
-                                                <td className="py-3 px-2 text-right">
-                                                    <span className={`text-xs px-2 py-1 rounded-full ${camp.roas >= 3 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                                        camp.roas >= 1.5 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                            camp.roas >= 1 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                                        }`}>
-                                                        {camp.roas >= 3 ? 'Escalar' : camp.roas >= 1.5 ? 'Manter' : camp.roas >= 1 ? 'Otimizar' : 'Pausar'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <CampaignRankingTable campaigns={analytics.campaignAnalysis} />
                 </section>
             )}
 

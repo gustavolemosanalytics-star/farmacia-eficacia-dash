@@ -28,6 +28,7 @@ interface Campaign {
     ctr: number;
     cpc: number;
     cpa: number;
+    roas?: number;
 }
 
 interface Props {
@@ -46,13 +47,20 @@ const TYPE_COLORS: Record<string, string> = {
 
 export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
     const [expandedType, setExpandedType] = useState<string | null>(null);
+    const [sortBy, setSortBy] = useState<'spend' | 'roas'>('spend');
 
     const toggleExpand = (type: string) => {
         setExpandedType(expandedType === type ? null : type);
     };
 
     const getCampaignsForType = (type: string) => {
-        return byCampaign.filter(c => c.tipo === type).slice(0, 10); // Limit to 10
+        const filtered = byCampaign.filter(c => c.tipo === type);
+
+        if (sortBy === 'roas') {
+            return filtered.sort((a, b) => (b.roas || 0) - (a.roas || 0)).slice(0, 10);
+        }
+
+        return filtered.sort((a, b) => b.spend - a.spend).slice(0, 10);
     };
 
     return (
@@ -65,7 +73,7 @@ export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
                 return (
                     <Card
                         key={typeData.type}
-                        className={`cursor-pointer transition-all duration-200 ${isExpanded ? 'md:col-span-2 lg:col-span-3' : ''}`}
+                        className={`cursor-pointer transition-all duration-200 ${isExpanded ? 'md:col-span-2 lg:col-span-3 ring-2 ring-primary/20' : ''}`}
                         onClick={() => toggleExpand(typeData.type)}
                     >
                         <CardHeader className="pb-2">
@@ -127,9 +135,25 @@ export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
                             {/* Expanded: Campaign Chart */}
                             {isExpanded && campaigns.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-border" onClick={(e) => e.stopPropagation()}>
-                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">
-                                        Top Campanhas
-                                    </h4>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+                                            Top Campanhas por {sortBy === 'spend' ? 'Investimento' : 'Eficiência (ROAS)'}
+                                        </h4>
+                                        <div className="flex bg-slate-100 dark:bg-zinc-800 rounded-md p-0.5">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setSortBy('spend'); }}
+                                                className={`text-[10px] px-2 py-1 rounded-sm font-medium transition-all ${sortBy === 'spend' ? 'bg-white dark:bg-zinc-700 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                            >
+                                                Investimento
+                                            </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setSortBy('roas'); }}
+                                                className={`text-[10px] px-2 py-1 rounded-sm font-medium transition-all ${sortBy === 'roas' ? 'bg-white dark:bg-zinc-700 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                                            >
+                                                ROAS (Eficiência)
+                                            </button>
+                                        </div>
+                                    </div>
                                     <ResponsiveContainer width="100%" height={Math.min(campaigns.length * 40 + 40, 300)}>
                                         <BarChart
                                             data={campaigns}
@@ -139,7 +163,7 @@ export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
                                             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
                                             <XAxis
                                                 type="number"
-                                                tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                                                tickFormatter={(v) => sortBy === 'spend' ? `R$${(v / 1000).toFixed(0)}k` : `${v}x`}
                                                 stroke="var(--muted-foreground)"
                                                 fontSize={10}
                                             />
@@ -152,14 +176,21 @@ export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
                                                 tickFormatter={(val: string) => val.length > 18 ? val.substring(0, 18) + '...' : val}
                                             />
                                             <Tooltip
-                                                formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Investimento']}
+                                                formatter={(value: any, name: any, props: any) => {
+                                                    if (sortBy === 'roas') return [`${Number(value).toFixed(2)}x`, 'ROAS'];
+                                                    return [`R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Investimento'];
+                                                }}
                                                 contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                             />
-                                            <Bar dataKey="spend" fill={color} radius={[0, 4, 4, 0]}>
+                                            <Bar
+                                                dataKey={sortBy === 'spend' ? "spend" : "roas"}
+                                                fill={sortBy === 'spend' ? color : '#10b981'}
+                                                radius={[0, 4, 4, 0]}
+                                            >
                                                 <LabelList
-                                                    dataKey="spend"
+                                                    dataKey={sortBy === 'spend' ? "spend" : "roas"}
                                                     position="right"
-                                                    formatter={(val: any) => `R$ ${(Number(val) / 1000).toFixed(1)}k`}
+                                                    formatter={(val: any) => sortBy === 'spend' ? `R$ ${(Number(val) / 1000).toFixed(1)}k` : `${Number(val).toFixed(2)}x`}
                                                     style={{ fill: 'var(--muted-foreground)', fontSize: '9px' }}
                                                 />
                                             </Bar>
