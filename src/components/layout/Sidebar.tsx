@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { navegacaoItems, gruposLabels } from '@/lib/mockData';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { MockDataBadge } from '@/components/ui/MockDataBadge';
@@ -115,14 +114,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                                             <span className="flex-1 truncate">{item.titulo}</span>
                                             {item.isMockData && (
                                                 <MockDataBadge variant="sidebar" />
-                                            )}
-                                            {item.badge && (
-                                                <Badge
-                                                    variant={item.badge === '!' ? 'destructive' : 'secondary'}
-                                                    className="h-5 min-w-5 justify-center text-[10px]"
-                                                >
-                                                    {item.badge}
-                                                </Badge>
                                             )}
                                         </Link>
                                     </li>
