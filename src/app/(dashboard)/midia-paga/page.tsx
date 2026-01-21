@@ -2,9 +2,10 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageFilters } from '@/components/ui/PageFilters';
-import { useGoogleAdsKPIs, useCatalogoData } from '@/hooks/useSheetData';
+import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useSheetData';
 import { CampaignTypeBreakdown } from '@/components/charts/CampaignTypeBreakdown';
 import {
     TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Activity, AlertTriangle, CheckCircle, Lightbulb, Zap, Trophy, XCircle, MousePointer
@@ -18,8 +19,9 @@ const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'
 export default function MidiaPagaPage() {
     const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
     const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
+    const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
 
-    const loading = loadingGads || loadingCatalogo;
+    const loading = loadingGads || loadingCatalogo || loadingGA4;
 
     // Advanced Analytics
     const analytics = useMemo(() => {
@@ -239,6 +241,16 @@ export default function MidiaPagaPage() {
             tendencia: 'stable' as const,
             sparklineData: [1, 1.01, 1.02, 1.01, 1.02],
             unidade: 'R$',
+        },
+        {
+            id: 'engajamento',
+            titulo: 'Engajamento (GA4)',
+            valor: (ga4Kpis?.avgEngagementRate || 0) * 100,
+            valorFormatado: `${((ga4Kpis?.avgEngagementRate || 0) * 100).toFixed(1)}%`,
+            variacao: 0.1,
+            tendencia: 'stable' as const,
+            sparklineData: [1, 1.01, 1, 1.02, 1],
+            unidade: '%',
         },
     ] : [];
 
@@ -499,6 +511,82 @@ export default function MidiaPagaPage() {
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
+
+            {/* Cross-Analysis GA4 vs Google Ads */}
+            {!loading && ga4Kpis?.campaignCrossAnalysis && ga4Kpis.campaignCrossAnalysis.length > 0 && (
+                <section className="pb-10">
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <Zap className="h-5 w-5 text-indigo-500" />
+                            <div>
+                                <CardTitle className="text-sm font-medium text-foreground">Cruzamento GA4 vs Google Ads</CardTitle>
+                                <p className="text-xs text-muted-foreground">Análise de campanhas mapeando Sessões (GA4) vs Investimento (GAds)</p>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs text-muted-foreground">
+                                    <thead className="border-b border-border text-[10px] uppercase text-foreground/70">
+                                        <tr>
+                                            <th className="px-4 py-3">Campanha</th>
+                                            <th className="px-4 py-3 text-right">Sessões (GA4)</th>
+                                            <th className="px-4 py-3 text-right">Engajamento %</th>
+                                            <th className="px-4 py-3 text-right">Investimento (Ads)</th>
+                                            <th className="px-4 py-3 text-right">Cliques (Ads)</th>
+                                            <th className="px-4 py-3 text-right">Custo/Sessão</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {ga4Kpis.campaignCrossAnalysis.slice(0, 15).map((row: any, i: number) => {
+                                            const costPerSession = row.sessions > 0 ? row.cost / row.sessions : 0;
+                                            return (
+                                                <tr key={i} className="hover:bg-muted/30 transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-foreground max-w-[250px] truncate" title={row.campaign}>
+                                                        {row.campaign}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-bold text-foreground">
+                                                        {row.sessions.toLocaleString()}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <Badge variant="outline" className={row.engagementRate > 0.6 ? "border-emerald-500 text-emerald-500" : ""}>
+                                                            {(row.engagementRate * 100).toFixed(1)}%
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        {row.cost > 0 ? `R$ ${row.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        {row.clicks > 0 ? row.clicks.toLocaleString() : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-medium">
+                                                        {costPerSession > 0 ? `R$ ${costPerSession.toFixed(2)}` : '-'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Optional Cross Bar Chart */}
+                            <div className="mt-8 h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={ga4Kpis.campaignCrossAnalysis.slice(0, 8)} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                                        <XAxis dataKey="campaign" stroke="var(--muted-foreground)" fontSize={10} tickFormatter={v => v.length > 15 ? v.substring(0, 15) + '...' : v} />
+                                        <YAxis yAxisId="left" stroke="var(--muted-foreground)" fontSize={11} name="Sessões" />
+                                        <YAxis yAxisId="right" orientation="right" stroke="var(--muted-foreground)" fontSize={11} name="Custo" tickFormatter={v => `R$${v}`} />
+                                        <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                        <Legend />
+                                        <Bar yAxisId="left" dataKey="sessions" name="Sessões (GA4)" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                        <Bar yAxisId="right" dataKey="cost" name="Investimento (GAds)" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
                             </div>
                         </CardContent>
                     </Card>

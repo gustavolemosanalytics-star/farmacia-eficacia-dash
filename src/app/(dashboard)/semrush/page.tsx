@@ -29,6 +29,7 @@ import {
 export default function SemrushPage() {
     const [overview, setOverview] = useState<any>(null);
     const [keywords, setKeywords] = useState<any[]>([]);
+    const [competitors, setCompetitors] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -44,11 +45,16 @@ export default function SemrushPage() {
                 const kwRes = await fetch('/api/semrush?type=organic_keywords');
                 const kwData = await kwRes.json();
 
+                // Fetch Competitors
+                const compRes = await fetch('/api/semrush?type=competitors');
+                const compData = await compRes.json();
+
                 if (ovData.success) setOverview(ovData.data[0]);
                 if (kwData.success) setKeywords(kwData.data);
+                if (compData.success) setCompetitors(compData.data);
 
-                if (ovData.error || kwData.error) {
-                    setError(ovData.error || kwData.error);
+                if (ovData.error || kwData.error || compData.error) {
+                    setError(ovData.error || kwData.error || compData.error);
                 }
             } catch (err: any) {
                 setError(err.message);
@@ -88,40 +94,53 @@ export default function SemrushPage() {
     const kpis = [
         {
             title: 'Organic Keywords',
-            value: Number(overview?.Or || 0).toLocaleString(),
+            value: overview?.Or ? Number(overview.Or).toLocaleString() : '0',
             icon: Search,
             color: 'text-emerald-500',
         },
         {
             title: 'Organic Traffic',
-            value: Number(overview?.Ot || 0).toLocaleString(),
+            value: overview?.Ot ? Number(overview.Ot).toLocaleString() : '0',
             icon: MousePointer,
             color: 'text-blue-500',
         },
         {
             title: 'Organic Cost',
-            value: `USD ${Number(overview?.Oc || 0).toLocaleString()}`,
+            value: overview?.Oc ? `USD ${Number(overview.Oc).toLocaleString()}` : '0',
             icon: TrendingUp,
             color: 'text-primary',
         },
         {
             title: 'AdWords Keywords',
-            value: Number(overview?.Ad || 0).toLocaleString(),
+            value: overview?.Ad ? Number(overview.Ad).toLocaleString() : '0',
             icon: BarChart3,
             color: 'text-orange-500',
         }
     ];
 
     // Chart Data: Top 10 Keywords by Traffic %
-    const chartData = keywords
+    const keywordsChartData = keywords
         .slice(0, 10)
         .map(kw => ({
             name: kw.Ph,
             traffic: parseFloat(kw.Tr || 0),
             volume: parseInt(kw.Nq || 0),
-            position: parseInt(kw.Po || 0)
-        }))
-        .sort((a, b) => b.traffic - a.traffic);
+        }));
+
+    // Pos Distribution
+    const posDist = [
+        { name: 'Top 3', count: keywords.filter(k => parseInt(k.Po) <= 3).length, fill: '#10b981' },
+        { name: 'Top 10', count: keywords.filter(k => parseInt(k.Po) > 3 && parseInt(k.Po) <= 10).length, fill: '#3b82f6' },
+        { name: 'Top 20', count: keywords.filter(k => parseInt(k.Po) > 10 && parseInt(k.Po) <= 20).length, fill: '#f59e0b' },
+        { name: 'Top 50', count: keywords.filter(k => parseInt(k.Po) > 20).length, fill: '#94a3b8' },
+    ];
+
+    // Competitors Chart
+    const competitorsData = competitors.map(c => ({
+        name: c.Dn,
+        overlap: parseInt(c.Cr || 0),
+        traffic: parseInt(c.Ot || 0)
+    })).sort((a, b) => b.traffic - a.traffic);
 
     return (
         <div className="space-y-6">
@@ -149,36 +168,76 @@ export default function SemrushPage() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 {/* Traffic Distribution Chart */}
-                <Card className="border-border bg-card">
+                <Card className="lg:col-span-2 border-border bg-card">
                     <CardHeader>
-                        <CardTitle className="text-sm font-medium">Distribuição de Tráfego por Keyword (%)</CardTitle>
+                        <CardTitle className="text-sm font-medium text-foreground">Distribuição de Tráfego por Keyword (%)</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ResponsiveContainer width="100%" height={350}>
-                            <BarChart data={chartData} layout="vertical" margin={{ left: 30, right: 30 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-                                <XAxis type="number" unit="%" stroke="var(--muted-foreground)" fontSize={11} />
-                                <YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)" fontSize={11} />
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={keywordsChartData} margin={{ left: 20, right: 30, top: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={10} tickFormatter={v => v.length > 12 ? v.substring(0, 12) + '...' : v} />
+                                <YAxis stroke="var(--muted-foreground)" fontSize={11} unit="%" />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    formatter={(value: any) => [`${value}%`, 'Traffic Share']}
                                 />
-                                <Bar dataKey="traffic" radius={[0, 4, 4, 0]} fill="var(--primary)">
-                                    {chartData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={index < 3 ? '#8b5cf6' : '#94a3b8'} />
+                                <Bar dataKey="traffic" name="Traffic Share" radius={[4, 4, 0, 0]} fill="#8b5cf6" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                {/* Position Distribution */}
+                <Card className="border-border bg-card">
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium text-foreground">Posicionamento no Google</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={300}>
+                            <BarChart data={posDist} layout="vertical" margin={{ left: 10, right: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                <XAxis type="number" stroke="var(--muted-foreground)" fontSize={10} />
+                                <YAxis type="category" dataKey="name" width={60} stroke="var(--muted-foreground)" fontSize={11} />
+                                <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                <Bar dataKey="count" name="Keywords" radius={[0, 4, 4, 0]}>
+                                    {posDist.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.fill} />
                                     ))}
                                 </Bar>
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
+            </div>
 
-                {/* Top Keywords Table */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {/* Competitors Chart */}
                 <Card className="border-border bg-card">
                     <CardHeader>
-                        <CardTitle className="text-sm font-medium">Top 20 Organic Keywords</CardTitle>
+                        <CardTitle className="text-sm font-medium text-foreground">Principais Concorrentes Orgânicos</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ResponsiveContainer width="100%" height={400}>
+                            <BarChart data={competitorsData} layout="vertical" margin={{ left: 30, right: 30 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+                                <XAxis type="number" name="Tráfego" stroke="var(--muted-foreground)" fontSize={11} />
+                                <YAxis type="category" dataKey="name" width={100} stroke="var(--muted-foreground)" fontSize={11} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    formatter={(v) => Number(v).toLocaleString()}
+                                />
+                                <Bar dataKey="traffic" name="Tráfego Estimado" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+
+                {/* Top Keywords Table */}
+                <Card className="border-border bg-card overflow-hidden">
+                    <CardHeader>
+                        <CardTitle className="text-sm font-medium text-foreground">Top 20 Organic Keywords</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="relative overflow-x-auto">
@@ -187,33 +246,23 @@ export default function SemrushPage() {
                                     <tr>
                                         <th className="px-2 py-3">Keyword</th>
                                         <th className="px-2 py-3 text-center">Pos</th>
-                                        <th className="px-2 py-3 text-center">Vol</th>
-                                        <th className="px-2 py-3 text-center">Traffic %</th>
-                                        <th className="px-2 py-3 text-right">Trend</th>
+                                        <th className="px-2 py-3 text-center">Volume</th>
+                                        <th className="px-2 py-3 text-center">CPC (USD)</th>
+                                        <th className="px-2 py-3 text-right">Traffic %</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
-                                    {keywords.map((kw, i) => (
+                                    {keywords.slice(0, 20).map((kw, i) => (
                                         <tr key={i} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-2 py-3 font-medium text-foreground truncate max-w-[150px]">{kw.Ph}</td>
                                             <td className="px-2 py-3 text-center">
-                                                <Badge variant="outline" className={parseInt(kw.Po) <= 3 ? "border-emerald-500 text-emerald-500" : ""}>
+                                                <Badge variant="outline" className={parseInt(kw.Po) <= 3 ? "border-emerald-500 text-emerald-500 bg-emerald-500/5" : "bg-muted/30"}>
                                                     {kw.Po}
                                                 </Badge>
                                             </td>
                                             <td className="px-2 py-3 text-center">{Number(kw.Nq).toLocaleString()}</td>
-                                            <td className="px-2 py-3 text-center">{kw.Tr}%</td>
-                                            <td className="px-2 py-3 text-right">
-                                                {parseInt(kw.Pd) > 0 ? (
-                                                    <div className="flex items-center justify-end text-emerald-500">
-                                                        <ArrowUpRight className="h-3 w-3" />
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center justify-end text-red-500">
-                                                        <ArrowDownRight className="h-3 w-3" />
-                                                    </div>
-                                                )}
-                                            </td>
+                                            <td className="px-2 py-3 text-center">{kw.Cp}</td>
+                                            <td className="px-2 py-3 text-right font-bold text-foreground">{kw.Tr}%</td>
                                         </tr>
                                     ))}
                                 </tbody>

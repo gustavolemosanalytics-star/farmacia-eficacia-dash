@@ -227,19 +227,30 @@ export const fetchGA4SessionsData = async () => {
 
     if (data.length < 2) return [];
 
-    const headers = data[1];
+    const headers = data[1] || [];
     const rows = data.slice(2);
 
     return rows.map(row => {
         const obj: any = {};
-        headers.forEach((header, index) => {
-            obj[header] = row[index] || '';
+        headers.forEach((header: string, index: number) => {
+            if (header) obj[header.trim()] = row[index] || '';
         });
+
+        // Parsing engagement rate (can be "Engagement rate" or similar)
+        const engagementRaw = obj['Engagement rate'] || obj['Taxa de engajamento'] || '0';
+        let engagementRate = 0;
+        if (engagementRaw.includes('%')) {
+            engagementRate = parseFloat(engagementRaw.replace('%', '').replace(',', '.')) / 100;
+        } else {
+            engagementRate = parseFloat(engagementRaw) || 0;
+        }
+
         return {
             date: obj['Date'] || '',
             sessions: parseInt(obj['Sessions'] || '0'),
-            sourceMedium: obj['Session source / medium'] || '',
+            source: obj['Session source'] || obj['Session source / medium'] || '',
             campaign: obj['Session campaign'] || '',
+            engagementRate: engagementRate
         };
     });
 };
@@ -505,13 +516,15 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
 
 // Aggregate GA4 KPIs
 export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
-    const [transactionData, sessionData] = await Promise.all([
+    const [transactionData, sessionData, gadsData] = await Promise.all([
         fetchGA4Data(),
-        fetchGA4SessionsData()
+        fetchGA4SessionsData(),
+        fetchGoogleAdsData()
     ]);
 
     let filteredTransactions = transactionData;
     let filteredSessions = sessionData;
+    let filteredGads = gadsData;
 
     if (startDate && endDate) {
         const start = new Date(startDate); start.setHours(0, 0, 0, 0);
@@ -528,6 +541,12 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
             if (!entryDate) return true;
             return entryDate >= start && entryDate <= end;
         });
+
+        filteredGads = gadsData.filter(entry => {
+            const entryDate = parseDate(entry.day || entry.data);
+            if (!entryDate) return true;
+            return entryDate >= start && entryDate <= end;
+        });
     }
 
     const totalRevenue = filteredTransactions.reduce((sum, entry) => sum + (entry.purchaseRevenue || 0), 0);
@@ -535,10 +554,36 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
     const ticketMedio = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
     const totalSessions = filteredSessions.reduce((sum, entry) => sum + (entry.sessions || 0), 0);
 
+    // Cross-analysis Session campaign vs Google Ads Campaign
+    const campaignStats: Record<string, { campaign: string; sessions: number; engagementRate: number; cost: number; clicks: number; conv: number }> = {};
+
+    // Aggregate Sessions (GA4)
+    filteredSessions.forEach(s => {
+        const camp = s.campaign || 'Desconhecida';
+        if (!campaignStats[camp]) {
+            campaignStats[camp] = { campaign: camp, sessions: 0, engagementRate: 0, cost: 0, clicks: 0, conv: 0 };
+        }
+        const totalEngaged = campaignStats[camp].sessions * campaignStats[camp].engagementRate + (s.sessions * (s.engagementRate || 0));
+        campaignStats[camp].sessions += s.sessions;
+        campaignStats[camp].engagementRate = campaignStats[camp].sessions > 0 ? totalEngaged / campaignStats[camp].sessions : 0;
+    });
+
+    // Aggregate Ads Data (GAds)
+    filteredGads.forEach(g => {
+        const camp = g.campaign || 'Desconhecida';
+        if (campaignStats[camp]) {
+            campaignStats[camp].cost += g.cost || 0;
+            campaignStats[camp].clicks += g.clicks || 0;
+            campaignStats[camp].conv += g.conversions || 0;
+        }
+    });
+
+    const campaignCrossAnalysis = Object.values(campaignStats)
+        .filter(c => c.sessions > 0 || c.cost > 0)
+        .sort((a, b) => b.sessions - a.sessions);
+
     // Group by channel (Transactions)
     const googleCPC = filteredTransactions.filter(e => e.eventSourceMedium?.includes('google') && e.eventSourceMedium?.includes('cpc'))
-        .reduce((sum, e) => sum + (e.purchaseRevenue || 0), 0);
-    const blueCPC = filteredTransactions.filter(e => e.eventSourceMedium?.includes('blue'))
         .reduce((sum, e) => sum + (e.purchaseRevenue || 0), 0);
     const organic = filteredTransactions.filter(e => e.eventSourceMedium?.includes('organic'))
         .reduce((sum, e) => sum + (e.purchaseRevenue || 0), 0);
@@ -562,17 +607,22 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
         .map(([date, sessions]) => ({ date, sessions }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
+    // Avg Engagement Rate
+    const totalEngagedSum = filteredSessions.reduce((sum, s) => sum + (s.sessions * (s.engagementRate || 0)), 0);
+    const avgEngagementRate = totalSessions > 0 ? totalEngagedSum / totalSessions : 0;
+
     return {
         totalRevenue,
         totalRevenue_formatted: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         totalTransactions,
         totalSessions,
+        avgEngagementRate,
         dailyTrend,
         ticketMedio,
         ticketMedio_formatted: `R$ ${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        campaignCrossAnalysis,
         byChannel: {
             googleCPC,
-            blueCPC,
             organic,
             direct,
             email,
