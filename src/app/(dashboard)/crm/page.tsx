@@ -201,11 +201,13 @@ export default function CrmPage() {
             categoryAffinityMap[cat].total += d.receitaProduto || 0;
             categoryAffinityMap[cat].uniqueCust.add(d.cpfCliente);
         });
-        const categoryAffinity = Object.entries(categoryAffinityMap).map(([name, data]) => ({
-            name,
-            value: data.total,
-            customers: data.uniqueCust.size
-        })).sort((a, b) => b.value - a.value).slice(0, 8);
+        const categoryAffinity = Object.entries(categoryAffinityMap)
+            .filter(([name]) => name !== 'Outros')
+            .map(([name, data]) => ({
+                name,
+                value: data.total,
+                customers: data.uniqueCust.size
+            })).sort((a, b) => b.value - a.value).slice(0, 8);
 
         // --- Purchase Frequency Distribution ---
         const freqDist = {
