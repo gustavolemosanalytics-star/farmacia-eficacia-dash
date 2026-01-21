@@ -237,10 +237,14 @@ export const fetchGA4SessionsData = async () => {
         });
 
         // Parsing engagement rate (can be "Engagement rate" or similar)
-        const engagementRaw = obj['Engagement rate'] || obj['Taxa de engajamento'] || '0';
+        let engagementRaw = (obj['Engagement rate'] || obj['Taxa de engajamento'] || '0').toString().trim();
         let engagementRate = 0;
+
+        // Handle comma as decimal separator
+        engagementRaw = engagementRaw.replace(',', '.');
+
         if (engagementRaw.includes('%')) {
-            engagementRate = parseFloat(engagementRaw.replace('%', '').replace(',', '.')) / 100;
+            engagementRate = parseFloat(engagementRaw.replace('%', '')) / 100;
         } else {
             engagementRate = parseFloat(engagementRaw) || 0;
         }
@@ -557,9 +561,18 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
     // Cross-analysis Session campaign vs Google Ads Campaign
     const campaignStats: Record<string, { campaign: string; sessions: number; engagementRate: number; cost: number; clicks: number; conv: number }> = {};
 
-    // Aggregate Sessions (GA4)
+    // Aggregate Sessions (GA4) - Only for Google Ads Campaigns
+    const excludeCamps = ['(not set)', 'direct', '(direct)', 'organic', '(organic)', 'cross-network', '(not provided)'];
+
     filteredSessions.forEach(s => {
-        const camp = s.campaign || 'Desconhecida';
+        const camp = s.campaign || '';
+        const lowerCamp = camp.toLowerCase();
+        const lowerSource = (s.source || '').toLowerCase();
+
+        // Must be google source and NOT in exclude list
+        if (!lowerSource.includes('google')) return;
+        if (!camp || excludeCamps.some(ex => lowerCamp.includes(ex))) return;
+
         if (!campaignStats[camp]) {
             campaignStats[camp] = { campaign: camp, sessions: 0, engagementRate: 0, cost: 0, clicks: 0, conv: 0 };
         }
