@@ -51,9 +51,10 @@ export interface CacheOptions {
     priority?: 'high' | 'normal' | 'low';
 }
 
-const DEFAULT_TTL = 300; // 5 minutes
+const DEFAULT_TTL = 600; // 10 minutes (updated per user request)
 const HISTORICAL_TTL = 3600; // 1 hour for historical data
 const RAW_DATA_TTL = 600; // 10 minutes for raw sheet data
+const AGGREGATED_TTL = 600; // 10 minutes for aggregated data
 
 // ===========================================
 // SMART CACHE KEY GENERATION (internal helper)
@@ -207,7 +208,7 @@ export const getCachedAggregation = async <T>(
     endDate?: Date
 ): Promise<{ data: T | undefined; source: string; stale?: boolean }> => {
     const isHistorical = isHistoricalRequest(startDate, endDate);
-    const ttl = isHistorical ? HISTORICAL_TTL : DEFAULT_TTL;
+    const ttl = isHistorical ? HISTORICAL_TTL : AGGREGATED_TTL;
 
     const key = generateCacheKey(type, {
         start: startDate?.toISOString().split('T')[0],
@@ -227,7 +228,7 @@ export const setCachedAggregation = async <T>(
     endDate?: Date
 ): Promise<void> => {
     const isHistorical = isHistoricalRequest(startDate, endDate);
-    const ttl = isHistorical ? HISTORICAL_TTL : DEFAULT_TTL;
+    const ttl = isHistorical ? HISTORICAL_TTL : AGGREGATED_TTL;
 
     const key = generateCacheKey(type, {
         start: startDate?.toISOString().split('T')[0],

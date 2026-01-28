@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Target, MousePointer, Users, TrendingUp, DollarSign } from 'lucide-react';
+import { Target, MousePointer, Users, Percent, ShoppingCart } from 'lucide-react';
 import { useMemo } from 'react';
 
 interface GrowthProjectionProps {
@@ -7,6 +7,8 @@ interface GrowthProjectionProps {
     currentRoas: number;
     currentSessions: number;
     currentClicks: number;
+    currentOrders?: number;
+    currentTicketMedio?: number;
     targetRevenue: number; // 400.000
     targetRoas: number; // 3.0
 }
@@ -16,6 +18,8 @@ export function GrowthProjection({
     currentRoas,
     currentSessions,
     currentClicks,
+    currentOrders = 0,
+    currentTicketMedio = 0,
     targetRevenue = 400000,
     targetRoas = 3.0
 }: GrowthProjectionProps) {
@@ -26,41 +30,61 @@ export function GrowthProjection({
         const roas = currentRoas || 0;
         const sessions = currentSessions || 0;
         const clicks = currentClicks || 0;
+        const orders = currentOrders || 0;
+        const ticketMedio = currentTicketMedio || (orders > 0 ? revenue / orders : 0);
+
+        // Current conversion rate
+        const currentConvRate = sessions > 0 ? (orders / sessions) * 100 : 0;
 
         // Derived metrics
         const rps = sessions > 0 ? revenue / sessions : 0; // Revenue per Session
         const rpc = clicks > 0 ? revenue / clicks : 0; // Revenue per Click
-        const spend = roas > 0 ? revenue / roas : 0;
 
         // Target calculations
-        // To hit Target Revenue with Target ROAS:
-        const targetSpend = targetRevenue / targetRoas;
-
         // Assuming RPC stays constant, how many clicks needed?
         const targetClicks = rpc > 0 ? targetRevenue / rpc : 0;
 
         // Assuming RPS stays constant, how many sessions needed?
         const targetSessions = rps > 0 ? targetRevenue / rps : 0;
 
+        // Target conversion rate to hit goal (assuming same ticket and sessions)
+        // TargetRevenue = TargetOrders * TicketMedio
+        // TargetOrders = TargetRevenue / TicketMedio
+        // TargetConvRate = TargetOrders / CurrentSessions
+        const targetOrders = ticketMedio > 0 ? targetRevenue / ticketMedio : 0;
+        const targetConvRate = sessions > 0 ? (targetOrders / sessions) * 100 : 0;
+
+        // Ideal ticket medio to hit goal (assuming same conversion rate and sessions)
+        // TargetRevenue = CurrentConvRate * Sessions * IdealTicket
+        // IdealTicket = TargetRevenue / (CurrentConvRate/100 * Sessions)
+        const idealTicketMedio = (currentConvRate / 100) * sessions > 0
+            ? targetRevenue / ((currentConvRate / 100) * sessions)
+            : ticketMedio;
+
         // Gaps
         const gapRevenue = targetRevenue - revenue;
         const gapSessions = targetSessions - sessions;
         const gapClicks = targetClicks - clicks;
-        const gapSpend = targetSpend - spend;
+        const gapConvRate = targetConvRate - currentConvRate;
+        const gapTicketMedio = idealTicketMedio - ticketMedio;
 
         return {
-            targetSpend,
             targetClicks,
             targetSessions,
+            targetConvRate,
+            idealTicketMedio,
+            currentConvRate,
+            ticketMedio,
             gapRevenue,
             gapSessions,
             gapClicks,
-            gapSpend,
+            gapConvRate,
+            gapTicketMedio,
             percentRevenue: revenue > 0 ? ((targetRevenue - revenue) / revenue) * 100 : 0,
             percentSessions: sessions > 0 ? ((targetSessions - sessions) / sessions) * 100 : 0,
             percentClicks: clicks > 0 ? ((targetClicks - clicks) / clicks) * 100 : 0,
         };
-    }, [currentRevenue, currentRoas, currentSessions, currentClicks, targetRevenue, targetRoas]);
+    }, [currentRevenue, currentRoas, currentSessions, currentClicks, currentOrders, currentTicketMedio, targetRevenue, targetRoas]);
 
     return (
         <Card className="border-border bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-zinc-900">
@@ -77,7 +101,7 @@ export function GrowthProjection({
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     {/* Sessões Necessárias */}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -138,30 +162,53 @@ export function GrowthProjection({
                         </p>
                     </div>
 
-                    {/* Investimento Necessário */}
+                    {/* Taxa de Conversão Ideal */}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <DollarSign className="h-4 w-4" />
-                            <span>Investimento (Ads) Ideal</span>
+                            <Percent className="h-4 w-4" />
+                            <span>Tx Conversão Ideal</span>
                         </div>
                         <div className="flex items-baseline gap-2">
                             <span className="text-2xl font-bold text-foreground">
-                                {projections.targetSpend > 1000
-                                    ? `${(projections.targetSpend / 1000).toFixed(1)}k`
-                                    : projections.targetSpend.toFixed(0)}
+                                {projections.targetConvRate.toFixed(2)}%
                             </span>
-                            <span className="text-xs text-muted-foreground">
-                                (ROAS {targetRoas}x)
+                            <span className={`text-xs font-medium ${projections.gapConvRate > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                {projections.gapConvRate > 0 ? '+' : ''}{projections.gapConvRate.toFixed(2)}pp
                             </span>
                         </div>
                         <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-emerald-500 rounded-full transition-all duration-1000" // Usually green for money/spend efficiency 
-                                style={{ width: `${Math.min((((currentRevenue / currentRoas) || 0) / projections.targetSpend) * 100, 100)}%` }}
+                                className="h-full bg-emerald-500 rounded-full transition-all duration-1000"
+                                style={{ width: `${Math.min((projections.currentConvRate / projections.targetConvRate) * 100, 100)}%` }}
                             />
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                            Gap de Investimento: R$ {projections.gapSpend > 0 ? projections.gapSpend.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : 0}
+                            Atualmente: {projections.currentConvRate.toFixed(2)}%
+                        </p>
+                    </div>
+
+                    {/* Ticket Médio Ideal */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <ShoppingCart className="h-4 w-4" />
+                            <span>Ticket Médio Ideal</span>
+                        </div>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-2xl font-bold text-foreground">
+                                R$ {projections.idealTicketMedio.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                            </span>
+                            <span className={`text-xs font-medium ${projections.gapTicketMedio > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                {projections.gapTicketMedio > 0 ? '+' : ''}R$ {Math.abs(projections.gapTicketMedio).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                            </span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-violet-500 rounded-full transition-all duration-1000"
+                                style={{ width: `${Math.min((projections.ticketMedio / projections.idealTicketMedio) * 100, 100)}%` }}
+                            />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                            Atualmente: R$ {projections.ticketMedio.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                         </p>
                     </div>
                 </div>

@@ -19,6 +19,7 @@ const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'
 import { BrazilMap } from '@/components/charts/BrazilMap';
 import { CampaignRankingTable } from '@/components/tables/CampaignRankingTable';
 import { GrowthProjection } from '@/components/dashboard/GrowthProjection';
+import { ExecutiveInsights } from '@/components/dashboard/ExecutiveInsights';
 
 export default function HomeExecutiva() {
     const { data: catalogoData, comparisonData: catalogoComparisonData, loading: loadingCatalogo } = useCatalogoData();
@@ -454,8 +455,21 @@ export default function HomeExecutiva() {
                         currentRoas={roas}
                         currentSessions={ga4Kpis?.totalSessions || 0}
                         currentClicks={gadsKpis?.clicks || 0}
+                        currentOrders={displayData.totalPedidos || 0}
+                        currentTicketMedio={displayData.ticketMedio || 0}
                         targetRevenue={400000}
                         targetRoas={3.0}
+                    />
+                </section>
+            )}
+
+            {/* Executive Insights - AI Analysis */}
+            {!loading && catalogoData && gadsKpis && (
+                <section>
+                    <ExecutiveInsights
+                        catalogoData={catalogoData}
+                        gadsKpis={gadsKpis}
+                        ga4Kpis={ga4Kpis}
                     />
                 </section>
             )}
@@ -797,7 +811,11 @@ export default function HomeExecutiva() {
             {/* Geographic Map */}
             {!loading && catalogoData && catalogoData.rawData && (
                 <section>
-                    <BrazilMap rawData={catalogoData.rawData} />
+                    <BrazilMap
+                        rawData={catalogoData.rawData}
+                        gadsData={gadsKpis}
+                        sessionsData={ga4Kpis}
+                    />
                 </section>
             )}
 
