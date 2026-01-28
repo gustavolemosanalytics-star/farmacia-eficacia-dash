@@ -8,13 +8,14 @@ import { PageFilters } from '@/components/ui/PageFilters';
 import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useSheetData';
 import { CampaignTypeBreakdown } from '@/components/charts/CampaignTypeBreakdown';
 import {
-    TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Activity, AlertTriangle, CheckCircle, Lightbulb, Zap, Trophy, XCircle, MousePointer
+    TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Activity, AlertTriangle, CheckCircle, Lightbulb, Zap, Trophy, XCircle, MousePointer, ShoppingCart, Package
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, Legend, LabelList
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import { CampaignRankingTable } from '@/components/tables/CampaignRankingTable';
+import { IntelligentAnalysis } from '@/components/dashboard/IntelligentAnalysis';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -335,6 +336,200 @@ export default function MidiaPagaPage() {
                             </Card>
                         );
                     })}
+                </section>
+            )}
+
+            {/* Intelligent Analysis (Moved from Home) */}
+            {!loading && catalogoData?.rawData && (
+                <section>
+                    <IntelligentAnalysis data={catalogoData.rawData} />
+                </section>
+            )}
+
+            {/* Receita por Categoria + ROAS (Moved from Home) */}
+            {!loading && analytics?.topCategoriesGads && analytics.topCategoriesGads.length > 0 && (
+                <section>
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <Package className="h-5 w-5 text-primary" />
+                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Categoria + ROAS (Google Ads)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {(() => {
+                                // Re-calculate extensive ROAS for categories specifically for this view
+                                // analytics.topCategoriesGads already has revenue and orders.
+                                // We need to estimate investment per category to get ROAS.
+
+                                const totalRevenue = analytics.receitaGoogleAds || 1;
+                                const totalSpend = gadsKpis?.spend || 1;
+
+                                // Enriched with share and estimated spend
+                                const enrichedCats = analytics.topCategoriesGads.map((cat: any) => {
+                                    const share = cat.receita / totalRevenue;
+                                    const estimatedSpend = totalSpend * share;
+                                    const roas = estimatedSpend > 0 ? cat.receita / estimatedSpend : 0;
+                                    return {
+                                        ...cat,
+                                        share: share * 100,
+                                        estimatedSpend,
+                                        roas
+                                    };
+                                });
+
+                                return (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-border">
+                                                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Categoria</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita (GAds)</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">% Share</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Invest. Est.</th>
+                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">ROAS Est.</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {enrichedCats.map((cat: any, index: number) => (
+                                                    <tr key={index} className="border-b border-border/50 hover:bg-muted/50">
+                                                        <td className="py-3 px-2 font-medium">{cat.name}</td>
+                                                        <td className="text-right py-3 px-2 font-mono">
+                                                            R$ {cat.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="text-right py-3 px-2 text-muted-foreground">
+                                                            {cat.share.toFixed(1)}%
+                                                        </td>
+                                                        <td className="text-right py-3 px-2 font-mono text-muted-foreground">
+                                                            R$ {cat.estimatedSpend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="text-right py-3 px-2">
+                                                            <span className={`font-bold ${cat.roas >= 3 ? 'text-green-600' :
+                                                                cat.roas >= 2 ? 'text-yellow-600' :
+                                                                    'text-red-600'
+                                                                }`}>
+                                                                {cat.roas.toFixed(2)}x
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <p className="text-xs text-muted-foreground mt-3">
+                                            * ROAS estimado baseado na atribuição proporcional de investimento por share de receita do Google Ads.
+                                        </p>
+                                    </div>
+                                );
+                            })()}
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
+
+            {/* Investimento Ads Segmentado - Leads vs Ecommerce */}
+            {!loading && gadsKpis?.segmented && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Investimento em Ads por Tipo
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Leads */}
+                        <Card className="border-border bg-card">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <Target className="h-5 w-5 text-blue-500" />
+                                        <span className="font-medium">Investimento Leads</span>
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">
+                                        Meta: R$ {gadsKpis.segmented.leads.meta.toLocaleString('pt-BR')}
+                                    </span>
+                                </div>
+                                <div className="text-2xl font-bold mb-2">
+                                    {gadsKpis.segmented.leads.spend_formatted}
+                                </div>
+                                <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-2.5">
+                                    <div
+                                        className={`h-2.5 rounded-full transition-all ${gadsKpis.segmented.leads.percentMeta > 100
+                                            ? 'bg-red-500'
+                                            : gadsKpis.segmented.leads.percentMeta > 80
+                                                ? 'bg-yellow-500'
+                                                : 'bg-blue-500'
+                                            }`}
+                                        style={{ width: `${Math.min(gadsKpis.segmented.leads.percentMeta, 100)}%` }}
+                                    ></div>
+                                </div>
+                                <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                                    <span>{gadsKpis.segmented.leads.percentMeta.toFixed(1)}% da meta</span>
+                                    <span>{gadsKpis.segmented.leads.conversions.toFixed(0)} Leads</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Ecommerce */}
+                        <Card className="border-border bg-card">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <ShoppingCart className="h-5 w-5 text-purple-500" />
+                                        <span className="font-medium">Investimento Ecommerce</span>
+                                    </div>
+                                    <span className="text-sm text-muted-foreground">
+                                        Meta: R$ {gadsKpis.segmented.ecommerce.meta.toLocaleString('pt-BR')}
+                                    </span>
+                                </div>
+                                <div className="text-2xl font-bold mb-2">
+                                    {gadsKpis.segmented.ecommerce.spend_formatted}
+                                </div>
+                                <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-2.5">
+                                    <div
+                                        className={`h-2.5 rounded-full transition-all ${gadsKpis.segmented.ecommerce.percentMeta > 100
+                                            ? 'bg-red-500'
+                                            : gadsKpis.segmented.ecommerce.percentMeta > 80
+                                                ? 'bg-yellow-500'
+                                                : 'bg-purple-500'
+                                            }`}
+                                        style={{ width: `${Math.min(gadsKpis.segmented.ecommerce.percentMeta, 100)}%` }}
+                                    ></div>
+                                </div>
+                                <div className="flex justify-between mt-1 text-xs text-muted-foreground mb-4">
+                                    <span>{gadsKpis.segmented.ecommerce.percentMeta.toFixed(1)}% da meta</span>
+                                    <span>{gadsKpis.segmented.ecommerce.conversions.toFixed(0)} Compras</span>
+                                </div>
+
+                                {/* Mini ROAS Chart */}
+                                {roas > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-border/50">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-medium text-muted-foreground">ROAS (Ecommerce)</span>
+                                            <span className={`text-sm font-bold ${roas >= 4 ? 'text-emerald-500' : roas >= 2 ? 'text-blue-500' : 'text-amber-500'}`}>
+                                                {roas.toFixed(2)}x
+                                            </span>
+                                        </div>
+                                        <div className="h-10 w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={[
+                                                    { v: roas * 0.8 }, { v: roas * 0.9 }, { v: roas * 0.85 }, { v: roas * 0.95 }, { v: roas * 0.9 }, { v: roas }
+                                                ]}>
+                                                    <defs>
+                                                        <linearGradient id="colorRoasMini" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor={roas >= 4 ? '#10b981' : '#3b82f6'} stopOpacity={0.3} />
+                                                            <stop offset="95%" stopColor={roas >= 4 ? '#10b981' : '#3b82f6'} stopOpacity={0} />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <Area
+                                                        type="monotone"
+                                                        dataKey="v"
+                                                        stroke={roas >= 4 ? '#10b981' : '#3b82f6'}
+                                                        fill="url(#colorRoasMini)"
+                                                        strokeWidth={2}
+                                                    />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </section>
             )}
 

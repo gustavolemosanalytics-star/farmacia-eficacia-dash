@@ -1,0 +1,68 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model TransactionData {
+  id                    String   @id @default(cuid())
+  mpn                   String?
+  pedido                String?
+  dataTransacao         DateTime?
+  status                String?
+  nomeProduto           String?
+  receitaProduto        Float?
+  cidade                String?
+  estado                String?
+  valorTotalSemFrete    Float?
+  valorTotalComFrete    Float?
+  emailCliente          String?
+  cpfCliente            String?
+  categoria             String?
+  vendedor              String?
+  origem                String?
+  midia                 String?
+  campanha              String?
+  cupom                 String?
+  atribuicao            String?
+  createdAt             DateTime @default(now())
+}
+
+model CampaignData {
+  id                String    @id @default(cuid())
+  day               DateTime?
+  account           String?
+  campaign          String?
+  cost              Float?
+  conversions       Float?
+  clicks            Int?
+  ctr               Float?
+  campaignStart     DateTime?
+  campaignStatus    String?
+  createdAt         DateTime  @default(now())
+}
+
+model SessionData {
+  id                String    @id @default(cuid())
+  date              DateTime?
+  transactionId     String?
+  source            String?
+  medium            String?
+  campaign          String?
+  revenue           Float?
+  status            String?
+  createdAt         DateTime  @default(now())
+}
+
+
+
+

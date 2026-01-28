@@ -1,17 +1,45 @@
 // Cache utility library
 
 import NodeCache from 'node-cache';
+import Redis from 'ioredis';
 
 // ===========================================
-// IN-MEMORY CACHE SYSTEM
+// CACHE L1: IN-MEMORY (FASTEST)
 // ===========================================
 
-// In-memory cache (60 seconds for hot data)
 const memoryCache = new NodeCache({
     stdTTL: 60,
     checkperiod: 30,
-    useClones: false // Better performance
+    useClones: false
 });
+
+// ===========================================
+// CACHE L2: REDIS (DISTRIBUTED)
+// ===========================================
+
+const redisUrl = process.env.REDIS_URL;
+let redis: Redis | null = null;
+
+if (redisUrl) {
+    try {
+        redis = new Redis(redisUrl, {
+            maxRetriesPerRequest: 3,
+            retryStrategy: (times) => Math.min(times * 50, 2000),
+        });
+
+        redis.on('error', (err) => {
+            console.error('[Redis] Connection Error:', err.message);
+        });
+
+        redis.on('connect', () => {
+            console.log('[Redis] Connected successfully');
+        });
+    } catch (err) {
+        console.error('[Redis] Initialization Error:', err);
+    }
+} else {
+    console.warn('[Redis] No REDIS_URL provided. Operating in memory-only mode.');
+}
 
 // ===========================================
 // CACHE CONFIGURATION
@@ -20,11 +48,11 @@ const memoryCache = new NodeCache({
 export interface CacheOptions {
     ttlSeconds?: number;
     staleWhileRevalidate?: boolean;
-    priority?: 'high' | 'normal' | 'low'; // Affects memory cache behavior
+    priority?: 'high' | 'normal' | 'low';
 }
 
 const DEFAULT_TTL = 300; // 5 minutes
-const HISTORICAL_TTL = 3600; // 1 hour for historical data (doesn't change often)
+const HISTORICAL_TTL = 3600; // 1 hour for historical data
 const RAW_DATA_TTL = 600; // 10 minutes for raw sheet data
 
 // ===========================================
@@ -44,7 +72,6 @@ const generateCacheKey = (
     return `farm:${type}:${sortedParams || 'all'}`;
 };
 
-// Check if request is for historical data (older than 30 days) - internal helper
 const isHistoricalRequest = (startDate?: Date, endDate?: Date): boolean => {
     if (!endDate) return false;
     const thirtyDaysAgo = new Date();
@@ -59,22 +86,37 @@ const isHistoricalRequest = (startDate?: Date, endDate?: Date): boolean => {
 export const getCachedData = async <T>(
     key: string,
     options: CacheOptions = {}
-): Promise<{ data: T | undefined; source: 'memory' | 'miss'; stale?: boolean }> => {
+): Promise<{ data: T | undefined; source: 'memory' | 'redis' | 'miss'; stale?: boolean }> => {
 
-    // Check memory cache
+    // 1. Check memory cache (L1)
     const memoryData = memoryCache.get<{ data: T; timestamp: number }>(key);
     if (memoryData) {
         const age = Date.now() - memoryData.timestamp;
         const ttl = (options.ttlSeconds || DEFAULT_TTL) * 1000;
 
-        // If fresh, return immediately
         if (age < ttl) {
             return { data: memoryData.data, source: 'memory' };
         }
 
-        // If stale but within 2x TTL and staleWhileRevalidate is enabled
         if (options.staleWhileRevalidate && age < ttl * 2) {
             return { data: memoryData.data, source: 'memory', stale: true };
+        }
+    }
+
+    // 2. Check Redis (L2)
+    if (redis) {
+        try {
+            const redisData = await redis.get(key);
+            if (redisData) {
+                const parsed = JSON.parse(redisData) as { data: T; timestamp: number };
+
+                // Backfill memory cache
+                memoryCache.set(key, parsed, options.ttlSeconds || DEFAULT_TTL);
+
+                return { data: parsed.data, source: 'redis' };
+            }
+        } catch (err) {
+            console.error('[Redis] Get Error:', err);
         }
     }
 
@@ -93,8 +135,17 @@ export const setCachedData = async <T>(
     const ttl = options.ttlSeconds || DEFAULT_TTL;
     const wrapper = { data, timestamp: Date.now() };
 
-    // Always set in memory with full TTL since Redis is gone
+    // Set L1
     memoryCache.set(key, wrapper, ttl);
+
+    // Set L2
+    if (redis) {
+        try {
+            await redis.set(key, JSON.stringify(wrapper), 'EX', ttl);
+        } catch (err) {
+            console.error('[Redis] Set Error:', err);
+        }
+    }
 };
 
 // ===========================================
@@ -102,19 +153,31 @@ export const setCachedData = async <T>(
 // ===========================================
 
 export const invalidateCache = async (pattern: string): Promise<number> => {
-    // Clear memory cache
+    // 1. Clear memory cache
     const memKeys = memoryCache.keys().filter(k => k.includes(pattern));
     memKeys.forEach(k => memoryCache.del(k));
 
-    console.log(`[Cache] Invalidated ${memKeys.length} keys matching "${pattern}"`);
-    return memKeys.length;
+    // 2. Clear Redis
+    let redisDeleted = 0;
+    if (redis) {
+        try {
+            const keys = await redis.keys(`*${pattern}*`);
+            if (keys.length > 0) {
+                redisDeleted = await redis.del(...keys);
+            }
+        } catch (err) {
+            console.error('[Redis] Invalidation Error:', err);
+        }
+    }
+
+    console.log(`[Cache] Invalidated ${memKeys.length} (memory) and ${redisDeleted} (redis) keys matching "${pattern}"`);
+    return memKeys.length + redisDeleted;
 };
 
 // ===========================================
-// RAW SHEET DATA CACHE (Special handling)
+// RAW SHEET DATA CACHE
 // ===========================================
 
-// Cache raw sheet data to avoid repeated Google API calls
 export const getCachedSheetData = async (
     sheetName: string
 ): Promise<any[][] | undefined> => {
@@ -135,7 +198,7 @@ export const setCachedSheetData = async (
 };
 
 // ===========================================
-// AGGREGATED DATA CACHE (with smart TTL)
+// AGGREGATED DATA CACHE
 // ===========================================
 
 export const getCachedAggregation = async <T>(
@@ -180,23 +243,33 @@ export const setCachedAggregation = async <T>(
 
 export const getCacheStats = async (): Promise<{
     memory: { keys: number; hits: number; misses: number };
+    redis: { connected: boolean; keys?: number };
 }> => {
     const memStats = memoryCache.getStats();
+    let redisKeys = 0;
+    if (redis) {
+        try {
+            redisKeys = (await redis.keys('farm:*')).length;
+        } catch (err) { }
+    }
 
     return {
         memory: {
             keys: memoryCache.keys().length,
             hits: memStats.hits,
             misses: memStats.misses,
+        },
+        redis: {
+            connected: !!redis,
+            keys: redisKeys
         }
     };
 };
 
 // ===========================================
-// LEGACY EXPORTS (Backward compatibility)
+// LEGACY EXPORTS
 // ===========================================
 
-// Keep old function signatures working
 export const getCachedDataLegacy = async <T>(key: string): Promise<T | undefined> => {
     const result = await getCachedData<T>(key);
     return result.data;

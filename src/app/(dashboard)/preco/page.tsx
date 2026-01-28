@@ -25,7 +25,7 @@ export default function PrecoPage() {
         <div className="space-y-6">
             <PageFilters
                 title="Preço & Concorrência"
-                description="Monitoramento de preços e posicionamento vs mercado"
+                description="Monitoramento global de ecommerces de farmácias (Benchmark de Mercado)"
                 isMocked={true}
             />
 

@@ -511,12 +511,12 @@ export const navegacaoItems = [
     { titulo: 'Auditoria SEMRush', href: '/semrush', icone: 'Globe', grupo: 'marketing' as const, isMockData: false },
 
     { titulo: 'CRM & Retenção', href: '/crm', icone: 'Heart', grupo: 'crm' as const, isMockData: false },
-    { titulo: 'E-mail & Automação', href: '/email', icone: 'Mail', grupo: 'crm' as const, isMockData: true },
-    { titulo: 'Social & Marca', href: '/social', icone: 'Share2', grupo: 'crm' as const, isMockData: true },
+    // { titulo: 'E-mail & Automação', href: '/email', icone: 'Mail', grupo: 'crm' as const, isMockData: true },
+    // { titulo: 'Social & Marca', href: '/social', icone: 'Share2', grupo: 'crm' as const, isMockData: true },
     { titulo: 'Preço & Concorrência', href: '/preco', icone: 'DollarSign', grupo: 'operacao' as const, isMockData: true },
-    { titulo: 'Operação & Experiência', href: '/operacao', icone: 'Truck', grupo: 'operacao' as const, isMockData: true },
-    { titulo: 'Data Quality', href: '/data-quality', icone: 'Database', grupo: 'dados' as const, isMockData: true },
-    { titulo: 'Tendências & Oportunidades', href: '/tendencias', icone: 'TrendingUp', grupo: 'dados' as const, isMockData: true },
+    // { titulo: 'Operação & Experiência', href: '/operacao', icone: 'Truck', grupo: 'operacao' as const, isMockData: true },
+    // { titulo: 'Data Quality', href: '/data-quality', icone: 'Database', grupo: 'dados' as const, isMockData: true },
+    // { titulo: 'Tendências & Oportunidades', href: '/tendencias', icone: 'TrendingUp', grupo: 'dados' as const, isMockData: true },
     { titulo: 'Análise Preditiva', href: '/analise-preditiva', icone: 'Brain', grupo: 'dados' as const, isMockData: true },
 ];
 
