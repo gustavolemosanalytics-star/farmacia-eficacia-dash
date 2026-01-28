@@ -261,9 +261,15 @@ export default function AnalisePreditivaPage() {
             const parsed = parseDate(dateStr);
             if (!parsed) return;
 
-            // Filtrar apenas pedidos válidos
+            // Filtrar apenas pedidos válidos (consistente com aggregateCatalogoKPIs)
             const status = (d.status || '').toLowerCase();
-            if (status && !status.includes('complete') && !status.includes('pago') && !status.includes('faturado')) return;
+            const isValidStatus = !status ||
+                status.includes('complete') ||
+                status.includes('completo') ||
+                status.includes('pago') ||
+                status.includes('enviado') ||
+                status.includes('faturado');
+            if (!isValidStatus) return;
 
             const monthKey = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}`;
             monthlyMap[monthKey] = (monthlyMap[monthKey] || 0) + (d.receitaProduto || 0);

@@ -342,17 +342,21 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
 
     const costPerConversion = totalConversions > 0 ? totalCost / totalConversions : 0;
 
-    // Daily Cost Aggregation
-    const dailyCostMap: { [key: string]: number } = {};
+    // Daily Cost and Conversions Aggregation (needed for CPA forecast)
+    const dailyMetricsMap: { [key: string]: { cost: number; conversions: number } } = {};
     data.forEach(entry => {
         const date = parseDate(entry.day || entry.data || entry.campaignStartDate);
         if (date) {
             const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
-            dailyCostMap[dateStr] = (dailyCostMap[dateStr] || 0) + (entry.cost || 0);
+            if (!dailyMetricsMap[dateStr]) {
+                dailyMetricsMap[dateStr] = { cost: 0, conversions: 0 };
+            }
+            dailyMetricsMap[dateStr].cost += entry.cost || 0;
+            dailyMetricsMap[dateStr].conversions += entry.conversions || 0;
         }
     });
-    const dailyData = Object.entries(dailyCostMap)
-        .map(([date, cost]) => ({ date, cost }))
+    const dailyData = Object.entries(dailyMetricsMap)
+        .map(([date, metrics]) => ({ date, cost: metrics.cost, conversions: metrics.conversions }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
     // Metas definidas pelo usuário
@@ -757,8 +761,14 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
     const totalValorComFrete = completedOrders.reduce((sum, entry) => sum + (entry.valorTotalComFrete || 0), 0);
 
     // Receita específica do canal Google_Ads (Mídia Paga)
+    // Captura variações: "Google_Ads", "Google Ads", "google_ads", "GoogleAds", etc.
+    const isGoogleAdsAttribution = (atrib: string) => {
+        const lower = (atrib || '').toLowerCase().replace(/[_\s]/g, '');
+        return lower === 'googleads' || lower.includes('googleads');
+    };
+
     const receitaGoogleAds = completedOrders
-        .filter(d => d.atribuicao?.toLowerCase().includes('google_ads'))
+        .filter(d => isGoogleAdsAttribution(d.atribuicao))
         .reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0);
 
     // Receita para cálculo do ROAS (Atribuição != Vendedor e != Outros)
