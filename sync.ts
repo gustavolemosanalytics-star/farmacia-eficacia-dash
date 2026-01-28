@@ -5,7 +5,11 @@ import pg from 'pg';
 import { fetchMagData, fetchGoogleAdsData, fetchGA4Data } from './src/lib/sheets/client';
 
 
-const connectionString = "postgresql://postgres:vscuCWhpBwOQpLwUoXhQYIqOIsXnFkky@junction.proxy.rlwy.net:18778/railway";
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+    console.error('❌ DATABASE_URL não definida.');
+    process.exit(1);
+}
 const pool = new pg.Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
