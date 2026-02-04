@@ -8,7 +8,7 @@ import { PageFilters } from '@/components/ui/PageFilters';
 import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useSheetData';
 import { CampaignTypeBreakdown } from '@/components/charts/CampaignTypeBreakdown';
 import {
-    TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Activity, AlertTriangle, CheckCircle, Lightbulb, Zap, Trophy, XCircle, MousePointer, ShoppingCart, Package
+    TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Activity, AlertTriangle, CheckCircle, Lightbulb, Zap, Trophy, XCircle, MousePointer, ShoppingCart, Package, Rocket, ArrowUpRight, Sparkles
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, Legend, LabelList
@@ -106,6 +106,72 @@ export default function MidiaPagaPage() {
         const bestCampaign = campaignAnalysis[0];
         const worstCampaign = campaignAnalysis.filter((c: any) => c.spend > 100).sort((a: any, b: any) => a.roas - b.roas)[0];
 
+        // Investment Potential Analysis
+        // Calculate averages for comparison
+        const avgSpend = campaignAnalysis.reduce((sum: number, c: any) => sum + (c.spend || 0), 0) / (campaignAnalysis.length || 1);
+        const avgRoas = campaignAnalysis.filter((c: any) => c.roas > 0).reduce((sum: number, c: any) => sum + c.roas, 0) / (campaignAnalysis.filter((c: any) => c.roas > 0).length || 1);
+        const avgEfficiency = campaignAnalysis.filter((c: any) => c.efficiency > 0).reduce((sum: number, c: any) => sum + c.efficiency, 0) / (campaignAnalysis.filter((c: any) => c.efficiency > 0).length || 1);
+        const avgCostPerSession = campaignAnalysis.filter((c: any) => c.costPerSession > 0).reduce((sum: number, c: any) => sum + c.costPerSession, 0) / (campaignAnalysis.filter((c: any) => c.costPerSession > 0).length || 1);
+
+        // Calculate potential score for each campaign
+        const investmentPotential = campaignAnalysis
+            .filter((c: any) => c.spend > 50 && c.roas > 0) // Only campaigns with some spend and positive ROAS
+            .map((camp: any) => {
+                // Score components (0-100 each)
+                const roasScore = Math.min((camp.roas / avgRoas) * 50, 100); // Higher ROAS = better
+                const scaleRoom = camp.spend < avgSpend ? ((avgSpend - camp.spend) / avgSpend) * 100 : 0; // Lower spend = more room to scale
+                const efficiencyScore = camp.efficiency > 0 ? Math.min((camp.efficiency / avgEfficiency) * 50, 100) : 0;
+                const costEfficiencyScore = camp.costPerSession > 0 && avgCostPerSession > 0
+                    ? Math.min(((avgCostPerSession / camp.costPerSession) * 50), 100)
+                    : 50;
+
+                // Weighted potential score
+                const potentialScore = (
+                    roasScore * 0.35 +          // ROAS weight: 35%
+                    scaleRoom * 0.25 +          // Room to scale: 25%
+                    efficiencyScore * 0.25 +    // Efficiency: 25%
+                    costEfficiencyScore * 0.15  // Cost efficiency: 15%
+                );
+
+                // Determine recommendation
+                let recommendation: 'escalar' | 'aumentar' | 'manter' | 'otimizar' = 'manter';
+                let recommendationText = '';
+
+                if (camp.roas >= avgRoas * 1.5 && camp.spend < avgSpend) {
+                    recommendation = 'escalar';
+                    recommendationText = 'ROAS excelente com investimento baixo. Alto potencial de escala.';
+                } else if (camp.roas >= avgRoas && camp.spend < avgSpend * 0.7) {
+                    recommendation = 'aumentar';
+                    recommendationText = 'Performance sólida. Aumente gradualmente o investimento.';
+                } else if (camp.roas >= avgRoas && camp.efficiency >= avgEfficiency) {
+                    recommendation = 'manter';
+                    recommendationText = 'Performance estável. Mantenha o investimento atual.';
+                } else {
+                    recommendation = 'otimizar';
+                    recommendationText = 'Otimize antes de aumentar investimento.';
+                }
+
+                // Estimated additional revenue potential
+                const additionalSpendPotential = Math.max(avgSpend - camp.spend, 0);
+                const estimatedAdditionalRevenue = additionalSpendPotential * camp.roas;
+
+                return {
+                    ...camp,
+                    potentialScore,
+                    roasScore,
+                    scaleRoom,
+                    efficiencyScore,
+                    recommendation,
+                    recommendationText,
+                    additionalSpendPotential,
+                    estimatedAdditionalRevenue,
+                    vsAvgRoas: ((camp.roas / avgRoas) - 1) * 100,
+                    vsAvgSpend: ((camp.spend / avgSpend) - 1) * 100,
+                };
+            })
+            .sort((a: any, b: any) => b.potentialScore - a.potentialScore)
+            .slice(0, 10);
+
         // Daily performance
         const dailyMap: { [date: string]: { receita: number; custo: number } } = {};
         googleAdsOrders.forEach((d: any) => {
@@ -137,6 +203,35 @@ export default function MidiaPagaPage() {
         // Dashboard Level ROAS (following exclusion logic from gadsKpis.spend)
         const roas = receitaGoogleAds > 0 && gadsKpis.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
 
+        // Revenue by Campaign Type - for CampaignTypeBreakdown
+        const revenueByTypeMap: { [type: string]: { revenue: number; orders: number } } = {};
+
+        // Classify campaigns and aggregate revenue
+        const classifyCampaign = (campaign: string): string => {
+            const lower = (campaign || '').toLowerCase();
+            if (lower.includes('visita')) return 'visita_loja';
+            if (lower.includes('lead')) return 'search_leads';
+            if (lower.includes('institucional') && !lower.includes('lead') && !lower.includes('visita')) return 'search_institucional';
+            if (lower.includes('shopping')) return 'shopping';
+            if (lower.includes('pmax') && !lower.includes('lead') && !lower.includes('visita')) return 'pmax_ecommerce';
+            return 'outros';
+        };
+
+        // Calculate revenue per campaign type from Magento orders
+        googleAdsOrders.forEach((d: any) => {
+            const campanha = d.campanha || '';
+            const type = classifyCampaign(campanha);
+            if (!revenueByTypeMap[type]) revenueByTypeMap[type] = { revenue: 0, orders: 0 };
+            revenueByTypeMap[type].revenue += d.receitaProduto || 0;
+            revenueByTypeMap[type].orders += 1;
+        });
+
+        const revenueByType = Object.entries(revenueByTypeMap).map(([type, data]) => ({
+            type,
+            revenue: data.revenue,
+            orders: data.orders
+        }));
+
         return {
             receitaGoogleAds,
             googleAdsOrdersCount: googleAdsOrders.length,
@@ -147,6 +242,10 @@ export default function MidiaPagaPage() {
             bestCampaign,
             worstCampaign,
             combinedDailyData,
+            investmentPotential,
+            avgSpend,
+            avgRoas,
+            revenueByType,
         };
     }, [catalogoData, gadsKpis, ga4Kpis]);
 
@@ -342,7 +441,11 @@ export default function MidiaPagaPage() {
             {/* Intelligent Analysis (Moved from Home) */}
             {!loading && catalogoData?.rawData && (
                 <section>
-                    <IntelligentAnalysis data={catalogoData.rawData} />
+                    <IntelligentAnalysis
+                        data={catalogoData.rawData}
+                        gadsKpis={gadsKpis}
+                        ga4Kpis={ga4Kpis}
+                    />
                 </section>
             )}
 
@@ -533,6 +636,162 @@ export default function MidiaPagaPage() {
                 </section>
             )}
 
+            {/* Investment Potential Analysis */}
+            {!loading && analytics?.investmentPotential && analytics.investmentPotential.length > 0 && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Rocket className="h-4 w-4 text-amber-500" />
+                        Oportunidades de Investimento
+                    </h2>
+                    <Card className="border-amber-200/50 dark:border-amber-800/30 bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-900/10 dark:to-orange-900/10">
+                        <CardHeader className="pb-2">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="h-5 w-5 text-amber-500" />
+                                    <CardTitle className="text-sm font-medium">Campanhas com Maior Potencial para Escalar</CardTitle>
+                                </div>
+                                <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">
+                                    Análise Preditiva
+                                </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Baseado em ROAS, eficiência de conversão, custo por sessão e espaço para escala
+                            </p>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {analytics.investmentPotential.slice(0, 5).map((camp: any, index: number) => {
+                                    const badgeColor = camp.recommendation === 'escalar'
+                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                        : camp.recommendation === 'aumentar'
+                                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                                            : camp.recommendation === 'manter'
+                                                ? 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/30'
+                                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30';
+
+                                    const badgeText = camp.recommendation === 'escalar' ? 'Escalar'
+                                        : camp.recommendation === 'aumentar' ? 'Aumentar'
+                                            : camp.recommendation === 'manter' ? 'Manter'
+                                                : 'Otimizar';
+
+                                    return (
+                                        <div
+                                            key={index}
+                                            className="group relative p-4 rounded-xl bg-white/80 dark:bg-zinc-900/50 border border-zinc-200/50 dark:border-zinc-800/50 hover:shadow-lg hover:border-amber-300/50 dark:hover:border-amber-700/50 transition-all duration-300"
+                                        >
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold">
+                                                            {index + 1}
+                                                        </span>
+                                                        <h4 className="font-medium text-sm truncate" title={camp.campaign}>
+                                                            {camp.campaign?.length > 40 ? camp.campaign.substring(0, 40) + '...' : camp.campaign}
+                                                        </h4>
+                                                        <Badge variant="outline" className={cn("text-[10px] px-2 py-0.5", badgeColor)}>
+                                                            {badgeText}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground mb-3">{camp.recommendationText}</p>
+
+                                                    {/* Metrics Grid */}
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                                        <div className="space-y-1">
+                                                            <span className="text-muted-foreground">ROAS Atual</span>
+                                                            <div className="flex items-center gap-1">
+                                                                <span className={cn("font-bold", camp.roas >= (analytics.avgRoas || 1) ? "text-emerald-600" : "text-zinc-600")}>
+                                                                    {camp.roas.toFixed(2)}x
+                                                                </span>
+                                                                {camp.vsAvgRoas > 0 && (
+                                                                    <span className="text-emerald-500 text-[10px]">+{camp.vsAvgRoas.toFixed(0)}%</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <span className="text-muted-foreground">Investimento</span>
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="font-bold">R$ {(camp.spend / 1000).toFixed(1)}k</span>
+                                                                {camp.vsAvgSpend < 0 && (
+                                                                    <span className="text-blue-500 text-[10px]">{camp.vsAvgSpend.toFixed(0)}%</span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <span className="text-muted-foreground">Eficiência</span>
+                                                            <span className="font-bold">{camp.efficiency.toFixed(2)}%</span>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <span className="text-muted-foreground">Potencial</span>
+                                                            <div className="flex items-center gap-1">
+                                                                <div className="w-16 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className={cn(
+                                                                            "h-full rounded-full transition-all",
+                                                                            camp.potentialScore >= 70 ? "bg-emerald-500" :
+                                                                                camp.potentialScore >= 50 ? "bg-amber-500" : "bg-zinc-400"
+                                                                        )}
+                                                                        style={{ width: `${Math.min(camp.potentialScore, 100)}%` }}
+                                                                    />
+                                                                </div>
+                                                                <span className="font-bold text-[10px]">{camp.potentialScore.toFixed(0)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Potential Revenue Card */}
+                                                {camp.estimatedAdditionalRevenue > 0 && camp.recommendation !== 'otimizar' && (
+                                                    <div className="hidden sm:flex flex-col items-end justify-center p-3 rounded-lg bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200/50 dark:border-emerald-800/30 min-w-[140px]">
+                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Receita Potencial</span>
+                                                        <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                                            <ArrowUpRight className="h-4 w-4" />
+                                                            R$ {(camp.estimatedAdditionalRevenue / 1000).toFixed(1)}k
+                                                        </span>
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            +R$ {(camp.additionalSpendPotential / 1000).toFixed(1)}k invest.
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Summary Stats */}
+                            <div className="mt-6 pt-4 border-t border-zinc-200/50 dark:border-zinc-800/50">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                                    <div>
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Campanhas p/ Escalar</span>
+                                        <p className="text-xl font-bold text-emerald-600">
+                                            {analytics.investmentPotential.filter((c: any) => c.recommendation === 'escalar').length}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Campanhas p/ Aumentar</span>
+                                        <p className="text-xl font-bold text-blue-600">
+                                            {analytics.investmentPotential.filter((c: any) => c.recommendation === 'aumentar').length}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">ROAS Médio</span>
+                                        <p className="text-xl font-bold">{(analytics.avgRoas || 0).toFixed(2)}x</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Receita Potencial Total</span>
+                                        <p className="text-xl font-bold text-emerald-600">
+                                            R$ {(analytics.investmentPotential
+                                                .filter((c: any) => c.recommendation === 'escalar' || c.recommendation === 'aumentar')
+                                                .reduce((sum: number, c: any) => sum + (c.estimatedAdditionalRevenue || 0), 0) / 1000).toFixed(0)}k
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
+
             {/* KPIs de Mídia */}
             {!loading && (
                 <section>
@@ -590,6 +849,7 @@ export default function MidiaPagaPage() {
                     <CampaignTypeBreakdown
                         byCampaignType={gadsKpis.byCampaignType}
                         byCampaign={analytics?.campaignAnalysis || []}
+                        revenueByType={analytics?.revenueByType || []}
                     />
                 </section>
             )}

@@ -70,9 +70,14 @@ export default function HomeExecutiva() {
             const ticketMedio = totalPedidos > 0 ? totalReceita / totalPedidos : 0;
             const uniqueClients = new Set(filtered.map((d: any) => d.cpfCliente).filter(Boolean));
 
-            const receitaGoogleAds = filtered
-                .filter((d: any) => d.atribuicao === 'Google_Ads')
-                .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+            // Google Ads attributed revenue - using same logic as midia-paga page for consistency
+            const googleAdsOrders = filtered.filter((d: any) =>
+                d.atribuicao?.toLowerCase().includes('google') ||
+                d.midia?.toLowerCase().includes('google') ||
+                d.origem?.toLowerCase().includes('google')
+            );
+            const receitaGoogleAds = googleAdsOrders.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+            const googleAdsOrdersCount = googleAdsOrders.length;
 
             const receitaParaROAS = filtered
                 .filter((d: any) => {
@@ -151,6 +156,7 @@ export default function HomeExecutiva() {
                 ticketMedio,
                 totalClientes: uniqueClients.size,
                 receitaGoogleAds,
+                googleAdsOrdersCount,
                 receitaParaROAS,
                 byAtribuicao,
                 byCategory,

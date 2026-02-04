@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronDown, ChevronUp, Target, MousePointer, DollarSign, BarChart3 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Target, MousePointer, DollarSign, BarChart3, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
+import { cn } from '@/lib/utils';
 
 interface CampaignType {
     type: string;
@@ -29,11 +30,19 @@ interface Campaign {
     cpc: number;
     cpa: number;
     roas?: number;
+    revenue?: number;
+}
+
+interface RevenueByType {
+    type: string;
+    revenue: number;
+    orders: number;
 }
 
 interface Props {
     byCampaignType: CampaignType[];
     byCampaign: Campaign[];
+    revenueByType?: RevenueByType[]; // Optional revenue data per campaign type
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -45,7 +54,7 @@ const TYPE_COLORS: Record<string, string> = {
     'outros': '#6b7280',
 };
 
-export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
+export function CampaignTypeBreakdown({ byCampaignType, byCampaign, revenueByType }: Props) {
     const [expandedType, setExpandedType] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<'spend' | 'roas'>('spend');
 
@@ -63,12 +72,41 @@ export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
         return filtered.sort((a, b) => b.spend - a.spend).slice(0, 10);
     };
 
+    // Get revenue for a campaign type
+    const getRevenueForType = (type: string): { revenue: number; roas: number; orders: number } => {
+        if (!revenueByType) {
+            // Calculate from byCampaign if revenueByType not provided
+            const campaignsOfType = byCampaign.filter(c => c.tipo === type);
+            const revenue = campaignsOfType.reduce((sum, c) => sum + (c.revenue || 0), 0);
+            const spend = campaignsOfType.reduce((sum, c) => sum + c.spend, 0);
+            return {
+                revenue,
+                roas: spend > 0 ? revenue / spend : 0,
+                orders: 0
+            };
+        }
+
+        const typeRevenue = revenueByType.find(r => r.type === type);
+        if (!typeRevenue) return { revenue: 0, roas: 0, orders: 0 };
+
+        const typeData = byCampaignType.find(t => t.type === type);
+        const spend = typeData?.spend || 0;
+
+        return {
+            revenue: typeRevenue.revenue,
+            roas: spend > 0 ? typeRevenue.revenue / spend : 0,
+            orders: typeRevenue.orders
+        };
+    };
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {byCampaignType.map((typeData) => {
                 const isExpanded = expandedType === typeData.type;
                 const campaigns = getCampaignsForType(typeData.type);
                 const color = TYPE_COLORS[typeData.type] || '#6b7280';
+                const revenueData = getRevenueForType(typeData.type);
+                const isLeadsOrVisita = typeData.type === 'search_leads' || typeData.type === 'visita_loja';
 
                 return (
                     <Card
@@ -96,6 +134,51 @@ export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
                             </p>
                         </CardHeader>
                         <CardContent>
+                            {/* Receita e ROAS Card - New! */}
+                            {!isLeadsOrVisita && revenueData.revenue > 0 && (
+                                <div className="mb-3 p-3 rounded-lg bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 border border-emerald-200/50 dark:border-emerald-800/30">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 mb-0.5">
+                                                <TrendingUp className="h-3 w-3" />
+                                                Receita Atribuída
+                                            </div>
+                                            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
+                                                R$ {revenueData.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-xs text-muted-foreground mb-0.5">ROAS</div>
+                                            <p className={cn(
+                                                "text-xl font-bold",
+                                                revenueData.roas >= 3 ? "text-emerald-600 dark:text-emerald-400" :
+                                                    revenueData.roas >= 2 ? "text-blue-600 dark:text-blue-400" :
+                                                        revenueData.roas >= 1 ? "text-amber-600 dark:text-amber-400" :
+                                                            "text-red-600 dark:text-red-400"
+                                            )}>
+                                                {revenueData.roas.toFixed(2)}x
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {revenueData.orders > 0 && (
+                                        <div className="mt-2 pt-2 border-t border-emerald-200/50 dark:border-emerald-800/30 text-xs text-muted-foreground">
+                                            {revenueData.orders} pedidos atribuídos
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Leads/Visita - No ROAS message */}
+                            {isLeadsOrVisita && (
+                                <div className="mb-3 p-2 rounded-lg bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700">
+                                    <p className="text-xs text-muted-foreground text-center">
+                                        {typeData.type === 'search_leads' ? '📞 Foco em Leads' : '🏪 Foco em Visitas à Loja'}
+                                        <br />
+                                        <span className="text-[10px]">ROAS não aplicável</span>
+                                    </p>
+                                </div>
+                            )}
+
                             {/* Summary KPIs */}
                             <div className="grid grid-cols-2 gap-3 mb-3">
                                 <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-lg p-2">
