@@ -20,6 +20,7 @@ import { BrazilMap } from '@/components/charts/BrazilMap';
 import { CampaignRankingTable } from '@/components/tables/CampaignRankingTable';
 import { GrowthProjection } from '@/components/dashboard/GrowthProjection';
 import { ExecutiveInsights } from '@/components/dashboard/ExecutiveInsights';
+import { Bussola } from '@/components/dashboard/Bussola';
 
 export default function HomeExecutiva() {
     const { data: catalogoData, comparisonData: catalogoComparisonData, loading: loadingCatalogo } = useCatalogoData();
@@ -451,6 +452,22 @@ export default function HomeExecutiva() {
                         <p className="text-muted-foreground">Carregando dados...</p>
                     </div>
                 </div>
+            )}
+
+            {/* Bússola de Metas */}
+            {!loading && gadsKpis && (
+                <section className="mb-6">
+                    <Bussola
+                        currentRevenue={displayData.totalReceita || 0}
+                        currentImpressions={gadsKpis?.impressions || (gadsKpis?.clicks || 0) * 15}
+                        currentClicks={gadsKpis?.clicks || 0}
+                        currentOrders={displayData.totalPedidos || 0}
+                        targetRevenue={600000}
+                        targetImpressions={2000000}
+                        targetClicks={80000}
+                        targetOrders={1500}
+                    />
+                </section>
             )}
 
             {/* Growth Projection (New Analysis) */}
