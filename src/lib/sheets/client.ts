@@ -64,6 +64,7 @@ const getSheetsClient = async () => {
 
 // Import cache functions
 import { getCachedSheetData, setCachedSheetData } from '@/lib/cache';
+import { getCatalogoData, getGA4Data, getGoogleAdsData, getGA4SessionsData } from '@/lib/data/postgres';
 
 // Generic function to fetch data from a specific spreadsheet (with caching)
 export const getSheetData = async (sheetName: string, range?: string, spreadsheetId: string = SPREADSHEET_ID): Promise<any[][]> => {
@@ -153,110 +154,20 @@ export const getSheetDataWithHistory = async (sheetName: string, range?: string)
 };
 
 // Fetch Google Ads data (including historical)
+// Fetch Google Ads data (including historical)
 export const fetchGoogleAdsData = async () => {
-    const data = await getSheetDataWithHistory(SHEETS.BD_GADS);
-
-    if (data.length < 3) return [];
-
-    // Headers are in row 2 (index 1)
-    const headers = data[1];
-    const rows = data.slice(2);
-
-    return rows.map(row => {
-        const obj: any = {};
-        headers.forEach((header, index) => {
-            obj[header] = row[index] || '';
-        });
-        return {
-            day: obj['Day'] || '',
-            account: obj['Account (Cust...)'] || obj['Account'] || '',
-            campaign: obj['Campaign'] || '',
-            cost: parseFloat(obj['Cost']?.replace(',', '.') || '0'),
-            costPerConversion: parseFloat(obj['Cost / conv.']?.replace(',', '.') || '0'),
-            conversions: parseFloat(obj['Conversions']?.replace(',', '.') || '0'),
-            campaignStartDate: obj['Campaign start date'] || '',
-            campaignStatus: obj['Campaign status'] || '',
-            clicks: parseInt(obj['Clicks'] || '0'),
-            ctr: parseFloat(obj['CTR']?.replace('%', '')?.replace(',', '.') || '0'),
-            impressions: (() => {
-                const c = parseInt(obj['Clicks'] || '0');
-                const ctr = parseFloat(obj['CTR']?.replace('%', '')?.replace(',', '.') || '0');
-                return ctr > 0 ? Math.round(c / (ctr / 100)) : 0;
-            })(),
-            weekNumber: obj['Nº da Semana'] || '',
-            data: obj['Data'] || '',
-            month: obj['Mês'] || '',
-            campaignCategory: obj['Campanha'] || '',
-            metaDaniel: obj['Meta Daniel'] || '',
-        };
-    });
+    return getGoogleAdsData();
 };
 
 // Fetch GA4 data (including historical)
+// Fetch GA4 data (including historical)
 export const fetchGA4Data = async () => {
-    const data = await getSheetDataWithHistory(SHEETS.BD_GA4);
-
-    if (data.length < 3) return [];
-
-    // Headers are in row 2 (index 1)
-    const headers = data[1];
-    const rows = data.slice(2);
-
-    return rows.map(row => {
-        const obj: any = {};
-        headers.forEach((header, index) => {
-            obj[header] = row[index] || '';
-        });
-        return {
-            transactionId: obj['Transaction'] || '',
-            transactionDate: obj['Date'] || '',
-            eventSourceMedium: obj['Event source / medium'] || '',
-            eventCampaign: obj['Event campaign'] || '',
-            purchaseRevenue: parseFloat(obj['Purchase revenue']?.replace(',', '.') || '0'),
-            googleAdsAccount: obj['Event Google Ads acco...'] || obj['Google Ads Account'] || '',
-            midia: obj['Mídia'] || '',
-            status: obj['Status'] || '',
-            data: obj['Data'] || '',
-        };
-    });
+    return getGA4Data();
 };
 // Fetch GA4 Sessions data (from GA4 sessões tab)
+// Fetch GA4 Sessions data (from GA4 sessões tab)
 export const fetchGA4SessionsData = async () => {
-    // Header starts on line 2 (index 1) according to user
-    const data = await getSheetData(SHEETS.GA4_SESSOES);
-
-    if (data.length < 2) return [];
-
-    const headers = data[1] || [];
-    const rows = data.slice(2);
-
-    return rows.map(row => {
-        const obj: any = {};
-        headers.forEach((header: string, index: number) => {
-            if (header) obj[header.trim()] = row[index] || '';
-        });
-
-        // Parsing engagement rate (can be "Engagement rate" or similar)
-        let engagementRaw = (obj['Engagement rate'] || obj['Taxa de engajamento'] || '0').toString().trim();
-        let engagementRate = 0;
-
-        // Handle comma as decimal separator
-        engagementRaw = engagementRaw.replace(',', '.');
-
-        if (engagementRaw.includes('%')) {
-            engagementRate = parseFloat(engagementRaw.replace('%', '')) / 100;
-        } else {
-            engagementRate = parseFloat(engagementRaw) || 0;
-        }
-
-        return {
-            date: obj['Date'] || '',
-            sessions: parseInt(obj['Sessions'] || '0'),
-            source: obj['Session source'] || obj['Session source / medium'] || '',
-            campaign: obj['Session campaign'] || '',
-            engagementRate: engagementRate
-        };
-    });
+    return getGA4SessionsData();
 };
 
 // Fetch TV Sales data
@@ -319,7 +230,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         const end = new Date(endDate); end.setHours(23, 59, 59, 999);
 
         data = data.filter(entry => {
-            const entryDate = parseDate(entry.day || entry.data || entry.campaignStartDate);
+            const entryDate = parseDate(entry.day);
             if (!entryDate) return true;
             return entryDate >= start && entryDate <= end;
         });
@@ -345,7 +256,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     // Daily Cost and Conversions Aggregation (needed for CPA forecast)
     const dailyMetricsMap: { [key: string]: { cost: number; conversions: number } } = {};
     data.forEach(entry => {
-        const date = parseDate(entry.day || entry.data || entry.campaignStartDate);
+        const date = parseDate(entry.day);
         if (date) {
             const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
             if (!dailyMetricsMap[dateStr]) {
@@ -537,7 +448,7 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
         });
 
         filteredGads = gadsData.filter(entry => {
-            const entryDate = parseDate(entry.day || entry.data);
+            const entryDate = parseDate(entry.day);
             if (!entryDate) return true;
             return entryDate >= start && entryDate <= end;
         });
@@ -647,86 +558,9 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
 };
 
 // Fetch Magento (BD Mag) data - E-commerce CRM data (including historical)
+// Fetch Magento (BD Mag) data - E-commerce CRM data (including historical)
 export const fetchMagData = async () => {
-    const data = await getSheetDataWithHistory(SHEETS.BD_MAG);
-
-    if (data.length < 2) return [];
-
-    // BD Mag has headers in row 1 (index 0)
-    const headers = data[0];
-    const rows = data.slice(1);
-
-    return rows.map(row => {
-        const obj: any = {};
-        headers.forEach((header, index) => {
-            obj[header] = row[index] || '';
-        });
-
-        // Parse numeric values
-        // Parse numeric values 
-        const parseNumber = (val: string) => {
-            if (!val) return 0;
-            let clean = val.toString().replace(/[^\d.,-]/g, '');
-
-            // If it has a comma, assume BR format (1.234,56)
-            if (clean.includes(',')) {
-                clean = clean.replace(/\./g, '').replace(',', '.');
-            } else {
-                // No comma. Check if dot is a thousands separator or decimal
-                // Heuristic: if there's more than one dot, or exactly one dot followed by 3 digits, 
-                // it's likely a thousands separator (e.g., 1.234 or 1.234.567)
-                // BUT if it's like 12.34 it's likely a decimal.
-                const dotParts = clean.split('.');
-                if (dotParts.length > 2) {
-                    // Multiple dots: 1.234.567 -> 1234567
-                    clean = clean.replace(/\./g, '');
-                } else if (dotParts.length === 2) {
-                    // One dot. If 3 digits after dot, it's ambiguous. 
-                    // However, in Magento/Sheets, usually if no comma is present, dot is decimal or value < 1000.
-                    // For the sake of safety, let's assume one dot with 2 digits is decimal.
-                    if (dotParts[1].length === 2) {
-                        // Keep the dot as decimal
-                    } else if (dotParts[1].length === 3) {
-                        // Likely thousands: 1.234 -> 1234
-                        clean = clean.replace(/\./g, '');
-                    }
-                    // If 1 digit, likely decimal: 1.5
-                }
-            }
-
-            return parseFloat(clean) || 0;
-        };
-
-        return {
-            mpn: obj['Mpn'] || '',
-            pedido: obj['Pedido'] || '',
-            dataTransacao: obj['Data Transação'] || '',
-            status: obj['Status'] || '',
-            nomeProduto: obj['Nome do Produto'] || obj['Nome do produto2'] || '',
-            receitaProduto: parseNumber(obj['Receita do Produto']),
-            cidade: obj['Cidade'] || '',
-            estado: obj['Estado'] || '',
-            valorTotalSemFrete: parseNumber(obj['Valor total sem frete']),
-            valorTotalComFrete: parseNumber(obj['Valor total com frete']),
-            emailCliente: obj['E-mail cliente'] || '',
-            cpfCliente: obj['CPF Cliente'] || '',
-            categoria: obj['Categoria'] || '',
-            vendedor: obj['Vendedor'] || '',
-            data: obj['Data'] || '',
-            hora: obj['Hora: Min: Seg'] || '',
-            horaSimples: obj['Hora'] || '',
-            origem: obj['Origem'] || '',
-            midia: obj['Mídia'] || '',
-            campanha: obj['Camp'] || obj['Camp2'] || '',
-            cupom: obj['Cupom'] || '',
-            atribuicao: obj['Atribuição'] || '',
-            qtdTotalPedidos: parseInt(obj['Qde Total Pedidos'] || '1'),
-            pertenceA: obj['Pertence a'] || '',
-            diaSemana: obj['Dia da Semana'] || '',
-            mes: obj['Mês'] || '',
-            semana: obj['semana'] || '',
-        };
-    });
+    return getCatalogoData();
 };
 
 // Aggregate Catalogo/Magento KPIs

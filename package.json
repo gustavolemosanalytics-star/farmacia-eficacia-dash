@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "sync": "ts-node sync.ts"
+    "sync": "ts-node sync.ts",
+    "db-sync": "ts-node --compiler-options '{\"module\":\"commonjs\"}' -r tsconfig-paths/register -r dotenv/config src/services/db-sync.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.3.0",
@@ -25,6 +26,7 @@
     "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "csv-parse": "^6.1.0",
     "date-fns": "^4.1.0",
     "googleapis": "^170.1.0",
     "ioredis": "^5.9.2",
