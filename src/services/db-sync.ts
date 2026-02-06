@@ -115,6 +115,12 @@ async function main() {
         console.log('🚀 Starting Sheets -> Postgres Sync');
         console.log(`Using spreadsheet: ${HISTORICAL_SPREADSHEET_ID}`);
 
+        // Clear any cached sheet data to force fresh fetch
+        console.log('🗑️ Clearing sheet cache...');
+        const { invalidateCache } = await import('@/lib/cache');
+        await invalidateCache('farm:raw:*');
+        console.log('✅ Cache cleared');
+
         // 1. Fetch Raw Data from Historical Spreadsheet
         // Sheet names with spaces need single quotes in range notation
         console.log('Fetching BD Mag...');
