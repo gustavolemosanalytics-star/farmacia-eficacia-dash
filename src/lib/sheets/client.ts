@@ -64,7 +64,7 @@ const getSheetsClient = async () => {
 
 // Import cache functions
 import { getCachedSheetData, setCachedSheetData } from '@/lib/cache';
-import { getCatalogoData, getGA4Data, getGoogleAdsData, getGA4SessionsData } from '@/lib/data/postgres';
+import { getCatalogoData, getGA4Data, getGoogleAdsData, getGA4SessionsData, getTVSalesData, getMetasData } from '@/lib/data/postgres';
 
 // Generic function to fetch data from a specific spreadsheet (with caching)
 export const getSheetData = async (sheetName: string, range?: string, spreadsheetId: string = SPREADSHEET_ID): Promise<any[][]> => {
@@ -172,25 +172,12 @@ export const fetchGA4SessionsData = async () => {
 
 // Fetch TV Sales data
 export const fetchTVSalesData = async () => {
-    const data = await getSheetData(SHEETS.BD_TV);
+    return getTVSalesData();
+};
 
-    if (data.length < 2) return [];
-
-    const headers = data[0];
-    const rows = data.slice(1);
-
-    return rows.map(row => {
-        const obj: any = {};
-        headers.forEach((header, index) => {
-            obj[header] = row[index] || '';
-        });
-        return {
-            orderNumber: obj['N_Pedido'] || obj['N Pedido'] || '',
-            orderDate: obj['Data'] || '',
-            televendas: obj['Televendas'] || '',
-            month: obj['Mês'] || obj['Mes'] || '',
-        };
-    });
+// Fetch Metas data
+export const fetchMetasData = async () => {
+    return getMetasData();
 };
 
 // Helper to parse date consistently (always returns local time at midnight)
@@ -282,6 +269,10 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     const leadsClicks = leadsData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
     const ecommerceClicks = ecommerceData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
 
+    // Conversion Value for ROAS calculation (from google_ads table)
+    const totalConversionValue = ecommerceData.reduce((sum, entry) => sum + (entry.conversionValue || 0), 0);
+    const roas = totalCost > 0 ? totalConversionValue / totalCost : 0;
+
     // ==========================================
     // CLASSIFICAÇÃO DE CAMPANHAS (5 tipos)
     // ==========================================
@@ -317,6 +308,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
             campaign: string;
             spend: number;
             conversions: number;
+            conversionValue: number;  // For ROAS
             clicks: number;
             impressions: number;
             tipo: CampaignType;
@@ -330,6 +322,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
                 campaign,
                 spend: 0,
                 conversions: 0,
+                conversionValue: 0,
                 clicks: 0,
                 impressions: 0,
                 tipo: classifyCampaign(campaign)
@@ -337,6 +330,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         }
         campaignMap[campaign].spend += entry.cost || 0;
         campaignMap[campaign].conversions += entry.conversions || 0;
+        campaignMap[campaign].conversionValue += entry.conversionValue || 0;
         campaignMap[campaign].clicks += entry.clicks || 0;
         campaignMap[campaign].impressions += entry.impressions || 0;
     });
@@ -347,6 +341,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
             ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
             cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
             cpa: c.conversions > 0 ? c.spend / c.conversions : 0,
+            roas: c.spend > 0 ? c.conversionValue / c.spend : 0,  // Campaign-level ROAS
         }))
         .sort((a, b) => b.spend - a.spend);
 
@@ -355,6 +350,8 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         totalGrossCost,
         spend_formatted: `R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         conversions: totalConversions,
+        conversionValue: totalConversionValue,  // Campaign revenue from google_ads
+        roas,  // ROAS calculated from conversion_value / cost
         clicks: totalEcommerceClicks,
         impressions: totalEcommerceImpressions,
         ctr: avgCTR,

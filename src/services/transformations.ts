@@ -199,7 +199,7 @@ export function processBDMag(bdMagRaw: any[][], ga4Raw: any[][]): any[] {
 
 // Logic for GA4
 export function processGA4(ga4Raw: any[][], bdMagRaw: any[][], attributionRaw: any[] = [], googleAdsRaw: any[][] = []): any[] {
-    const ga4Objects = rowsToObjects(ga4Raw, 1); // Header index 1
+    const ga4Objects = rowsToObjects(ga4Raw, 0); // Header index 0 (first row is header)
     const magObjects = rowsToObjects(bdMagRaw, 0); // Header index 0
     const googleAdsObjects = rowsToObjects(googleAdsRaw, 0); // Assuming header 0
 
@@ -219,11 +219,19 @@ export function processGA4(ga4Raw: any[][], bdMagRaw: any[][], attributionRaw: a
         if (key) attributionMap.set(key, row['Canal']);
     });
 
-    // Google Ads Map: Key = Campaign. Value = data row.
+    // Google Ads Map: Key = Campaign + Date. Value = data row.
     const gAdsMap = new Map<string, any>();
     googleAdsObjects.forEach(row => {
         const camp = row['Campaign']?.toString().trim();
-        if (camp) gAdsMap.set(camp, row);
+        const day = row['Day'] || row['Date'] || '';
+        if (camp) {
+            // Store by campaign alone for basic lookup
+            gAdsMap.set(camp, row);
+            // Store by campaign+date for precise matching
+            if (day) {
+                gAdsMap.set(`${camp}_${day}`, row);
+            }
+        }
     });
 
     // Pre-calc Counts for "Qde Pedidos" = 1 / CountIfs(Transaction, Transaction, Data, Data)
@@ -240,18 +248,19 @@ export function processGA4(ga4Raw: any[][], bdMagRaw: any[][], attributionRaw: a
 
         let transactionId = rawTransId;
         const campaignName = row['Event campaign'] || row['Campaign'] || '';
+        const ga4Date = row['Date'] || '';
+
+        // Google Ads lookup data (for enrichment when transaction is empty)
+        let gadsMatch: any = null;
 
         // LOGIC: Transaction ID Handling
         if (!transactionId || transactionId === '(not set)' || transactionId === '') {
-            // "Look at campaign_name of ga4 to cross with campaign of google_ads"
-            // If match found, we could potentially lookup something, but user didn't specify.
-            // We just ensure we TRIED to look it up.
-            if (campaignName && gAdsMap.has(campaignName)) {
-                // Match found. Logic placeholder.
-            }
+            // Match campaign_name + date from GA4 with campaign + day from google_ads
+            const campaignDateKey = `${campaignName}_${ga4Date}`;
+            gadsMatch = gAdsMap.get(campaignDateKey) || gAdsMap.get(campaignName);
         } else {
             // "When transactionid has 000007011, remove leading zeros"
-            transactionId = transactionId.replace(/^0+/, '');
+            transactionId = transactionId.replace(/^0+/, '') || transactionId;
         }
 
         // Now lookup in BD Mag
@@ -371,7 +380,11 @@ export function processGA4(ga4Raw: any[][], bdMagRaw: any[][], attributionRaw: a
             'Código': codigo,
             'Código x 1': codigoX1,
             'Qde Pedidos': qdePedidos,
-            'Camp3': camp3
+            'Camp3': camp3,
+            // Google Ads enrichment (when transaction is empty)
+            'GAds_Match': gadsMatch ? 'SIM' : '',
+            'GAds_Spend': gadsMatch?.['Cost'] || gadsMatch?.['cost'] || '',
+            'GAds_ConvValue': gadsMatch?.['Conversion Value'] || gadsMatch?.['conversion_value'] || '',
         };
     });
 }

@@ -126,6 +126,12 @@ async function main() {
         console.log('Fetching google_ads...');
         const rawGoogleAds = await getSheetData("'google_ads'", undefined, HISTORICAL_SPREADSHEET_ID);
 
+        console.log('Fetching Televendas...');
+        const rawTV = await getSheetData("'bd tv'", undefined, "198auS_FJrjvfvGMuTxWFFwgL8NHLiq3dMFsWSyBpBpA");
+
+        console.log('Fetching Metas...');
+        const rawMetas = await getSheetData("'Meta 2026'", undefined, "198auS_FJrjvfvGMuTxWFFwgL8NHLiq3dMFsWSyBpBpA");
+
         // 1b. Fetch Attribution CSV
         console.log('Reading Attribution CSV...');
         const attributionData = getAttributionData();
@@ -141,6 +147,8 @@ async function main() {
 
         // Google Ads: row 0 is header
         const googleAdsObjects = rowsToObjects(rawGoogleAds, 0);
+        const tvObjects = rowsToObjects(rawTV, 0);
+        const metasObjects = rowsToObjects(rawMetas, 0);
 
         // 3. Sync to DB
         console.log('🔌 Connecting to DB...');
@@ -160,6 +168,8 @@ async function main() {
         await syncTable('ga4', processedGA4);
         await syncTable('atribuicao', attributionData);
         await syncTable('google_ads', googleAdsObjects);
+        await syncTable('tv_sales', tvObjects);
+        await syncTable('metas', metasObjects);
 
         console.log('🎉 DB Sync Done!');
 

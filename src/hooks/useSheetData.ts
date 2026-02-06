@@ -25,11 +25,17 @@ const swrConfig = {
 };
 
 // Build URL with date params
-function buildUrl(endpoint: string, aggregated: boolean, startDate?: Date, endDate?: Date) {
+function buildUrl(endpoint: string, aggregated: boolean, startDate?: Date | string, endDate?: Date | string) {
     const params = new URLSearchParams();
     if (aggregated) params.append('aggregated', 'true');
-    if (startDate) params.append('startDate', startDate.toISOString());
-    if (endDate) params.append('endDate', endDate.toISOString());
+    if (startDate) {
+        const dateStr = startDate instanceof Date ? startDate.toISOString() : new Date(startDate).toISOString();
+        params.append('startDate', dateStr);
+    }
+    if (endDate) {
+        const dateStr = endDate instanceof Date ? endDate.toISOString() : new Date(endDate).toISOString();
+        params.append('endDate', dateStr);
+    }
     return `${endpoint}?${params.toString()}`;
 }
 

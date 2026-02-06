@@ -49,6 +49,7 @@ export type GoogleAdsItem = {
     campaign: string;
     cost: number;
     conversions: number;
+    conversionValue: number;  // For ROAS calculation
     clicks: number;
     impressions: number;
     ctr: number;
@@ -65,6 +66,16 @@ export type GA4SessionsItem = {
 
 // --- DATA FETCHERS ---
 
+// Helper to parse Brazilian number format (comma as decimal, dot as thousands)
+function parseBRNumber(val: any): number {
+    if (val === null || val === undefined || val === '') return 0;
+    if (typeof val === 'number') return val;
+    // Remove dots (thousands separator) and replace comma with dot (decimal)
+    const str = val.toString().trim().replace(/\./g, '').replace(',', '.');
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+}
+
 export async function getCatalogoData(startDate?: Date, endDate?: Date): Promise<CatalogoItem[]> {
     const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM bd_mag`);
 
@@ -74,11 +85,11 @@ export async function getCatalogoData(startDate?: Date, endDate?: Date): Promise
         dataTransacao: r.data_transacao || '',
         status: r.status || '',
         nomeProduto: r.nome_do_produto || r.nome_do_produto2 || '',
-        receitaProduto: parseFloat(r.receita_do_produto || '0'),
+        receitaProduto: parseBRNumber(r.receita_do_produto),
         cidade: r.cidade || '',
         estado: r.estado || '',
-        valorTotalSemFrete: parseFloat(r.valor_total_sem_frete || '0'),
-        valorTotalComFrete: parseFloat(r.valor_total_com_frete || '0'),
+        valorTotalSemFrete: parseBRNumber(r.valor_total_sem_frete),
+        valorTotalComFrete: parseBRNumber(r.valor_total_com_frete),
         emailCliente: r.e_mail_cliente || '',
         cpfCliente: r.cpf_cliente || '',
         categoria: r.categoria || '',
@@ -124,6 +135,7 @@ export async function getGoogleAdsData(): Promise<GoogleAdsItem[]> {
         campaign: r.campaign || '',
         cost: parseFloat((r.cost || '0').toString().replace(',', '.')),
         conversions: parseFloat((r.conversions || '0').toString().replace(',', '.')),
+        conversionValue: parseFloat((r.conversion_value || r.conv_value || '0').toString().replace(',', '.')),
         clicks: parseInt((r.clicks || '0').toString().replace('.', '')),
         impressions: parseInt((r.impressions || '0').toString().replace('.', '')),
         ctr: parseFloat((r.ctr || '0').toString().replace('%', '').replace(',', '.')),
@@ -132,13 +144,29 @@ export async function getGoogleAdsData(): Promise<GoogleAdsItem[]> {
 }
 
 export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Promise<GA4SessionsItem[]> {
-    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM ga4_sessions`);
+    // Reading sessions from the 'ga4' table as requested (user says sessions are in ga4 tab)
+    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM ga4`);
 
     return rows.map(r => ({
         date: r.date || '',
         sessions: parseInt((r.sessions || '0').toString().replace('.', '')),
-        source: r.session_source || r.session_source_medium || '',
-        campaign: r.session_campaign || '',
+        source: r.event_source_medium || r.origem || '',
+        campaign: r.event_campaign || r.campanha || '',
         engagementRate: parseFloat((r.engagement_rate || r.taxa_de_engajamento || '0').toString().replace('%', '').replace(',', '.').trim()) / 100 || 0,
     }));
+}
+
+export async function getTVSalesData(): Promise<any[]> {
+    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM tv_sales`);
+    return rows.map(r => ({
+        orderNumber: r.n_pedido || r.pedido || '',
+        orderDate: r.data || '',
+        televendas: r.televendas || '',
+        month: r.mes || '',
+    }));
+}
+
+export async function getMetasData(): Promise<any[]> {
+    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM metas`);
+    return rows;
 }

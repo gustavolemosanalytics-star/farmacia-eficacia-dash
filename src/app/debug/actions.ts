@@ -4,7 +4,7 @@ import prisma from '@/lib/prisma';
 
 export async function getTableNames() {
     // Return the list of tables we care about
-    return ['bd_mag', 'ga4', 'google_ads', 'atribuicao'];
+    return ['bd_mag', 'ga4', 'google_ads', 'atribuicao', 'tv_sales', 'metas'];
 }
 
 export async function getTableData(
@@ -17,7 +17,7 @@ export async function getTableData(
     columnFilters?: Record<string, string>
 ) {
     // Whitelist table names to prevent SQL injection
-    const allowedTables = ['bd_mag', 'ga4', 'google_ads', 'atribuicao'];
+    const allowedTables = ['bd_mag', 'ga4', 'google_ads', 'atribuicao', 'tv_sales', 'metas'];
     if (!allowedTables.includes(tableName)) {
         throw new Error('Invalid table name');
     }
@@ -85,7 +85,7 @@ export async function getTableData(
 }
 
 export async function getTableColumns(tableName: string): Promise<string[]> {
-    const allowedTables = ['bd_mag', 'ga4', 'google_ads', 'atribuicao'];
+    const allowedTables = ['bd_mag', 'ga4', 'google_ads', 'atribuicao', 'tv_sales', 'metas'];
     if (!allowedTables.includes(tableName)) {
         throw new Error('Invalid table name');
     }

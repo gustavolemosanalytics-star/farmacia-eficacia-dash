@@ -202,6 +202,29 @@ export default function DebugPage() {
                                         </th>
                                     ))}
                                 </tr>
+                                {/* Sums Row */}
+                                {!loading && data.length > 0 && (
+                                    <tr className="border-b bg-emerald-50 dark:bg-emerald-900/20 font-semibold">
+                                        {headers.map(h => {
+                                            // Try to sum numeric values
+                                            const values = data.map(row => {
+                                                const val = row[h];
+                                                if (val === null || val === undefined || val === '') return 0;
+                                                // Parse BR format (comma decimal)
+                                                const str = String(val).replace(/\./g, '').replace(',', '.');
+                                                const num = parseFloat(str);
+                                                return isNaN(num) ? 0 : num;
+                                            });
+                                            const sum = values.reduce((a, b) => a + b, 0);
+                                            const isNumeric = values.some(v => v !== 0);
+                                            return (
+                                                <td key={h} className="p-3 align-middle whitespace-nowrap text-xs text-emerald-700 dark:text-emerald-300">
+                                                    {isNumeric ? sum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                )}
                             </thead>
                             <tbody className="[&_tr:last-child]:border-0">
                                 {loading && (
