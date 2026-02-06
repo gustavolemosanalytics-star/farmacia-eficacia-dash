@@ -1,5 +1,5 @@
 
-import { getSheetData, SHEETS } from '@/lib/sheets/client';
+import { getSheetData, SHEETS } from '@/lib/sheets/sheets-sync';
 import { processBDMag, processGA4, rowsToObjects } from './transformations';
 import pg from 'pg';
 const { Pool } = pg;
@@ -97,6 +97,7 @@ async function syncTable(tableName: string, data: any[]) {
 
 import * as fs from 'fs';
 import * as path from 'path';
+// @ts-ignore - csv-parse types issue
 import { parse } from 'csv-parse/sync';
 
 // Helper: Read Attribution CSV

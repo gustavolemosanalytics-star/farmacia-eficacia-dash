@@ -1,183 +1,53 @@
-import { google } from 'googleapis';
-import path from 'path';
-
 // ==========================================
-// SPREADSHEET CONFIGURATION
+// DATA CLIENT - PostgreSQL Only
 // ==========================================
 
-// Current/Live Spreadsheet (2026+)
-const SPREADSHEET_ID = '198auS_FJrjvfvGMuTxWFFwgL8NHLiq3dMFsWSyBpBpA';
+// Import PostgreSQL data fetchers directly
+import {
+    getCatalogoData,
+    getGA4Data,
+    getGoogleAdsData,
+    getGA4SessionsData,
+    getTVSalesData,
+    getMetasData,
+    type CatalogoItem,
+    type GA4Item,
+    type GoogleAdsItem,
+    type GA4SessionsItem,
+} from '@/lib/data/postgres';
 
-// Historical Spreadsheet (2024-01 to 2025-12)
-const HISTORICAL_SPREADSHEET_ID = '1nZaUBP-7DhI1iXhAnDOJsQs8aJlkb9x_BGGfRfIinK8';
+// ==========================================
+// FETCH FUNCTIONS - Direct PostgreSQL calls
+// ==========================================
 
-// Sheet names/GIDs
-export const SHEETS = {
-    BD_GADS: 'BD GAds',
-    BD_GA4: 'BD GA4',
-    GA4_SESSOES: 'GA4 sessões',
-    BD_TV: 'bd tv',
-    VENDA_DIARIA: 'Venda Diaria',
-    META_2026: 'Meta 2026',
-    BD_MAG: 'BD Mag',
-} as const;
-
-// Initialize the Google Sheets client
-const getAuthClient = async () => {
-    // Priority 1: Check for Environment Variable (Vercel/Production)
-    if (process.env.GOOGLE_CREDENTIALS) {
-        try {
-            const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
-
-            // Use GoogleAuth with credentials object directly
-            const auth = new google.auth.GoogleAuth({
-                credentials: {
-                    client_email: credentials.client_email,
-                    private_key: credentials.private_key,
-                },
-                scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-            });
-
-            return auth.getClient();
-        } catch (error) {
-            console.error('Error parsing GOOGLE_CREDENTIALS env var:', error);
-            throw new Error('Failed to parse GOOGLE_CREDENTIALS environment variable');
-        }
-    }
-
-    // Priority 2: Check for local file (Development)
-    const credentialsPath = path.join(process.cwd(), 'credentials.json');
-
-    const auth = new google.auth.GoogleAuth({
-        keyFile: credentialsPath,
-        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
-
-    return auth.getClient();
-};
-
-// Create Sheets API instance
-const getSheetsClient = async () => {
-    const authClient = await getAuthClient();
-    return google.sheets({ version: 'v4', auth: authClient as any });
-};
-
-// Import cache functions
-import { getCachedSheetData, setCachedSheetData } from '@/lib/cache';
-import { getCatalogoData, getGA4Data, getGoogleAdsData, getGA4SessionsData, getTVSalesData, getMetasData } from '@/lib/data/postgres';
-
-// Generic function to fetch data from a specific spreadsheet (with caching)
-export const getSheetData = async (sheetName: string, range?: string, spreadsheetId: string = SPREADSHEET_ID): Promise<any[][]> => {
-    // Generate cache key based on sheet and spreadsheet
-    const cacheKey = `${sheetName}_${spreadsheetId.slice(-8)}`;
-
-    // Check cache first (only for full sheet fetches without range)
-    if (!range) {
-        const cached = await getCachedSheetData(cacheKey);
-        if (cached) {
-            console.log(`[Sheets] Cache HIT: ${sheetName}`);
-            return cached;
-        }
-    }
-
-    console.log(`[Sheets] Fetching: ${sheetName} from ${spreadsheetId.slice(-8)}...`);
-
-    try {
-        const sheets = await getSheetsClient();
-        const fullRange = range ? `${sheetName}!${range}` : sheetName;
-
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: spreadsheetId,
-            range: fullRange,
-        });
-
-        const data = response.data.values || [];
-
-        // Cache the result (only for full sheet fetches)
-        if (!range && data.length > 0) {
-            await setCachedSheetData(cacheKey, data);
-            console.log(`[Sheets] Cached: ${sheetName} (${data.length} rows)`);
-        }
-
-        return data;
-    } catch (error) {
-        console.error(`[Sheets] Error fetching ${sheetName}:`, error);
-        if (error instanceof Error) {
-            console.error('Error Message:', error.message);
-        }
-        throw error;
-    }
-};
-
-// Fetch data from both current and historical spreadsheets and merge (with parallel fetching)
-export const getSheetDataWithHistory = async (sheetName: string, range?: string): Promise<any[][]> => {
-    console.log(`[Sheets] Fetching with history: ${sheetName}`);
-
-    try {
-        // Parallel fetch from both spreadsheets for better performance
-        const [currentData, historicalData] = await Promise.all([
-            getSheetData(sheetName, range, SPREADSHEET_ID),
-            getSheetData(sheetName, range, HISTORICAL_SPREADSHEET_ID).catch(err => {
-                console.warn(`[Sheets] Historical data not available for ${sheetName}`);
-                return [] as any[][];
-            })
-        ]);
-
-        if (historicalData.length === 0) {
-            console.log(`[Sheets] Using current data only for ${sheetName}`);
-            return currentData;
-        }
-
-        // Merge data
-        // For BD GAds and BD GA4, headers are in row 1 (index 1), data starts at row 2
-        // For BD Mag and others, headers are in row 0 (index 0), data starts at row 1
-        const isGAdsOrGA4 = sheetName === SHEETS.BD_GADS || sheetName === SHEETS.BD_GA4;
-        const dataStartIndex = isGAdsOrGA4 ? 2 : 1;
-
-        // Get headers from current data
-        const headers = currentData.slice(0, dataStartIndex);
-
-        // Get data rows from both sources
-        const historicalRows = historicalData.slice(dataStartIndex);
-        const currentRows = currentData.slice(dataStartIndex);
-
-        // Combine: headers + historical + current
-        const merged = [...headers, ...historicalRows, ...currentRows];
-        console.log(`[Sheets] Merged ${sheetName}: ${historicalRows.length} historical + ${currentRows.length} current = ${merged.length - dataStartIndex} total rows`);
-
-        return merged;
-
-    } catch (error) {
-        console.error(`[Sheets] Error fetching merged data for ${sheetName}:`, error);
-        throw error;
-    }
-};
-
-// Fetch Google Ads data (including historical)
-// Fetch Google Ads data (including historical)
+// Fetch Google Ads data
 export const fetchGoogleAdsData = async () => {
-    return getGoogleAdsData();
+    console.log('[Data] Fetching Google Ads data from PostgreSQL');
+    return await getGoogleAdsData();
 };
 
-// Fetch GA4 data (including historical)
-// Fetch GA4 data (including historical)
+// Fetch GA4 data
 export const fetchGA4Data = async () => {
-    return getGA4Data();
+    console.log('[Data] Fetching GA4 data from PostgreSQL');
+    return await getGA4Data();
 };
-// Fetch GA4 Sessions data (from GA4 sessões tab)
-// Fetch GA4 Sessions data (from GA4 sessões tab)
+
+// Fetch GA4 Sessions data
 export const fetchGA4SessionsData = async () => {
-    return getGA4SessionsData();
+    console.log('[Data] Fetching GA4 Sessions data from PostgreSQL');
+    return await getGA4SessionsData();
 };
 
 // Fetch TV Sales data
 export const fetchTVSalesData = async () => {
-    return getTVSalesData();
+    console.log('[Data] Fetching TV Sales data from PostgreSQL');
+    return await getTVSalesData();
 };
 
 // Fetch Metas data
 export const fetchMetasData = async () => {
-    return getMetasData();
+    console.log('[Data] Fetching Metas data from PostgreSQL');
+    return await getMetasData();
 };
 
 // Helper to parse date consistently (always returns local time at midnight)
@@ -554,10 +424,10 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
     };
 };
 
-// Fetch Magento (BD Mag) data - E-commerce CRM data (including historical)
-// Fetch Magento (BD Mag) data - E-commerce CRM data (including historical)
+// Fetch Magento (BD Mag) data - E-commerce CRM data
 export const fetchMagData = async () => {
-    return getCatalogoData();
+    console.log('[Data] Fetching Catalogo/Mag data from PostgreSQL');
+    return await getCatalogoData();
 };
 
 // Aggregate Catalogo/Magento KPIs

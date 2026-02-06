@@ -85,7 +85,7 @@ async function syncSheetsToPostgres() {
                     conversions: item.conversions || 0,
                     clicks: item.clicks || 0,
                     ctr: item.ctr || 0,
-                    campaignStatus: item.campaignStatus || ''
+                    campaignStatus: item.campaignCategory || ''
                 };
             });
             await prisma.campaignData.createMany({ data: batch });
