@@ -41,6 +41,7 @@ export type GA4Item = {
     midia: string;
     status: string;
     data: string;
+    atribuicao: string;
 };
 
 export type GoogleAdsItem = {
@@ -62,6 +63,7 @@ export type GA4SessionsItem = {
     source: string;
     campaign: string;
     engagementRate: number;
+    atribuicao?: string;
 };
 
 // --- DATA FETCHERS ---
@@ -70,8 +72,12 @@ export type GA4SessionsItem = {
 function parseBRNumber(val: any): number {
     if (val === null || val === undefined || val === '') return 0;
     if (typeof val === 'number') return val;
-    // Remove dots (thousands separator) and replace comma with dot (decimal)
-    const str = val.toString().trim().replace(/\./g, '').replace(',', '.');
+    // Remove currency, spaces, and dots (thousands), replace comma with dot
+    const str = val.toString().trim()
+        .replace(/[R$]/g, '')
+        .replace(/\s/g, '')
+        .replace(/\./g, '')
+        .replace(',', '.');
     const num = parseFloat(str);
     return isNaN(num) ? 0 : num;
 }
@@ -114,15 +120,16 @@ export async function getGA4Data(startDate?: Date, endDate?: Date): Promise<GA4I
     const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM ga4`);
 
     return rows.map(r => ({
-        transactionId: r.transaction || r.transaction_id || '',
+        transactionId: r.transactionid || r.transaction_id || r.transaction || '',
         transactionDate: r.date || '',
-        eventSourceMedium: r.event_source_medium || '',
-        eventCampaign: r.event_campaign || r.campaign || '',
+        eventSourceMedium: r.session_source_medium || r.event_source_medium || '',
+        eventCampaign: r.campaign_name || r.event_campaign || r.campaign || '',
         purchaseRevenue: parseFloat(r.purchase_revenue || '0'),
         googleAdsAccount: r.event_google_ads_account || r.google_ads_account || '',
         midia: r.midia || '',
         status: r.status || '',
         data: r.data || '',
+        atribuicao: (r.atribuicao || '').toString().trim(),
     }));
 }
 
@@ -130,15 +137,15 @@ export async function getGoogleAdsData(): Promise<GoogleAdsItem[]> {
     const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM google_ads`);
 
     return rows.map(r => ({
-        day: r.day || '',
-        account: r.account_cust || r.account || '',
+        day: r.date || r.day || '',
+        account: r.account_name || r.account_cust || r.account || '',
         campaign: r.campaign || '',
-        cost: parseFloat((r.cost || '0').toString().replace(',', '.')),
-        conversions: parseFloat((r.conversions || '0').toString().replace(',', '.')),
-        conversionValue: parseFloat((r.conversion_value || r.conv_value || '0').toString().replace(',', '.')),
-        clicks: parseInt((r.clicks || '0').toString().replace('.', '')),
-        impressions: parseInt((r.impressions || '0').toString().replace('.', '')),
-        ctr: parseFloat((r.ctr || '0').toString().replace('%', '').replace(',', '.')),
+        cost: parseBRNumber(r.spend || r.cost || r.investimento),
+        conversions: parseBRNumber(r.conversions || r.conversoes),
+        conversionValue: parseBRNumber(r.conversion_value || r.conv_value || r.receita),
+        clicks: Math.round(parseBRNumber(r.clicks || r.cliques)),
+        impressions: Math.round(parseBRNumber(r.impressions || r.impressoes)),
+        ctr: parseBRNumber(r.ctr?.toString().replace('%', '')),
         campaignCategory: r.campanha || '',
     }));
 }
@@ -149,10 +156,11 @@ export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Prom
 
     return rows.map(r => ({
         date: r.date || '',
-        sessions: parseInt((r.sessions || '0').toString().replace('.', '')),
-        source: r.event_source_medium || r.origem || '',
-        campaign: r.event_campaign || r.campanha || '',
+        sessions: parseInt((r.sessions || '0').toString().replace(/\./g, '').replace(',', '.')),
+        source: r.session_source_medium || r.event_source_medium || r.origem || '',
+        campaign: r.campaign_name || r.event_campaign || r.campanha || '',
         engagementRate: parseFloat((r.engagement_rate || r.taxa_de_engajamento || '0').toString().replace('%', '').replace(',', '.').trim()) / 100 || 0,
+        atribuicao: (r.atribuicao || '').toString().trim(),
     }));
 }
 

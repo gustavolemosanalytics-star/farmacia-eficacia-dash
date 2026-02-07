@@ -84,7 +84,7 @@ export default function MidiaPagaPage() {
         // Campaign analysis with ACTUAL ROAS per campaign
         const campaignAnalysis = (gadsKpis.byCampaign || []).map((camp: any) => {
             const campName = camp.campaign?.toLowerCase().trim();
-            const campaignRevenue = revenueByCampaign[campName] || 0;
+            const campaignRevenue = camp.conversionValue || 0;
             const campaignRoas = camp.spend > 0 ? campaignRevenue / camp.spend : 0;
 
             // Sessions from Cross Analysis (GA4)

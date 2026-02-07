@@ -111,7 +111,7 @@ export default function HomeExecutiva() {
 
             const dailyRevenueMap: { [key: string]: { receita: number; pedidos: number } } = {};
             filtered.forEach((d: any) => {
-                const dateRaw = d.data || d.dataTransacao;
+                const dateRaw = d.data;
                 if (dateRaw) {
                     const key = dateRaw.split(' ')[0];
                     if (!dailyRevenueMap[key]) dailyRevenueMap[key] = { receita: 0, pedidos: 0 };
@@ -125,7 +125,7 @@ export default function HomeExecutiva() {
 
             const dailyAtribuicaoMap: { [key: string]: { [atrib: string]: number } } = {};
             filtered.forEach((d: any) => {
-                const dateRaw = d.data || d.dataTransacao;
+                const dateRaw = d.data;
                 if (dateRaw) {
                     const key = dateRaw.split(' ')[0];
                     const atrib = d.atribuicao || 'Não identificado';
@@ -214,7 +214,7 @@ export default function HomeExecutiva() {
         const historicalSource = yoyRawData?.rawData || [];
 
         historicalSource.forEach((d: any) => {
-            const dateStr = d.data || d.dataTransacao;
+            const dateStr = d.data;
             const parsed = parseYoYDate(dateStr);
             if (!parsed || isNaN(parsed.getTime())) return;
 
@@ -403,22 +403,14 @@ export default function HomeExecutiva() {
 
     // Calculate Campaign Analysis for ROAS Table
     const campaignAnalysis = useMemo(() => {
-        if (!gadsKpis?.byCampaign || !catalogoData?.rawData) return [];
-
-        // Map revenue from Magento to Campaign Name
-        const revenueMap: Record<string, number> = {};
-        catalogoData.rawData.forEach((d: any) => {
-            const c = d.campanha?.toLowerCase().trim();
-            if (c) revenueMap[c] = (revenueMap[c] || 0) + (d.receitaProduto || 0);
-        });
+        if (!gadsKpis?.byCampaign) return [];
 
         return gadsKpis.byCampaign.map((camp: any) => {
-            const cName = camp.campaign?.toLowerCase().trim();
-            const revenue = revenueMap[cName] || 0;
+            const revenue = camp.conversionValue || 0;
             const roas = camp.spend > 0 ? revenue / camp.spend : 0;
             return { ...camp, revenue, roas };
-        }).sort((a: any, b: any) => b.revenue - a.revenue);
-    }, [gadsKpis, catalogoData]);
+        }).sort((a: any, b: any) => b.roas - a.roas);
+    }, [gadsKpis]);
 
     // Chart data
     const atribuicaoData = displayData.byAtribuicao.slice(0, 6).map((c: any, i: number) => ({
@@ -616,6 +608,7 @@ export default function HomeExecutiva() {
                     <Card className="border-border bg-card">
                         <CardContent className="pt-6">
                             {(() => {
+                                const impressoes = ga4Kpis?.totalImpressions || gadsKpis?.impressions || 0;
                                 const cliques = gadsKpis.clicks || 0;
                                 const conversoes = gadsKpis.conversions || 0;
                                 const pedidos = displayData.totalPedidos || 0;
@@ -623,16 +616,25 @@ export default function HomeExecutiva() {
 
                                 // Market benchmarks (industry averages)
                                 const benchmarks = {
+                                    impToClick: 2.5,  // 2.5% CTR benchmark
                                     clickToSession: 80, // 80% of clicks should become sessions
                                     sessionToConv: 6.97, // 6.97% should become orders (User target)
                                 };
 
                                 const funnelSteps = [
                                     {
-                                        name: 'Cliques Ads',
-                                        value: cliques,
+                                        name: 'Impressões Ads',
+                                        value: impressoes,
                                         rate: 100,
                                         benchmark: 100,
+                                        color: '#ec4899'
+                                    },
+                                    {
+                                        name: 'Cliques Ads',
+                                        value: cliques,
+                                        rate: impressoes > 0 ? (cliques / impressoes) * 100 : 0,
+                                        benchmark: benchmarks.impToClick,
+                                        label: 'Efficiency (Cliques/Impressoes)',
                                         color: '#3b82f6'
                                     },
                                     {
@@ -644,7 +646,7 @@ export default function HomeExecutiva() {
                                         color: '#8b5cf6'
                                     },
                                     {
-                                        name: 'Pedidos (BD Mag)',
+                                        name: 'Pedidos (BD MAG)',
                                         value: pedidos,
                                         rate: sessoesGoogle > 0 ? (pedidos / sessoesGoogle) * 100 : 0,
                                         benchmark: benchmarks.sessionToConv,
@@ -705,7 +707,8 @@ export default function HomeExecutiva() {
                                         <div className="mt-8 p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
                                             <p className="text-[10px] text-muted-foreground leading-relaxed text-center">
                                                 * Benchmarks baseados em médias de mercado para o segmento: <br />
-                                                <strong>Click to Session: 80%</strong> |
+                                                <strong>CTR (Click Through Rate): 2.5%</strong> |
+                                                <strong> Click to Session: 80%</strong> |
                                                 <strong> Session to Order: 6.97%</strong>
                                             </p>
                                         </div>

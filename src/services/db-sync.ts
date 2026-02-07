@@ -149,8 +149,8 @@ async function main() {
 
         // 2. Process
         console.log('Processing Data...');
-        const processedMag = processBDMag(rawBDMag, rawGA4);
-        const processedGA4 = processGA4(rawGA4, rawBDMag, attributionData, rawGoogleAds);
+        const processedMag = processBDMag(rawBDMag);
+        const processedGA4 = processGA4(rawGA4);
 
         // Google Ads: row 0 is header
         const googleAdsObjects = rowsToObjects(rawGoogleAds, 0);
@@ -179,6 +179,11 @@ async function main() {
         await syncTable('metas', metasObjects);
 
         console.log('🎉 DB Sync Done!');
+
+        // Final cache clear to ensure dashboard sees fresh data
+        console.log('🗑️ Final cache clear...');
+        await invalidateCache('*');
+        console.log('✅ All caches cleared');
 
         process.exit(0);
     } catch (e) {

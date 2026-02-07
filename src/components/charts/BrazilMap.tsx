@@ -311,11 +311,10 @@ export function BrazilMap({ rawData = [], gadsData, sessionsData }: BrazilMapPro
                     <div className="grid grid-cols-12 gap-2 mb-2 px-2">
                         <div className="col-span-4 text-[10px] font-bold text-muted-foreground uppercase">Cidade</div>
                         {[
-                            { id: 'receita' as MetricType, label: 'Receita', cols: 2 },
-                            { id: 'pedidos' as MetricType, label: 'Pedidos', cols: 1 },
+                            { id: 'receita' as MetricType, label: 'Receita', cols: 3 },
+                            { id: 'pedidos' as MetricType, label: 'Pedidos', cols: 2 },
                             { id: 'ticketMedio' as MetricType, label: 'Ticket', cols: 2 },
                             { id: 'txConversao' as MetricType, label: 'Tx Conv', cols: 1 },
-                            { id: 'roas' as MetricType, label: 'ROAS', cols: 2 },
                         ].map(col => (
                             <button
                                 key={col.id}
@@ -348,7 +347,7 @@ export function BrazilMap({ rawData = [], gadsData, sessionsData }: BrazilMapPro
                                         </div>
                                         <span className="font-bold text-xs text-foreground tracking-tight truncate">{city.name}</span>
                                     </div>
-                                    <div className="col-span-2 text-right">
+                                    <div className="col-span-3 text-right">
                                         <span className={cn(
                                             "font-bold text-xs",
                                             sortBy === 'receita' ? "text-primary" : "text-foreground"
@@ -356,7 +355,7 @@ export function BrazilMap({ rawData = [], gadsData, sessionsData }: BrazilMapPro
                                             R$ {(city.receita / 1000).toFixed(1)}k
                                         </span>
                                     </div>
-                                    <div className="col-span-1 text-right">
+                                    <div className="col-span-2 text-right">
                                         <span className={cn(
                                             "font-medium text-xs",
                                             sortBy === 'pedidos' ? "text-primary" : "text-muted-foreground"
@@ -378,16 +377,6 @@ export function BrazilMap({ rawData = [], gadsData, sessionsData }: BrazilMapPro
                                             sortBy === 'txConversao' ? "text-primary" : "text-blue-500"
                                         )}>
                                             {city.txConversao.toFixed(1)}%
-                                        </span>
-                                    </div>
-                                    <div className="col-span-2 text-right">
-                                        <span className={cn(
-                                            "font-bold text-xs",
-                                            sortBy === 'roas' ? "text-primary" :
-                                                city.roas >= 3 ? "text-emerald-500" :
-                                                    city.roas >= 2 ? "text-amber-500" : "text-red-500"
-                                        )}>
-                                            {city.roas.toFixed(2)}x
                                         </span>
                                     </div>
                                 </div>

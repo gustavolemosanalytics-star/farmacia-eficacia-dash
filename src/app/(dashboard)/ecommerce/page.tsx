@@ -83,7 +83,7 @@ export default function EcommercePage() {
         // Daily revenue trend
         const dailyMap: { [key: string]: { receita: number; pedidos: number } } = {};
         filtered.forEach((d: any) => {
-            const dateRaw = d.data || d.dataTransacao;
+            const dateRaw = d.data;
             if (dateRaw) {
                 const key = dateRaw.split(' ')[0];
                 if (!dailyMap[key]) dailyMap[key] = { receita: 0, pedidos: 0 };

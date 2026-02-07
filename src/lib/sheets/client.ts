@@ -392,12 +392,13 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
     const totalEngagedSum = filteredSessions.reduce((sum, s) => sum + (s.sessions * (s.engagementRate || 0)), 0);
     const avgEngagementRate = totalSessions > 0 ? totalEngagedSum / totalSessions : 0;
 
-    // Google Specific Sessions (for funnel)
-    const googleSessionsData = filteredSessions.filter(s => s.source?.toLowerCase().includes('google'));
+    // Google Ads Specific Sessions (for funnel) as requested: atribuicao === 'Google_Ads'
+    const googleSessionsData = filteredSessions.filter(s => s.atribuicao === 'Google_Ads');
     const googleSessions = googleSessionsData.reduce((sum, s) => sum + s.sessions, 0);
     const googleEngagedSum = googleSessionsData.reduce((sum, s) => sum + (s.sessions * (s.engagementRate || 0)), 0);
     const googleEngagementRate = googleSessions > 0 ? googleEngagedSum / googleSessions : 0;
 
+    const totalImpressions = filteredGads.reduce((sum, g) => sum + (g.impressions || 0), 0);
     const totalGadsClicks = filteredGads.reduce((sum, g) => sum + (g.clicks || 0), 0);
     const clickToSessionRate = totalGadsClicks > 0 ? googleSessions / totalGadsClicks : 0;
 
@@ -407,6 +408,7 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
         totalTransactions,
         totalSessions,
         googleSessions,
+        totalImpressions,
         googleEngagementRate,
         clickToSessionRate,
         avgEngagementRate,
@@ -440,7 +442,7 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
         const end = new Date(endDate); end.setHours(23, 59, 59, 999);
 
         data = data.filter(order => {
-            const entryDate = parseDate(order.data || order.dataTransacao);
+            const entryDate = parseDate(order.data);
             if (!entryDate) return false;
             return entryDate >= start && entryDate <= end;
         });
@@ -593,7 +595,7 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
     // Daily Revenue (Real Data)
     const dailyRevenueMap: { [key: string]: { receita: number; pedidos: number } } = {};
     completedOrders.forEach(order => {
-        const dateRaw = order.data || order.dataTransacao;
+        const dateRaw = order.data;
         if (dateRaw) {
             const key = dateRaw.split(' ')[0];
             if (!dailyRevenueMap[key]) {
@@ -617,7 +619,7 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
     // Daily Revenue by Atribuição (for line chart showing evolution over time)
     const dailyAtribuicaoMap: { [key: string]: { [atrib: string]: number } } = {};
     completedOrders.forEach(order => {
-        const dateRaw = order.data || order.dataTransacao;
+        const dateRaw = order.data;
         if (dateRaw) {
             const key = dateRaw.split(' ')[0];
             const atrib = order.atribuicao || 'Não identificado';
@@ -701,7 +703,7 @@ export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
         const end = new Date(endDate); end.setHours(23, 59, 59, 999);
 
         completedOrders = completedOrders.filter(order => {
-            const entryDate = parseDate(order.data || order.dataTransacao);
+            const entryDate = parseDate(order.data);
             if (!entryDate) return false;
             return entryDate >= start && entryDate <= end;
         });

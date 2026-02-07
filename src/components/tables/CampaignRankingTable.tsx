@@ -105,6 +105,15 @@ export function CampaignRankingTable({ campaigns }: CampaignRankingTableProps) {
                                 </th>
                                 <th
                                     className="text-right py-3 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors group select-none"
+                                    onClick={() => requestSort('revenue')}
+                                >
+                                    <div className="flex items-center justify-end">
+                                        Receita
+                                        <SortIcon column="revenue" />
+                                    </div>
+                                </th>
+                                <th
+                                    className="text-right py-3 px-2 font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors group select-none"
                                     onClick={() => requestSort('clicks')}
                                 >
                                     <div className="flex items-center justify-end">
@@ -142,6 +151,7 @@ export function CampaignRankingTable({ campaigns }: CampaignRankingTableProps) {
                                             {camp.campaign}
                                         </td>
                                         <td className="py-3 px-2 text-right">R$ {camp.spend?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-3 px-2 text-right font-medium text-emerald-600">R$ {camp.revenue?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-3 px-2 text-right">{camp.clicks?.toLocaleString('pt-BR')}</td>
                                         <td className="py-3 px-2 text-right">{camp.conversions?.toFixed(0)}</td>
                                         <td className={`py-3 px-2 text-right font-medium ${camp.roas >= 2 ? 'text-green-600' : camp.roas >= 1 ? 'text-yellow-600' : 'text-red-600'}`}>
