@@ -25,7 +25,7 @@ const swrConfig = {
 };
 
 // Build URL with date params
-function buildUrl(endpoint: string, aggregated: boolean, startDate?: Date | string, endDate?: Date | string) {
+function buildUrl(endpoint: string, aggregated: boolean, startDate?: Date | string, endDate?: Date | string, extraParams?: Record<string, string>) {
     const params = new URLSearchParams();
     if (aggregated) params.append('aggregated', 'true');
     if (startDate) {
@@ -36,6 +36,11 @@ function buildUrl(endpoint: string, aggregated: boolean, startDate?: Date | stri
         const dateStr = endDate instanceof Date ? endDate.toISOString() : new Date(endDate).toISOString();
         params.append('endDate', dateStr);
     }
+    if (extraParams) {
+        Object.entries(extraParams).forEach(([k, v]) => {
+            if (v) params.append(k, v);
+        });
+    }
     return `${endpoint}?${params.toString()}`;
 }
 
@@ -45,7 +50,8 @@ export function useSheetData<T>(
     aggregated: boolean = false,
     skipFilters: boolean = false,
     customStart?: Date,
-    customEnd?: Date
+    customEnd?: Date,
+    extraParams?: Record<string, string>
 ) {
     const { periodoInicio, periodoFim, isComparing, compareStart, compareEnd } = useFilterStore();
 
@@ -53,11 +59,11 @@ export function useSheetData<T>(
     const end = customEnd || (skipFilters ? undefined : periodoFim);
 
     // Main data URL
-    const mainUrl = buildUrl(endpoint, aggregated, start, end);
+    const mainUrl = buildUrl(endpoint, aggregated, start, end, extraParams);
 
     // Comparison URL (only if comparing and not skipping filters)
     const comparisonUrl = !skipFilters && !customStart && isComparing && compareStart && compareEnd
-        ? buildUrl(endpoint, aggregated, compareStart, compareEnd)
+        ? buildUrl(endpoint, aggregated, compareStart, compareEnd, extraParams)
         : null;
 
     // Main data fetch with SWR
@@ -122,14 +128,29 @@ export function useGA4KPIs() {
     };
 }
 
-// Hook for Catalogo Data (raw)
-export function useCatalogoData(customStart?: Date, customEnd?: Date) {
-    return useSheetData<any>('/api/sheets/catalogo', false, false, customStart, customEnd);
+// Hook for Catalogo Data with server-side filtering
+export function useCatalogoData(customStart?: Date, customEnd?: Date, status?: string, atribuicao?: string) {
+    const extraParams: Record<string, string> = {};
+    if (status) extraParams.status = status;
+    if (atribuicao) extraParams.atribuicao = atribuicao;
+
+    return useSheetData<any>('/api/sheets/catalogo', false, false, customStart, customEnd, Object.keys(extraParams).length > 0 ? extraParams : undefined);
 }
 
-// Hook for YoY Analysis (ignores global date filters)
+// Hook for YoY Analysis - lightweight SQL aggregation
 export function useCatalogoYoYData() {
-    return useSheetData<any>('/api/sheets/catalogo', false, true);
+    const { data, error, isLoading } = useSWR<any>(
+        '/api/sheets/yoy',
+        fetcher,
+        { ...swrConfig, dedupingInterval: 300000 } // 5 min dedup for YoY (rarely changes)
+    );
+
+    return {
+        data: data || null,
+        comparisonData: null,
+        loading: isLoading,
+        error: error?.message || null,
+    };
 }
 
 // Hook for CRM Data
@@ -146,7 +167,6 @@ export interface DashboardData {
     catalogoData: any;
     loading: boolean;
     error: string | null;
-    // Computed metrics that should be consistent across pages
     computed: {
         receitaGoogleAds: number;
         roas: number;
@@ -167,27 +187,10 @@ export function useDashboardData(): DashboardData {
     const loading = loadingGads || loadingGA4 || loadingCatalogo;
     const error = errorGads || errorGA4 || errorCatalogo;
 
-    // Compute consistent metrics
+    // Compute consistent metrics from pre-aggregated server data
     let computed = null;
-    if (gadsKpis && catalogoData?.rawData) {
-        // Filter completed orders
-        const completedOrders = catalogoData.rawData.filter((d: any) =>
-            d.status?.toLowerCase().includes('complete') ||
-            d.status?.toLowerCase().includes('completo') ||
-            d.status?.toLowerCase().includes('pago') ||
-            d.status?.toLowerCase().includes('enviado') ||
-            d.status?.toLowerCase().includes('faturado') ||
-            !d.status
-        );
-
-        // Google Ads attributed orders
-        const googleAdsOrders = completedOrders.filter((d: any) =>
-            d.atribuicao?.toLowerCase().includes('google') ||
-            d.midia?.toLowerCase().includes('google') ||
-            d.origem?.toLowerCase().includes('google')
-        );
-
-        const receitaGoogleAds = googleAdsOrders.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+    if (gadsKpis && catalogoData) {
+        const receitaGoogleAds = catalogoData.receitaGoogleAds || 0;
         const roas = receitaGoogleAds > 0 && gadsKpis.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
 
         computed = {
@@ -198,7 +201,7 @@ export function useDashboardData(): DashboardData {
             totalConversions: gadsKpis.conversions || 0,
             ctr: gadsKpis.ctr || 0,
             cpc: gadsKpis.cpc || 0,
-            googleAdsOrdersCount: googleAdsOrders.length,
+            googleAdsOrdersCount: 0, // Not available without rawData
         };
     }
 

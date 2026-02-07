@@ -115,12 +115,12 @@ function buildDateFilter(column: string, startDate?: Date, endDate?: Date): { cl
     return { clause, params: [startStr, endStr] };
 }
 
-export async function getCatalogoData(startDate?: Date, endDate?: Date): Promise<CatalogoItem[]> {
-    const dateFilter = buildDateFilter('data', startDate, endDate);
+export async function getCatalogoData(filters: CatalogoFilters = {}): Promise<CatalogoItem[]> {
+    const { where, params } = buildCatalogoWhere(filters);
 
-    const query = `SELECT * FROM bd_mag WHERE 1=1${dateFilter.clause}`;
+    const query = `SELECT * FROM bd_mag ${where}`;
 
-    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...dateFilter.params);
+    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...params);
 
     return rows.map(r => ({
         mpn: r.mpn || '',
@@ -213,6 +213,389 @@ export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Prom
         checkouts: Math.round(parseNumber(r.checkouts)),
         purchases: Math.round(parseNumber(r.ecommerce_purchases || r.purchases)),
     }));
+}
+
+// ============================================
+// SQL-LEVEL AGGREGATION (avoids full table scans)
+// ============================================
+
+const COMPLETED_STATUS_FILTER = `(status IS NULL OR status = '' OR LOWER(status) LIKE '%complete%' OR LOWER(status) LIKE '%completo%' OR LOWER(status) LIKE '%pago%' OR LOWER(status) LIKE '%enviado%' OR LOWER(status) LIKE '%faturado%')`;
+
+const NORMALIZE_DATE_EXPR = (col: string) => `
+    CASE
+        WHEN ${col} ~ '^\\d{4}-\\d{2}-\\d{2}' THEN SUBSTRING(${col} FROM 1 FOR 10)
+        WHEN ${col} ~ '^\\d{2}/\\d{2}/\\d{4}' THEN
+            SUBSTRING(${col} FROM 7 FOR 4) || '-' || SUBSTRING(${col} FROM 4 FOR 2) || '-' || SUBSTRING(${col} FROM 1 FOR 2)
+        ELSE NULL
+    END`;
+
+interface CatalogoFilters {
+    startDate?: Date;
+    endDate?: Date;
+    status?: string;
+    atribuicao?: string;
+}
+
+function buildCatalogoWhere(filters: CatalogoFilters): { where: string; params: any[] } {
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (filters.startDate && filters.endDate) {
+        const startStr = filters.startDate.toISOString().split('T')[0];
+        const endStr = filters.endDate.toISOString().split('T')[0];
+        conditions.push(`(${NORMALIZE_DATE_EXPR('data')}) BETWEEN $${idx} AND $${idx + 1}`);
+        params.push(startStr, endStr);
+        idx += 2;
+    }
+
+    if (filters.status) {
+        conditions.push(`status = $${idx}`);
+        params.push(filters.status);
+        idx++;
+    } else {
+        conditions.push(COMPLETED_STATUS_FILTER);
+    }
+
+    if (filters.atribuicao) {
+        conditions.push(`atribuicao = $${idx}`);
+        params.push(filters.atribuicao);
+        idx++;
+    }
+
+    return {
+        where: conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '',
+        params
+    };
+}
+
+export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
+    const { where, params } = buildCatalogoWhere(filters);
+
+    // Run all aggregation queries in parallel
+    const [
+        totalsResult,
+        byAtribuicaoResult,
+        byCategoryResult,
+        byStateResult,
+        bySellerResult,
+        byDayOfWeekResult,
+        dailyRevenueResult,
+        dailyAtribuicaoResult,
+        filterOptionsResult,
+        googleAdsRevenueResult,
+        roasRevenueResult,
+        uniqueCustomersResult,
+    ] = await Promise.all([
+        // 1. Totals
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT
+                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as total_receita,
+                COALESCE(SUM(CASE WHEN valor_total_sem_frete ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(valor_total_sem_frete, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as total_sem_frete,
+                COALESCE(SUM(CASE WHEN valor_total_com_frete ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(valor_total_com_frete, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as total_com_frete,
+                COUNT(DISTINCT NULLIF(pedido, '')) as total_pedidos,
+                COUNT(*) as total_produtos
+            FROM bd_mag ${where}
+        `, ...params),
+
+        // 2. By Atribuição
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT COALESCE(NULLIF(atribuicao, ''), 'Não identificado') as name,
+                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as value
+            FROM bd_mag ${where}
+            GROUP BY COALESCE(NULLIF(atribuicao, ''), 'Não identificado')
+            ORDER BY value DESC
+        `, ...params),
+
+        // 3. By Categoria (top 8)
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT COALESCE(NULLIF(categoria, ''), 'Sem Categoria') as name,
+                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as value
+            FROM bd_mag ${where}
+            GROUP BY COALESCE(NULLIF(categoria, ''), 'Sem Categoria')
+            ORDER BY value DESC LIMIT 8
+        `, ...params),
+
+        // 4. By Estado (top 10)
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT COALESCE(NULLIF(estado, ''), 'N/A') as name,
+                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as value
+            FROM bd_mag ${where}
+            GROUP BY COALESCE(NULLIF(estado, ''), 'N/A')
+            ORDER BY value DESC LIMIT 10
+        `, ...params),
+
+        // 5. By Seller (top 5) - FALLBACK if column missing
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT 'Não atribuído' as name, 0 as value
+        `),
+
+        // 6. By Day of Week
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT COALESCE(NULLIF(dia_da_semana, ''), 'N/A') as name,
+                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as value
+            FROM bd_mag ${where}
+            GROUP BY COALESCE(NULLIF(dia_da_semana, ''), 'N/A')
+        `, ...params),
+
+        // 7. Daily Revenue
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT SPLIT_PART(data, ' ', 1) as date,
+                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as receita,
+                COUNT(*) as pedidos
+            FROM bd_mag ${where} AND data IS NOT NULL AND data != ''
+            GROUP BY SPLIT_PART(data, ' ', 1)
+            ORDER BY (${NORMALIZE_DATE_EXPR("SPLIT_PART(data, ' ', 1)")}) ASC
+        `, ...params),
+
+        // 8. Daily Revenue by Atribuição
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT SPLIT_PART(data, ' ', 1) as date,
+                COALESCE(NULLIF(atribuicao, ''), 'Não identificado') as atribuicao,
+                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as receita
+            FROM bd_mag ${where} AND data IS NOT NULL AND data != ''
+            GROUP BY SPLIT_PART(data, ' ', 1), COALESCE(NULLIF(atribuicao, ''), 'Não identificado')
+            ORDER BY (${NORMALIZE_DATE_EXPR("SPLIT_PART(data, ' ', 1)")}) ASC
+        `, ...params),
+
+        // 9. Filter options (distinct values)
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT
+                array_agg(DISTINCT status) FILTER (WHERE status IS NOT NULL AND status != '') as statuses,
+                array_agg(DISTINCT atribuicao) FILTER (WHERE atribuicao IS NOT NULL AND atribuicao != '') as atribuicoes,
+                array_agg(DISTINCT origem) FILTER (WHERE origem IS NOT NULL AND origem != '') as origens,
+                array_agg(DISTINCT midia) FILTER (WHERE midia IS NOT NULL AND midia != '') as midias,
+                array_agg(DISTINCT categoria) FILTER (WHERE categoria IS NOT NULL AND categoria != '') as categorias
+            FROM bd_mag
+        `),
+
+        // 10. Google Ads revenue (atribuicao contains 'google')
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as value
+            FROM bd_mag ${where} AND LOWER(atribuicao) LIKE '%google%'
+        `, ...params),
+
+        // 11. ROAS revenue (atribuicao not in 'vendedor', 'outros', '')
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as value
+            FROM bd_mag ${where} AND LOWER(atribuicao) NOT IN ('vendedor', 'outros', '')
+                AND atribuicao IS NOT NULL
+        `, ...params),
+
+        // 12. Unique customers
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT COUNT(DISTINCT NULLIF(cpf_cliente, '')) as total
+            FROM bd_mag ${where}
+        `, ...params),
+    ]);
+
+    const totals = totalsResult[0] || {};
+    const totalReceita = parseFloat(totals.total_receita || '0');
+    const totalValorSemFrete = parseFloat(totals.total_sem_frete || '0');
+    const totalValorComFrete = parseFloat(totals.total_com_frete || '0');
+    const totalPedidos = parseInt(totals.total_pedidos || '0');
+    const totalProdutosVendidos = parseInt(totals.total_produtos || '0');
+    const totalClientes = parseInt(uniqueCustomersResult[0]?.total || '0');
+    const ticketMedio = totalPedidos > 0 ? totalValorSemFrete / totalPedidos : 0;
+
+    const byAtribuicao = byAtribuicaoResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
+    const byCategory = byCategoryResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
+    const byState = byStateResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
+    const bySeller = bySellerResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
+    const byDayOfWeek = byDayOfWeekResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
+    const byChannel = byAtribuicao; // same data, different name
+
+    const dailyRevenue = dailyRevenueResult.map(r => ({
+        date: r.date,
+        receita: parseFloat(r.receita || '0'),
+        pedidos: parseInt(r.pedidos || '0'),
+    }));
+
+    // Pivot daily atribuicao data
+    const allAtribuicoes = [...new Set(dailyAtribuicaoResult.map(r => r.atribuicao))];
+    const dailyAtribuicaoMap: Record<string, Record<string, number>> = {};
+    dailyAtribuicaoResult.forEach(r => {
+        if (!dailyAtribuicaoMap[r.date]) dailyAtribuicaoMap[r.date] = {};
+        dailyAtribuicaoMap[r.date][r.atribuicao] = parseFloat(r.receita || '0');
+    });
+    const dailyRevenueByAtribuicao = Object.entries(dailyAtribuicaoMap).map(([date, atribData]) => {
+        const entry: any = { date };
+        allAtribuicoes.forEach(a => { entry[a] = atribData[a] || 0; });
+        return entry;
+    });
+
+    const receitaGoogleAds = parseFloat(googleAdsRevenueResult[0]?.value || '0');
+    const receitaParaROAS = parseFloat(roasRevenueResult[0]?.value || '0');
+
+    const filterOpts = filterOptionsResult[0] || {};
+
+    return {
+        totalReceita,
+        totalReceita_formatted: `R$ ${totalReceita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        receitaGoogleAds,
+        receitaGoogleAds_formatted: `R$ ${receitaGoogleAds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        receitaParaROAS,
+        receitaParaROAS_formatted: `R$ ${receitaParaROAS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        totalValorSemFrete,
+        totalValorSemFrete_formatted: `R$ ${totalValorSemFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        totalValorComFrete,
+        totalValorComFrete_formatted: `R$ ${totalValorComFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        totalPedidos,
+        ticketMedio,
+        ticketMedio_formatted: `R$ ${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        totalClientes,
+        totalProdutosVendidos,
+        topSkus: [] as any[], // Not computed in SQL to avoid complexity
+        byCategory,
+        byState,
+        byChannel,
+        byAtribuicao,
+        bySeller,
+        byDayOfWeek,
+        dailyRevenue,
+        dailyRevenueByAtribuicao,
+        allAtribuicoes,
+        filterOptions: {
+            origens: (filterOpts.origens || []).sort(),
+            midias: (filterOpts.midias || []).sort(),
+            categorias: (filterOpts.categorias || []).sort(),
+            atribuicoes: (filterOpts.atribuicoes || []).sort(),
+            status: (filterOpts.statuses || []).sort(),
+        },
+    };
+}
+
+// YoY aggregation - SQL-level, returns ~24 rows instead of 198k
+export async function getCatalogoYoYAggregated() {
+    const currentYear = new Date().getFullYear();
+    const previousYear = currentYear - 1;
+
+    const [monthlyResult, categoryResult] = await Promise.all([
+        // Monthly aggregation by year
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT
+                CAST(SUBSTRING(normalized_date FROM 1 FOR 4) AS INTEGER) as year,
+                CAST(SUBSTRING(normalized_date FROM 6 FOR 2) AS INTEGER) as month,
+                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as receita,
+                COUNT(DISTINCT NULLIF(pedido, '')) as pedidos
+            FROM (
+                SELECT *, ${NORMALIZE_DATE_EXPR('data')} as normalized_date
+                FROM bd_mag
+                WHERE ${COMPLETED_STATUS_FILTER}
+            ) sub
+            WHERE normalized_date IS NOT NULL
+                AND CAST(SUBSTRING(normalized_date FROM 1 FOR 4) AS INTEGER) IN ($1, $2)
+            GROUP BY year, month
+            ORDER BY year, month
+        `, currentYear, previousYear),
+
+        // Category aggregation by year
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT
+                CAST(SUBSTRING(normalized_date FROM 1 FOR 4) AS INTEGER) as year,
+                COALESCE(NULLIF(categoria, ''), 'Sem Categoria') as categoria,
+                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as receita
+            FROM (
+                SELECT *, ${NORMALIZE_DATE_EXPR('data')} as normalized_date
+                FROM bd_mag
+                WHERE ${COMPLETED_STATUS_FILTER}
+            ) sub
+            WHERE normalized_date IS NOT NULL
+                AND CAST(SUBSTRING(normalized_date FROM 1 FOR 4) AS INTEGER) IN ($1, $2)
+                AND categoria IS NOT NULL AND categoria != ''
+            GROUP BY year, categoria
+            ORDER BY receita DESC
+        `, currentYear, previousYear),
+    ]);
+
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    // Build monthly data by year
+    const monthlyByYear: Record<number, Record<number, { receita: number; pedidos: number }>> = {};
+    monthlyResult.forEach(r => {
+        const year = parseInt(r.year);
+        const month = parseInt(r.month) - 1; // 0-indexed
+        if (!monthlyByYear[year]) monthlyByYear[year] = {};
+        monthlyByYear[year][month] = { receita: parseFloat(r.receita || '0'), pedidos: parseInt(r.pedidos || '0') };
+    });
+
+    const monthlyComparison = monthNames.map((name, idx) => ({
+        month: name,
+        currentYear: monthlyByYear[currentYear]?.[idx]?.receita || 0,
+        previousYear: monthlyByYear[previousYear]?.[idx]?.receita || 0,
+    }));
+
+    const currentYearReceita = Object.values(monthlyByYear[currentYear] || {}).reduce((sum, m) => sum + m.receita, 0);
+    const previousYearReceita = Object.values(monthlyByYear[previousYear] || {}).reduce((sum, m) => sum + m.receita, 0);
+    const currentYearPedidos = Object.values(monthlyByYear[currentYear] || {}).reduce((sum, m) => sum + m.pedidos, 0);
+    const previousYearPedidos = Object.values(monthlyByYear[previousYear] || {}).reduce((sum, m) => sum + m.pedidos, 0);
+
+    const receitaYoYPercent = previousYearReceita > 0 ? ((currentYearReceita - previousYearReceita) / previousYearReceita) * 100 : 0;
+    const pedidosYoYPercent = previousYearPedidos > 0 ? ((currentYearPedidos - previousYearPedidos) / previousYearPedidos) * 100 : 0;
+    const currentYearTicket = currentYearPedidos > 0 ? currentYearReceita / currentYearPedidos : 0;
+    const previousYearTicket = previousYearPedidos > 0 ? previousYearReceita / previousYearPedidos : 0;
+    const ticketYoYPercent = previousYearTicket > 0 ? ((currentYearTicket - previousYearTicket) / previousYearTicket) * 100 : 0;
+
+    // Category growth
+    const categoryByYear: Record<number, Record<string, number>> = {};
+    categoryResult.forEach(r => {
+        const year = parseInt(r.year);
+        if (!categoryByYear[year]) categoryByYear[year] = {};
+        categoryByYear[year][r.categoria] = parseFloat(r.receita || '0');
+    });
+
+    const currentCats = categoryByYear[currentYear] || {};
+    const previousCats = categoryByYear[previousYear] || {};
+    const allCats = new Set([...Object.keys(currentCats), ...Object.keys(previousCats)]);
+    const categoryGrowth = Array.from(allCats).map(cat => {
+        const curr = currentCats[cat] || 0;
+        const prev = previousCats[cat] || 0;
+        const growth = prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0);
+        return { name: cat, currentYear: curr, previousYear: prev, growth };
+    })
+        .filter(c => c.currentYear > 0 || c.previousYear > 0)
+        .sort((a, b) => b.growth - a.growth)
+        .slice(0, 6);
+
+    return {
+        monthlyComparison,
+        receitaYoYPercent,
+        pedidosYoYPercent,
+        ticketYoYPercent,
+        currentYearReceita,
+        previousYearReceita,
+        currentYearPedidos,
+        previousYearPedidos,
+        categoryGrowth,
+        currentYear,
+        previousYear,
+    };
 }
 
 export async function getTVSalesData(): Promise<any[]> {

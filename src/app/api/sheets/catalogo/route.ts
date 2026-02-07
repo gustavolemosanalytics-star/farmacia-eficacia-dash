@@ -9,20 +9,25 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const startDateStr = searchParams.get('startDate');
         const endDateStr = searchParams.get('endDate');
+        const status = searchParams.get('status') || undefined;
+        const atribuicao = searchParams.get('atribuicao') || undefined;
 
+        const isAggregatedOnly = searchParams.get('aggregated') === 'true';
         const startDate = startDateStr ? new Date(startDateStr) : undefined;
         const endDate = endDateStr ? new Date(endDateStr) : undefined;
 
+        // Include filters in cache key
+        const cacheType = `catalogo${status ? `_s:${status}` : ''}${atribuicao ? `_a:${atribuicao}` : ''}${isAggregatedOnly ? '_agg' : '_full'}`;
+
         // Check cache with smart TTL (longer for historical data)
-        const cached = await getCachedAggregation<any>('catalogo', startDate, endDate);
+        const cached = await getCachedAggregation<any>(cacheType, startDate, endDate);
 
         if (cached.data) {
-            console.log(`[API] catalogo: Cache ${cached.source.toUpperCase()}${cached.stale ? ' (stale)' : ''}`);
+            console.log(`[API] ${cacheType}: Cache ${cached.source.toUpperCase()}${cached.stale ? ' (stale)' : ''}`);
 
             // If stale, trigger background refresh
             if (cached.stale) {
-                // Fire and forget - don't await
-                refreshCatalogoData(startDate, endDate).catch(console.error);
+                refreshCatalogoData(startDate, endDate, status, atribuicao, cacheType, isAggregatedOnly).catch(console.error);
             }
 
             return NextResponse.json({
@@ -33,11 +38,11 @@ export async function GET(request: Request) {
             });
         }
 
-        console.log('[API] catalogo: Fetching fresh data...');
-        const data = await aggregateCatalogoKPIs(startDate, endDate);
+        console.log(`[API] ${cacheType}: Fetching fresh data...`);
+        const data = await aggregateCatalogoKPIs(startDate, endDate, status, atribuicao, !isAggregatedOnly);
 
         // Cache with smart TTL
-        await setCachedAggregation('catalogo', data, startDate, endDate);
+        await setCachedAggregation(cacheType, data, startDate, endDate);
 
         return NextResponse.json({ success: true, data, source: 'api' });
     } catch (error) {
@@ -47,9 +52,9 @@ export async function GET(request: Request) {
 }
 
 // Background refresh function
-async function refreshCatalogoData(startDate?: Date, endDate?: Date) {
-    console.log('[API] catalogo: Background refresh starting...');
-    const data = await aggregateCatalogoKPIs(startDate, endDate);
-    await setCachedAggregation('catalogo', data, startDate, endDate);
-    console.log('[API] catalogo: Background refresh complete');
+async function refreshCatalogoData(startDate?: Date, endDate?: Date, status?: string, atribuicao?: string, cacheType?: string, includeRaw: boolean = true) {
+    console.log(`[API] ${cacheType}: Background refresh starting...`);
+    const data = await aggregateCatalogoKPIs(startDate, endDate, status, atribuicao, includeRaw);
+    await setCachedAggregation(cacheType || 'catalogo', data, startDate, endDate);
+    console.log(`[API] ${cacheType}: Background refresh complete`);
 }

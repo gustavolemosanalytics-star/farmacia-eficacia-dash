@@ -5,6 +5,8 @@
 // Import PostgreSQL data fetchers directly
 import {
     getCatalogoData,
+    getCatalogoKPIsAggregated,
+    getCatalogoYoYAggregated,
     getGA4Data,
     getGoogleAdsData,
     getGA4SessionsData,
@@ -407,249 +409,26 @@ export const fetchMagData = async () => {
     return await getCatalogoData();
 };
 
-// Aggregate Catalogo/Magento KPIs
-export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) => {
-    const data = await getCatalogoData(startDate, endDate);
+// Aggregate Catalogo/Magento KPIs - Uses SQL-level aggregation (no full table scan)
+export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date, status?: string, atribuicao?: string, includeRaw: boolean = true) => {
+    const aggregated = await getCatalogoKPIsAggregated({ startDate, endDate, status, atribuicao });
 
-    // Filter only completed orders (status validation)
-    const completedOrders = data.filter(d =>
-        d.status?.toLowerCase().includes('complete') ||
-        d.status?.toLowerCase().includes('completo') ||
-        d.status?.toLowerCase().includes('pago') ||
-        d.status?.toLowerCase().includes('enviado') ||
-        d.status?.toLowerCase().includes('faturado') ||
-        !d.status // Include if no status
-    );
+    if (includeRaw) {
+        const rawData = await getCatalogoData({ startDate, endDate, status, atribuicao });
+        return { ...aggregated, rawData };
+    }
 
-    // Total revenue
-    const totalReceita = completedOrders.reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0);
-    const totalValorSemFrete = completedOrders.reduce((sum, entry) => sum + (entry.valorTotalSemFrete || 0), 0);
-    const totalValorComFrete = completedOrders.reduce((sum, entry) => sum + (entry.valorTotalComFrete || 0), 0);
+    return aggregated;
+};
 
-    // Receita específica do canal Google_Ads (Mídia Paga)
-    // Captura variações: "Google_Ads", "Google Ads", "google_ads", "GoogleAds", etc.
-    const isGoogleAdsAttribution = (atrib: string) => {
-        const lower = (atrib || '').toLowerCase().replace(/[_\s]/g, '');
-        return lower === 'googleads' || lower.includes('googleads');
-    };
-
-    const receitaGoogleAds = completedOrders
-        .filter(d => isGoogleAdsAttribution(d.atribuicao))
-        .reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0);
-
-    // Receita para cálculo do ROAS (Atribuição != Vendedor e != Outros)
-    const receitaParaROAS = completedOrders
-        .filter(d => {
-            const atrib = (d.atribuicao || '').toLowerCase();
-            return atrib !== 'vendedor' && atrib !== 'outros' && atrib !== '';
-        })
-        .reduce((sum, entry) => sum + (entry.receitaProduto || 0), 0);
-
-    // Unique orders count
-    const uniqueOrders = new Set(completedOrders.map(d => d.pedido).filter(Boolean));
-    const totalPedidos = uniqueOrders.size || completedOrders.length;
-
-    // Ticket médio
-    const ticketMedio = totalPedidos > 0 ? totalValorSemFrete / totalPedidos : 0;
-
-    // Top Products by revenue
-    const productRevenue: { [key: string]: { nome: string; receita: number; qtd: number } } = {};
-    completedOrders.forEach(order => {
-        const nome = order.nomeProduto;
-        if (nome) {
-            if (!productRevenue[nome]) {
-                productRevenue[nome] = { nome, receita: 0, qtd: 0 };
-            }
-            productRevenue[nome].receita += order.receitaProduto || 0;
-            productRevenue[nome].qtd += 1;
-        }
-    });
-
-    const topSkus = Object.values(productRevenue)
-        .sort((a, b) => b.receita - a.receita)
-        .slice(0, 10)
-        .map((p, i) => ({
-            sku: `SKU-${i + 1}`,
-            nome: p.nome.substring(0, 50) + (p.nome.length > 50 ? '...' : ''),
-            receita: p.receita,
-            qtdVendas: p.qtd,
-            estoque: Math.floor(Math.random() * 100) + 10, // Placeholder - ideally from another sheet
-            margem: Math.floor(Math.random() * 30) + 15, // Placeholder
-        }));
-
-    // Revenue by category
-    const categoryRevenue: { [key: string]: number } = {};
-    completedOrders.forEach(order => {
-        const cat = order.categoria || 'Sem Categoria';
-        categoryRevenue[cat] = (categoryRevenue[cat] || 0) + (order.receitaProduto || 0);
-    });
-
-    const byCategory = Object.entries(categoryRevenue)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 8);
-
-    // Revenue by state
-    const stateRevenue: { [key: string]: number } = {};
-    completedOrders.forEach(order => {
-        const state = order.estado || 'N/A';
-        stateRevenue[state] = (stateRevenue[state] || 0) + (order.receitaProduto || 0);
-    });
-
-    const byState = Object.entries(stateRevenue)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 10);
-
-    // Revenue by channel/origin
-    const channelRevenue: { [key: string]: number } = {};
-    completedOrders.forEach(order => {
-        const channel = order.origem || 'Não identificado';
-        channelRevenue[channel] = (channelRevenue[channel] || 0) + (order.receitaProduto || 0);
-    });
-
-    const byChannel = Object.entries(channelRevenue)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value);
-
-    // Revenue by Atribuição (user requested for "Receita por Canal de Origem" chart)
-    const atribuicaoRevenue: { [key: string]: number } = {};
-    completedOrders.forEach(order => {
-        const atrib = order.atribuicao || 'Não identificado';
-        atribuicaoRevenue[atrib] = (atribuicaoRevenue[atrib] || 0) + (order.receitaProduto || 0);
-    });
-
-    const byAtribuicao = Object.entries(atribuicaoRevenue)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value);
-
-    // Revenue by seller
-    const sellerRevenue: { [key: string]: number } = {};
-    completedOrders.forEach(order => {
-        const seller = order.vendedor || 'Não atribuído';
-        sellerRevenue[seller] = (sellerRevenue[seller] || 0) + (order.receitaProduto || 0);
-    });
-
-    const bySeller = Object.entries(sellerRevenue)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 5);
-
-    // Revenue by day of week
-    const dayOfWeekRevenue: { [key: string]: number } = {};
-    completedOrders.forEach(order => {
-        const day = order.diaSemana || 'N/A';
-        dayOfWeekRevenue[day] = (dayOfWeekRevenue[day] || 0) + (order.receitaProduto || 0);
-    });
-
-    const byDayOfWeek = Object.entries(dayOfWeekRevenue)
-        .map(([name, value]) => ({ name, value }));
-
-    // Unique customers by CPF only
-    const uniqueCustomers = new Set(completedOrders.map(d => d.cpfCliente).filter(Boolean));
-
-    // Filter options for dropdowns
-    const filterOrigens = [...new Set(data.map(d => d.origem).filter(Boolean))].sort();
-    const filterMidias = [...new Set(data.map(d => d.midia).filter(Boolean))].sort();
-    const filterCategorias = [...new Set(data.map(d => d.categoria).filter(Boolean))].sort();
-    const filterAtribuicoes = [...new Set(data.map(d => d.atribuicao).filter(Boolean))].sort();
-    const filterStatus = [...new Set(data.map(d => d.status).filter(Boolean))].sort();
-
-    // Daily Revenue (Real Data)
-    const dailyRevenueMap: { [key: string]: { receita: number; pedidos: number } } = {};
-    completedOrders.forEach(order => {
-        const dateRaw = order.data;
-        if (dateRaw) {
-            const key = dateRaw.split(' ')[0];
-            if (!dailyRevenueMap[key]) {
-                dailyRevenueMap[key] = { receita: 0, pedidos: 0 };
-            }
-            dailyRevenueMap[key].receita += order.receitaProduto || 0;
-            dailyRevenueMap[key].pedidos += 1;
-        }
-    });
-
-    const dailyRevenue = Object.entries(dailyRevenueMap)
-        .map(([date, val]) => ({
-            date,
-            receita: val.receita,
-            pedidos: val.pedidos,
-            sortDate: date.includes('/') ? new Date(date.split('/').reverse().join('-')) : new Date(date)
-        }))
-        .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
-        .map(({ date, receita, pedidos }) => ({ date, receita, pedidos }));
-
-    // Daily Revenue by Atribuição (for line chart showing evolution over time)
-    const dailyAtribuicaoMap: { [key: string]: { [atrib: string]: number } } = {};
-    completedOrders.forEach(order => {
-        const dateRaw = order.data;
-        if (dateRaw) {
-            const key = dateRaw.split(' ')[0];
-            const atrib = order.atribuicao || 'Não identificado';
-            if (!dailyAtribuicaoMap[key]) {
-                dailyAtribuicaoMap[key] = {};
-            }
-            dailyAtribuicaoMap[key][atrib] = (dailyAtribuicaoMap[key][atrib] || 0) + (order.receitaProduto || 0);
-        }
-    });
-
-    // Get all unique attributions
-    const allAtribuicoes = [...new Set(completedOrders.map(o => o.atribuicao || 'Não identificado'))];
-
-    const dailyRevenueByAtribuicao = Object.entries(dailyAtribuicaoMap)
-        .map(([date, atribData]) => {
-            const entry: any = {
-                date,
-                sortDate: date.includes('/') ? new Date(date.split('/').reverse().join('-')) : new Date(date)
-            };
-            allAtribuicoes.forEach(atrib => {
-                entry[atrib] = atribData[atrib] || 0;
-            });
-            return entry;
-        })
-        .sort((a, b) => a.sortDate.getTime() - b.sortDate.getTime())
-        .map(({ sortDate, ...rest }) => rest);
-
-    return {
-        totalReceita,
-        totalReceita_formatted: `R$ ${totalReceita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        receitaGoogleAds,
-        receitaGoogleAds_formatted: `R$ ${receitaGoogleAds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        receitaParaROAS,
-        receitaParaROAS_formatted: `R$ ${receitaParaROAS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        totalValorSemFrete,
-        totalValorSemFrete_formatted: `R$ ${totalValorSemFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        totalValorComFrete,
-        totalValorComFrete_formatted: `R$ ${totalValorComFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        totalPedidos,
-        ticketMedio,
-        ticketMedio_formatted: `R$ ${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        totalClientes: uniqueCustomers.size,
-        totalProdutosVendidos: completedOrders.length,
-        topSkus,
-        byCategory,
-        byState,
-        byChannel,
-        byAtribuicao,
-        bySeller,
-        byDayOfWeek,
-        dailyRevenue,
-        dailyRevenueByAtribuicao,
-        allAtribuicoes,
-        filterOptions: {
-            origens: filterOrigens,
-            midias: filterMidias,
-            categorias: filterCategorias,
-            atribuicoes: filterAtribuicoes,
-            status: filterStatus,
-        },
-        rawData: data,
-    };
+// YoY Analysis - SQL-level aggregation (returns ~30 rows instead of 198k)
+export const aggregateYoYKPIs = async () => {
+    return await getCatalogoYoYAggregated();
 };
 
 // Aggregate CRM KPIs
 export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
-    const data = await getCatalogoData(startDate, endDate);
+    const data = await getCatalogoData({ startDate, endDate });
 
     // Filter only completed orders
     const completedOrders = data.filter(d =>

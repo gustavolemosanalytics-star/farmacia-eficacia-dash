@@ -23,14 +23,19 @@ import { ExecutiveInsights } from '@/components/dashboard/ExecutiveInsights';
 import { Bussola } from '@/components/dashboard/Bussola';
 
 export default function HomeExecutiva() {
-    const { data: catalogoData, comparisonData: catalogoComparisonData, loading: loadingCatalogo } = useCatalogoData();
-    const { data: yoyRawData, loading: loadingYoY } = useCatalogoYoYData();
-    const { kpis: gadsKpis, comparisonKpis: gadsComparisonKpis, loading: loadingGads } = useGoogleAdsKPIs();
-    const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
-
     // Filter states
     const [filterStatus, setFilterStatus] = useState<string | null>(null);
     const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
+
+    // Pass filters to server-side - SWR will refetch when filters change
+    const { data: catalogoData, comparisonData: catalogoComparisonData, loading: loadingCatalogo } = useCatalogoData(
+        undefined, undefined,
+        filterStatus || undefined,
+        filterAtribuicao || undefined
+    );
+    const { data: yoyData, loading: loadingYoY } = useCatalogoYoYData();
+    const { kpis: gadsKpis, comparisonKpis: gadsComparisonKpis, loading: loadingGads } = useGoogleAdsKPIs();
+    const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
 
     const loading = loadingCatalogo || loadingGads || loadingYoY || loadingGA4;
 
@@ -40,258 +45,23 @@ export default function HomeExecutiva() {
         atribuicoes: [],
     };
 
-    // Filtered data based on selected filters
-    const filteredData = useMemo(() => {
-        if (!catalogoData?.rawData) return null;
-
-        // Helper function to aggregate data
-        const aggregateData = (data: any[]) => {
-            if (!data) return null;
-
-            let filtered = data;
-
-            if (filterStatus) {
-                filtered = filtered.filter((d: any) => d.status === filterStatus);
-            } else {
-                filtered = filtered.filter((d: any) =>
-                    d.status?.toLowerCase().includes('complete') ||
-                    d.status?.toLowerCase().includes('completo') ||
-                    d.status?.toLowerCase().includes('pago') ||
-                    d.status?.toLowerCase().includes('enviado') ||
-                    d.status?.toLowerCase().includes('faturado') ||
-                    !d.status
-                );
-            }
-
-            if (filterAtribuicao) filtered = filtered.filter((d: any) => d.atribuicao === filterAtribuicao);
-
-            const totalReceita = filtered.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
-            const uniqueOrders = new Set(filtered.map((d: any) => d.pedido).filter(Boolean));
-            const totalPedidos = uniqueOrders.size || filtered.length;
-            const ticketMedio = totalPedidos > 0 ? totalReceita / totalPedidos : 0;
-            const uniqueClients = new Set(filtered.map((d: any) => d.cpfCliente).filter(Boolean));
-
-            // Google Ads attributed revenue - using same logic as midia-paga page for consistency
-            const googleAdsOrders = filtered.filter((d: any) =>
-                d.atribuicao?.toLowerCase().includes('google') ||
-                d.midia?.toLowerCase().includes('google') ||
-                d.origem?.toLowerCase().includes('google')
-            );
-            const receitaGoogleAds = googleAdsOrders.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
-            const googleAdsOrdersCount = googleAdsOrders.length;
-
-            const receitaParaROAS = filtered
-                .filter((d: any) => {
-                    const atrib = (d.atribuicao || '').toLowerCase();
-                    return atrib !== 'vendedor' && atrib !== 'outros' && atrib !== '';
-                })
-                .reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
-
-            // Additional aggregations for charts (only needed for main data, but harmless here)
-            const atribuicaoRevenue: { [key: string]: number } = {};
-            filtered.forEach((d: any) => {
-                const atrib = d.atribuicao || 'Não identificado';
-                atribuicaoRevenue[atrib] = (atribuicaoRevenue[atrib] || 0) + (d.receitaProduto || 0);
-            });
-            const byAtribuicao = Object.entries(atribuicaoRevenue)
-                .map(([name, value]) => ({ name, value }))
-                .sort((a, b) => b.value - a.value);
-
-            const categoryRevenue: { [key: string]: number } = {};
-            filtered.forEach((d: any) => {
-                const cat = d.categoria;
-                if (cat && cat.trim() !== '') {
-                    categoryRevenue[cat] = (categoryRevenue[cat] || 0) + (d.receitaProduto || 0);
-                }
-            });
-            const byCategory = Object.entries(categoryRevenue)
-                .map(([name, value]) => ({ name, value }))
-                .sort((a, b) => b.value - a.value)
-                .slice(0, 8);
-
-            const dailyRevenueMap: { [key: string]: { receita: number; pedidos: number } } = {};
-            filtered.forEach((d: any) => {
-                const dateRaw = d.data;
-                if (dateRaw) {
-                    const key = dateRaw.split(' ')[0];
-                    if (!dailyRevenueMap[key]) dailyRevenueMap[key] = { receita: 0, pedidos: 0 };
-                    dailyRevenueMap[key].receita += d.receitaProduto || 0;
-                    dailyRevenueMap[key].pedidos += 1;
-                }
-            });
-            const dailyRevenue = Object.entries(dailyRevenueMap)
-                .map(([date, val]) => ({ date, receita: val.receita, pedidos: val.pedidos }))
-                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-            const dailyAtribuicaoMap: { [key: string]: { [atrib: string]: number } } = {};
-            filtered.forEach((d: any) => {
-                const dateRaw = d.data;
-                if (dateRaw) {
-                    const key = dateRaw.split(' ')[0];
-                    const atrib = d.atribuicao || 'Não identificado';
-                    if (!dailyAtribuicaoMap[key]) {
-                        dailyAtribuicaoMap[key] = {};
-                    }
-                    dailyAtribuicaoMap[key][atrib] = (dailyAtribuicaoMap[key][atrib] || 0) + (d.receitaProduto || 0);
-                }
-            });
-
-            const allAtribuicoes: string[] = Array.from(new Set(filtered.map((d: any) => (d.atribuicao || 'Não identificado') as string)));
-            const dailyRevenueByAtribuicao = Object.entries(dailyAtribuicaoMap)
-                .map(([date, atribData]) => {
-                    const entry: any = { date };
-                    allAtribuicoes.forEach((atrib: string) => {
-                        entry[atrib] = atribData[atrib] || 0;
-                    });
-                    return entry;
-                })
-                .sort((a, b) => {
-                    const dateA = a.date.includes('/') ? new Date(a.date.split('/').reverse().join('-')) : new Date(a.date);
-                    const dateB = b.date.includes('/') ? new Date(b.date.split('/').reverse().join('-')) : new Date(b.date);
-                    return dateA.getTime() - dateB.getTime();
-                });
-
-            return {
-                totalReceita,
-                totalPedidos,
-                ticketMedio,
-                totalClientes: uniqueClients.size,
-                receitaGoogleAds,
-                googleAdsOrdersCount,
-                receitaParaROAS,
-                byAtribuicao,
-                byCategory,
-                dailyRevenue,
-                dailyRevenueByAtribuicao,
-                allAtribuicoes,
-                filteredRaw: filtered,
-            };
-        };
-
-        // Current Period Aggregation
-        const current = aggregateData(catalogoData.rawData);
-
-        // Comparison Period Aggregation
-        const comparison = catalogoComparisonData?.rawData ? aggregateData(catalogoComparisonData.rawData) : null;
-
-        // Calculate Variations
+    // Compute variations from comparison data
+    const variations = useMemo(() => {
+        if (!catalogoData || !catalogoComparisonData) {
+            return { totalReceita: 0, receitaGoogleAds: 0, totalPedidos: 0, ticketMedio: 0, totalClientes: 0 };
+        }
         const calcVar = (curr: number, prev: number) => prev > 0 ? ((curr - prev) / prev) * 100 : 0;
-
-        const variations = {
-            totalReceita: comparison ? calcVar(current?.totalReceita || 0, comparison.totalReceita) : 0,
-            receitaGoogleAds: comparison ? calcVar(current?.receitaGoogleAds || 0, comparison.receitaGoogleAds) : 0,
-            totalPedidos: comparison ? calcVar(current?.totalPedidos || 0, comparison.totalPedidos) : 0,
-            ticketMedio: comparison ? calcVar(current?.ticketMedio || 0, comparison.ticketMedio) : 0,
-            totalClientes: comparison ? calcVar(current?.totalClientes || 0, comparison.totalClientes) : 0,
-        };
-
-        // ======= YoY ANALYSIS DATA =======
-        const currentYear = new Date().getFullYear(); // 2026
-        const previousYear = currentYear - 1; // 2025
-        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-        // Helper to parse date
-        const parseYoYDate = (dateStr: string): Date | null => {
-            if (!dateStr) return null;
-            // Try DD/MM/YYYY
-            if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}/)) {
-                const [day, month, year] = dateStr.split('/');
-                return new Date(Number(year), Number(month) - 1, Number(day));
-            }
-            // Try YYYY-MM-DD
-            if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
-                const [y, m, d] = dateStr.split('-').map(Number);
-                return new Date(y, m - 1, d);
-            }
-            return new Date(dateStr);
-        };
-
-        // Aggregate by year and month using FULL historical data
-        const monthlyByYear: Record<number, Record<number, { receita: number; pedidos: Set<string> }>> = {};
-        const categoryByYear: Record<number, Record<string, number>> = {};
-
-        // Use yoyRawData for historical context, otherwise fall back to filtered (which might be empty for past years)
-        const historicalSource = yoyRawData?.rawData || [];
-
-        historicalSource.forEach((d: any) => {
-            const dateStr = d.data;
-            const parsed = parseYoYDate(dateStr);
-            if (!parsed || isNaN(parsed.getTime())) return;
-
-            const year = parsed.getFullYear();
-            const month = parsed.getMonth();
-            const cat = d.categoria;
-
-            // Monthly aggregation
-            if (!monthlyByYear[year]) monthlyByYear[year] = {};
-            if (!monthlyByYear[year][month]) monthlyByYear[year][month] = { receita: 0, pedidos: new Set() };
-            monthlyByYear[year][month].receita += d.receitaProduto || 0;
-            if (d.pedido) monthlyByYear[year][month].pedidos.add(d.pedido);
-
-            // Category by year
-            if (cat && cat.trim() !== '') {
-                if (!categoryByYear[year]) categoryByYear[year] = {};
-                categoryByYear[year][cat] = (categoryByYear[year][cat] || 0) + (d.receitaProduto || 0);
-            }
-        });
-
-        // Build monthly comparison data for chart
-        const monthlyComparison = monthNames.map((name, idx) => ({
-            month: name,
-            currentYear: monthlyByYear[currentYear]?.[idx]?.receita || 0,
-            previousYear: monthlyByYear[previousYear]?.[idx]?.receita || 0,
-        }));
-
-        // Calculate YoY totals
-        const currentYearReceita = Object.values(monthlyByYear[currentYear] || {}).reduce((sum, m) => sum + m.receita, 0);
-        const previousYearReceita = Object.values(monthlyByYear[previousYear] || {}).reduce((sum, m) => sum + m.receita, 0);
-        const currentYearPedidos = Object.values(monthlyByYear[currentYear] || {}).reduce((sum, m) => sum + m.pedidos.size, 0);
-        const previousYearPedidos = Object.values(monthlyByYear[previousYear] || {}).reduce((sum, m) => sum + m.pedidos.size, 0);
-
-        const receitaYoYPercent = previousYearReceita > 0 ? ((currentYearReceita - previousYearReceita) / previousYearReceita) * 100 : 0;
-        const pedidosYoYPercent = previousYearPedidos > 0 ? ((currentYearPedidos - previousYearPedidos) / previousYearPedidos) * 100 : 0;
-
-        const currentYearTicket = currentYearPedidos > 0 ? currentYearReceita / currentYearPedidos : 0;
-        const previousYearTicket = previousYearPedidos > 0 ? previousYearReceita / previousYearPedidos : 0;
-        const ticketYoYPercent = previousYearTicket > 0 ? ((currentYearTicket - previousYearTicket) / previousYearTicket) * 100 : 0;
-
-        // Top growing categories
-        const currentCats = categoryByYear[currentYear] || {};
-        const previousCats = categoryByYear[previousYear] || {};
-        const allCats = new Set([...Object.keys(currentCats), ...Object.keys(previousCats)]);
-        const categoryGrowth = Array.from(allCats).map(cat => {
-            const curr = currentCats[cat] || 0;
-            const prev = previousCats[cat] || 0;
-            const growth = prev > 0 ? ((curr - prev) / prev) * 100 : (curr > 0 ? 100 : 0);
-            return { name: cat, currentYear: curr, previousYear: prev, growth };
-        })
-            .filter(c => c.currentYear > 0 || c.previousYear > 0)
-            .sort((a, b) => b.growth - a.growth)
-            .slice(0, 6);
-
         return {
-            ...current,
-            variations,
-            // YoY Data
-            yoy: {
-                monthlyComparison,
-                receitaYoYPercent,
-                pedidosYoYPercent,
-                ticketYoYPercent,
-                currentYearReceita,
-                previousYearReceita,
-                currentYearPedidos,
-                previousYearPedidos,
-                categoryGrowth,
-                currentYear,
-                previousYear,
-            }
+            totalReceita: calcVar(catalogoData.totalReceita || 0, catalogoComparisonData.totalReceita || 0),
+            receitaGoogleAds: calcVar(catalogoData.receitaGoogleAds || 0, catalogoComparisonData.receitaGoogleAds || 0),
+            totalPedidos: calcVar(catalogoData.totalPedidos || 0, catalogoComparisonData.totalPedidos || 0),
+            ticketMedio: calcVar(catalogoData.ticketMedio || 0, catalogoComparisonData.ticketMedio || 0),
+            totalClientes: calcVar(catalogoData.totalClientes || 0, catalogoComparisonData.totalClientes || 0),
         };
-    }, [catalogoData, catalogoComparisonData, yoyRawData, filterStatus, filterAtribuicao]);
+    }, [catalogoData, catalogoComparisonData]);
 
-
-    // Use filtered data or default from API
-    const displayData = filteredData || {
+    // Use server-computed data directly
+    const displayData = {
         totalReceita: catalogoData?.totalReceita || 0,
         receitaGoogleAds: catalogoData?.receitaGoogleAds || 0,
         receitaParaROAS: catalogoData?.receitaParaROAS || 0,
@@ -303,15 +73,9 @@ export default function HomeExecutiva() {
         dailyRevenue: catalogoData?.dailyRevenue || [],
         dailyRevenueByAtribuicao: catalogoData?.dailyRevenueByAtribuicao || [],
         allAtribuicoes: catalogoData?.allAtribuicoes || [],
-        filteredRaw: [],
-        yoy: null,
-        variations: {
-            totalReceita: 0,
-            receitaGoogleAds: 0,
-            totalPedidos: 0,
-            ticketMedio: 0,
-            totalClientes: 0,
-        }
+        googleAdsOrdersCount: catalogoData?.googleAdsOrdersCount || 0,
+        variations,
+        yoy: yoyData || null,
     };
 
     // Receita Geral: Agora reflete os filtros de Status e Atribuição selecionados
@@ -720,14 +484,6 @@ export default function HomeExecutiva() {
                 </section>
             )}
 
-
-
-
-
-
-
-
-
             {/* Receita por Atribuição - Pie Chart + Line Chart */}
             {!loading && displayData.byAtribuicao.length > 0 && (
                 <section>
@@ -835,10 +591,10 @@ export default function HomeExecutiva() {
             )}
 
             {/* Geographic Map */}
-            {!loading && catalogoData && catalogoData.rawData && (
+            {!loading && catalogoData && (
                 <section>
                     <BrazilMap
-                        rawData={catalogoData.rawData}
+                        rawData={[]}
                         gadsData={gadsKpis}
                         sessionsData={ga4Kpis}
                     />
@@ -846,7 +602,7 @@ export default function HomeExecutiva() {
             )}
 
             {/* YoY Analysis Section - Temporarily hidden for data verification */}
-            {/* {!loading && filteredData?.yoy && (
+            {/* {!loading && displayData.yoy && (
                 <section className="space-y-6">
                    ... (YoY content)
                 </section>
