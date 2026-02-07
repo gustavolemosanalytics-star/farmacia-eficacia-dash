@@ -283,6 +283,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
                 campaignCount: data.campaigns.length,
             })).filter(t => t.spend > 0); // Only include types with spend
         })(),
+        rawData: data,
     };
 };
 
@@ -327,7 +328,17 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
     const totalSessions = filteredSessions.reduce((sum, entry) => sum + (entry.sessions || 0), 0);
 
     // Cross-analysis Session campaign vs Google Ads Campaign
-    const campaignStats: Record<string, { campaign: string; sessions: number; engagementRate: number; cost: number; clicks: number; conv: number }> = {};
+    const campaignStats: Record<string, {
+        campaign: string;
+        sessions: number;
+        engagementRate: number;
+        cost: number;
+        clicks: number;
+        conv: number;
+        addToCarts: number;
+        checkouts: number;
+        purchases: number;
+    }> = {};
 
     // Aggregate Sessions (GA4) - Only for Google Ads Campaigns
     const excludeCamps = ['(not set)', 'direct', '(direct)', 'organic', '(organic)', 'cross-network', '(not provided)'];
@@ -342,11 +353,17 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
         if (!camp || excludeCamps.some(ex => lowerCamp.includes(ex))) return;
 
         if (!campaignStats[camp]) {
-            campaignStats[camp] = { campaign: camp, sessions: 0, engagementRate: 0, cost: 0, clicks: 0, conv: 0 };
+            campaignStats[camp] = {
+                campaign: camp, sessions: 0, engagementRate: 0, cost: 0, clicks: 0, conv: 0,
+                addToCarts: 0, checkouts: 0, purchases: 0
+            };
         }
         const totalEngaged = campaignStats[camp].sessions * campaignStats[camp].engagementRate + (s.sessions * (s.engagementRate || 0));
         campaignStats[camp].sessions += s.sessions;
         campaignStats[camp].engagementRate = campaignStats[camp].sessions > 0 ? totalEngaged / campaignStats[camp].sessions : 0;
+        campaignStats[camp].addToCarts += s.addToCarts || 0;
+        campaignStats[camp].checkouts += s.checkouts || 0;
+        campaignStats[camp].purchases += s.purchases || 0;
     });
 
     // Aggregate Ads Data (GAds)

@@ -64,6 +64,9 @@ export type GA4SessionsItem = {
     campaign: string;
     engagementRate: number;
     atribuicao?: string;
+    addToCarts: number;
+    checkouts: number;
+    purchases: number;
 };
 
 // --- DATA FETCHERS ---
@@ -161,6 +164,9 @@ export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Prom
         campaign: r.campaign_name || r.event_campaign || r.campanha || '',
         engagementRate: parseFloat((r.engagement_rate || r.taxa_de_engajamento || '0').toString().replace('%', '').replace(',', '.').trim()) / 100 || 0,
         atribuicao: (r.atribuicao || '').toString().trim(),
+        addToCarts: parseInt((r.add_to_carts || '0').toString().replace(/\./g, '').replace(',', '.')),
+        checkouts: parseInt((r.checkouts || '0').toString().replace(/\./g, '').replace(',', '.')),
+        purchases: parseInt((r.ecommerce_purchases || r.purchases || '0').toString().replace(/\./g, '').replace(',', '.')),
     }));
 }
 

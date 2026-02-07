@@ -58,19 +58,83 @@ export default function MidiaPagaPage() {
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
 
-        // Calculate which categories perform best with Google Ads
-        const categoryPerformance: { [cat: string]: { receita: number; pedidos: number } } = {};
-        googleAdsOrders.forEach((d: any) => {
-            const cat = d.categoria?.split(',')[0]?.trim() || 'Outros';
-            if (!categoryPerformance[cat]) categoryPerformance[cat] = { receita: 0, pedidos: 0 };
-            categoryPerformance[cat].receita += d.receitaProduto || 0;
-            categoryPerformance[cat].pedidos += 1;
+        // Improved Normalization Helpers
+        const normalizeCamp = (c: string) =>
+            (c || '').toLowerCase().trim()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/^\[pmax\]\s*/, '')
+                .replace(/^e_pmax_pla_/, '')
+                .replace(/pmax/g, '')
+                .replace(/[ \-_]/g, '');
+
+        const normalizeDate = (dStr: string) => {
+            if (!dStr) return '';
+            if (dStr.includes('/')) {
+                const parts = dStr.split('/');
+                if (parts.length === 3) {
+                    const day = parts[0].length === 1 ? '0' + parts[0] : parts[0];
+                    const month = parts[1].length === 1 ? '0' + parts[1] : parts[1];
+                    const year = parts[2];
+                    return `${year}-${month}-${day}`;
+                }
+            }
+            return (dStr || '').split(' ')[0];
+        };
+
+        // Granular Category performance matching bd_mag.camp with google_ads.campaign on specific dates
+        const spendByCampDay: { [key: string]: number } = {};
+        if (gadsKpis.rawData) {
+            gadsKpis.rawData.forEach((g: any) => {
+                const day = normalizeDate(g.day);
+                const camp = normalizeCamp(g.campaign);
+                if (day && camp) {
+                    const key = `${day}_${camp}`;
+                    spendByCampDay[key] = (spendByCampDay[key] || 0) + (g.cost || 0);
+                }
+            });
+        }
+
+        const revenueByCampDayInMag: { [key: string]: number } = {};
+        googleAdsOrders.forEach((o: any) => {
+            const day = normalizeDate(o.data);
+            const camp = normalizeCamp(o.campanha);
+            if (day && camp) {
+                const key = `${day}_${camp}`;
+                revenueByCampDayInMag[key] = (revenueByCampDayInMag[key] || 0) + (o.receitaProduto || 0);
+            }
         });
 
-        const topCategoriesGads = Object.entries(categoryPerformance)
-            .map(([name, data]) => ({ name: name.length > 20 ? name.substring(0, 20) + '...' : name, ...data }))
+        const categoryStats: { [cat: string]: { receita: number; pedidos: number; investimento: number } } = {};
+        googleAdsOrders.forEach((o: any) => {
+            const cat = o.categoria?.split(',')[0]?.trim() || 'Outros';
+            const day = normalizeDate(o.data);
+            const camp = normalizeCamp(o.campanha);
+            const key = `${day}_${camp}`;
+
+            if (!categoryStats[cat]) categoryStats[cat] = { receita: 0, pedidos: 0, investimento: 0 };
+
+            const orderRevenue = o.receitaProduto || 0;
+            categoryStats[cat].receita += orderRevenue;
+            categoryStats[cat].pedidos += 1;
+
+            const campDayRevenue = revenueByCampDayInMag[key] || 0;
+            const campDaySpend = spendByCampDay[key] || 0;
+
+            // Attribute spend proportionally to revenue within the specific campaign and day
+            if (campDayRevenue > 0) {
+                const attributedSpend = (orderRevenue / campDayRevenue) * campDaySpend;
+                categoryStats[cat].investimento += attributedSpend;
+            }
+        });
+
+        const topCategoriesGads = Object.entries(categoryStats)
+            .map(([name, data]) => ({
+                name: name.length > 20 ? name.substring(0, 20) + '...' : name,
+                ...data,
+                roas: data.investimento > 0 ? data.receita / data.investimento : 0
+            }))
             .sort((a, b) => b.receita - a.receita)
-            .slice(0, 6);
+            .slice(0, 10); // Show top 10 as requested in context of rankings
 
         // Revenue per Campaign (Actual from Magento)
         const revenueByCampaign: { [name: string]: number } = {};
@@ -459,55 +523,43 @@ export default function MidiaPagaPage() {
                         </CardHeader>
                         <CardContent>
                             {(() => {
-                                // Re-calculate extensive ROAS for categories specifically for this view
-                                // analytics.topCategoriesGads already has revenue and orders.
-                                // We need to estimate investment per category to get ROAS.
-
                                 const totalRevenue = analytics.receitaGoogleAds || 1;
-                                const totalSpend = gadsKpis?.spend || 1;
 
-                                // Enriched with share and estimated spend
-                                const enrichedCats = analytics.topCategoriesGads.map((cat: any) => {
-                                    const share = cat.receita / totalRevenue;
-                                    const estimatedSpend = totalSpend * share;
-                                    const roas = estimatedSpend > 0 ? cat.receita / estimatedSpend : 0;
-                                    return {
-                                        ...cat,
-                                        share: share * 100,
-                                        estimatedSpend,
-                                        roas
-                                    };
-                                });
+                                // Enriched with share for table display
+                                const enrichedCats = analytics.topCategoriesGads.map((cat: any) => ({
+                                    ...cat,
+                                    share: (cat.receita / totalRevenue) * 100
+                                }));
 
                                 return (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
                                             <thead>
-                                                <tr className="border-b border-border">
-                                                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Categoria</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita (GAds)</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">% Share</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Invest. Est.</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">ROAS Est.</th>
+                                                <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                    <th className="text-left py-3 px-2 font-bold">Categoria</th>
+                                                    <th className="text-right py-3 px-2 font-bold">Receita (GAds)</th>
+                                                    <th className="text-right py-3 px-2 font-bold">% Share</th>
+                                                    <th className="text-right py-3 px-2 font-bold">Invest. Est.</th>
+                                                    <th className="text-right py-3 px-2 font-bold">ROAS Est.</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {enrichedCats.map((cat: any, index: number) => (
-                                                    <tr key={index} className="border-b border-border/50 hover:bg-muted/50">
-                                                        <td className="py-3 px-2 font-medium">{cat.name}</td>
-                                                        <td className="text-right py-3 px-2 font-mono">
+                                                    <tr key={index} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
+                                                        <td className="py-3 px-2 font-semibold text-zinc-700 dark:text-zinc-300">{cat.name}</td>
+                                                        <td className="text-right py-3 px-2 font-mono font-medium">
                                                             R$ {cat.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                         </td>
-                                                        <td className="text-right py-3 px-2 text-muted-foreground">
+                                                        <td className="text-right py-3 px-2 text-muted-foreground text-xs">
                                                             {cat.share.toFixed(1)}%
                                                         </td>
-                                                        <td className="text-right py-3 px-2 font-mono text-muted-foreground">
-                                                            R$ {cat.estimatedSpend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        <td className="text-right py-3 px-2 font-mono text-muted-foreground text-xs">
+                                                            R$ {cat.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                         </td>
                                                         <td className="text-right py-3 px-2">
-                                                            <span className={`font-bold ${cat.roas >= 3 ? 'text-green-600' :
-                                                                cat.roas >= 2 ? 'text-yellow-600' :
-                                                                    'text-red-600'
+                                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${cat.roas >= 3 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                                                cat.roas >= 2 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                                                    'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
                                                                 }`}>
                                                                 {cat.roas.toFixed(2)}x
                                                             </span>
@@ -516,8 +568,8 @@ export default function MidiaPagaPage() {
                                                 ))}
                                             </tbody>
                                         </table>
-                                        <p className="text-xs text-muted-foreground mt-3">
-                                            * ROAS estimado baseado na atribuição proporcional de investimento por share de receita do Google Ads.
+                                        <p className="text-[10px] text-muted-foreground mt-4 italic">
+                                            * ROAS calculado via atribuição direta: cruzamento de Campanha e Data entre Magento (bd_mag) e Google Ads.
                                         </p>
                                     </div>
                                 );
@@ -992,7 +1044,9 @@ export default function MidiaPagaPage() {
                                         <tr>
                                             <th className="px-4 py-3">Campanha</th>
                                             <th className="px-4 py-3 text-right">Sessões (GA4)</th>
-                                            <th className="px-4 py-3 text-right">Engajamento %</th>
+                                            <th className="px-4 py-3 text-right">Add to Cart</th>
+                                            <th className="px-4 py-3 text-right">Checkouts</th>
+                                            <th className="px-4 py-3 text-right">Purchases</th>
                                             <th className="px-4 py-3 text-right">Investimento (Ads)</th>
                                             <th className="px-4 py-3 text-right">Cliques (Ads)</th>
                                             <th className="px-4 py-3 text-right">Custo/Sessão</th>
@@ -1000,35 +1054,36 @@ export default function MidiaPagaPage() {
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                         {ga4Kpis.campaignCrossAnalysis
-                                            .filter((row: any) => row.sessions > 0)
+                                            .filter((c: any) => c.sessions > 0)
                                             .slice(0, 15)
-                                            .map((row: any, i: number) => {
-                                                const costPerSession = row.sessions > 0 ? row.cost / row.sessions : 0;
-                                                return (
-                                                    <tr key={i} className="hover:bg-muted/30 transition-colors">
-                                                        <td className="px-4 py-3 font-medium text-foreground max-w-[250px] truncate" title={row.campaign}>
-                                                            {row.campaign}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right font-bold text-foreground">
-                                                            {row.sessions.toLocaleString()}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right">
-                                                            <Badge variant="outline" className={row.engagementRate > 0.6 ? "border-emerald-500 text-emerald-500" : ""}>
-                                                                {(row.engagementRate * 100).toFixed(1)}%
-                                                            </Badge>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right">
-                                                            {row.cost > 0 ? `R$ ${row.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right">
-                                                            {row.clicks > 0 ? row.clicks.toLocaleString() : '-'}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right font-medium">
-                                                            {costPerSession > 0 ? `R$ ${costPerSession.toFixed(2)}` : '-'}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
+                                            .map((c: any, i: number) => (
+                                                <tr key={i} className="hover:bg-muted/30 transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate" title={c.campaign}>
+                                                        {c.campaign}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-mono font-bold text-foreground">
+                                                        {c.sessions.toLocaleString('pt-BR')}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-mono">
+                                                        {c.addToCarts?.toLocaleString('pt-BR') || '0'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-mono">
+                                                        {c.checkouts?.toLocaleString('pt-BR') || '0'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-mono text-emerald-600 font-bold">
+                                                        {c.purchases?.toLocaleString('pt-BR') || '0'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-mono">
+                                                        {c.cost > 0 ? `R$ ${c.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-mono">
+                                                        {c.clicks?.toLocaleString('pt-BR') || '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-mono font-medium">
+                                                        {c.sessions > 0 ? `R$ ${(c.cost / c.sessions).toFixed(2)}` : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
                                     </tbody>
                                 </table>
                             </div>
