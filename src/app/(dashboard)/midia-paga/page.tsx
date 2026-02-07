@@ -1042,13 +1042,17 @@ export default function MidiaPagaPage() {
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={ga4Kpis.campaignCrossAnalysis.slice(0, 8)} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                                        <XAxis dataKey="campaign" stroke="var(--muted-foreground)" fontSize={10} tickFormatter={v => v.length > 15 ? v.substring(0, 15) + '...' : v} />
-                                        <YAxis yAxisId="left" stroke="var(--muted-foreground)" fontSize={11} name="Sessões" />
-                                        <YAxis yAxisId="right" orientation="right" stroke="var(--muted-foreground)" fontSize={11} name="Custo" tickFormatter={v => `R$${v}`} />
-                                        <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                                        <Legend />
-                                        <Bar yAxisId="left" dataKey="sessions" name="Sessões (GA4)" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                                        <Bar yAxisId="right" dataKey="cost" name="Investimento (GAds)" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                                        <XAxis dataKey="campaign" stroke="var(--muted-foreground)" fontSize={10} tickFormatter={v => v.length > 20 ? v.substring(0, 20) + '...' : v} />
+                                        <YAxis stroke="var(--muted-foreground)" fontSize={11} name="Quantidade" />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                            cursor={{ fill: 'transparent' }}
+                                        />
+                                        <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                        <Bar dataKey="sessions" name="Sessões" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="addToCarts" name="Add to Cart" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="checkouts" name="Checkouts" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="purchases" name="Purchases" fill="#10b981" radius={[4, 4, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
