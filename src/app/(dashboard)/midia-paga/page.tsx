@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import { CampaignRankingTable } from '@/components/tables/CampaignRankingTable';
+import { CampaignCrossAnalysisTable } from '@/components/tables/CampaignCrossAnalysisTable';
 import { IntelligentAnalysis } from '@/components/dashboard/IntelligentAnalysis';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
@@ -65,15 +66,16 @@ export default function MidiaPagaPage() {
                 .replace(/^\[pmax\]\s*/, '')
                 .replace(/^e_pmax_pla_/, '')
                 .replace(/pmax/g, '')
-                .replace(/[ \-_]/g, '');
+                .replace(/[ \-_.\.]/g, ''); // Remove spaces, hyphens, underscores, AND dots
 
         const normalizeDate = (dStr: string) => {
             if (!dStr) return '';
+            // Handle DD/MM/YYYY HH:MM:SS
             if (dStr.includes('/')) {
-                const parts = dStr.split('/');
+                const parts = dStr.split(' ')[0].split('/');
                 if (parts.length === 3) {
-                    const day = parts[0].length === 1 ? '0' + parts[0] : parts[0];
-                    const month = parts[1].length === 1 ? '0' + parts[1] : parts[1];
+                    const day = parts[0].padStart(2, '0');
+                    const month = parts[1].padStart(2, '0');
                     const year = parts[2];
                     return `${year}-${month}-${day}`;
                 }
@@ -1029,67 +1031,14 @@ export default function MidiaPagaPage() {
             {/* Cross-Analysis GA4 vs Google Ads */}
             {!loading && ga4Kpis?.campaignCrossAnalysis && ga4Kpis.campaignCrossAnalysis.length > 0 && (
                 <section className="pb-10">
-                    <Card className="border-border bg-card">
-                        <CardHeader className="flex flex-row items-center gap-2">
-                            <Zap className="h-5 w-5 text-indigo-500" />
-                            <div>
-                                <CardTitle className="text-sm font-medium text-foreground">Cruzamento GA4 vs Google Ads</CardTitle>
-                                <p className="text-xs text-muted-foreground">Análise de campanhas mapeando Sessões (GA4) vs Investimento (GAds)</p>
-                            </div>
+                    <CampaignCrossAnalysisTable data={ga4Kpis.campaignCrossAnalysis} />
+
+                    <Card className="border-border bg-card mt-6">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-medium text-foreground">Visualização de Funil por Campanha</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs text-muted-foreground">
-                                    <thead className="border-b border-border text-[10px] uppercase text-foreground/70">
-                                        <tr>
-                                            <th className="px-4 py-3">Campanha</th>
-                                            <th className="px-4 py-3 text-right">Sessões (GA4)</th>
-                                            <th className="px-4 py-3 text-right">Add to Cart</th>
-                                            <th className="px-4 py-3 text-right">Checkouts</th>
-                                            <th className="px-4 py-3 text-right">Purchases</th>
-                                            <th className="px-4 py-3 text-right">Investimento (Ads)</th>
-                                            <th className="px-4 py-3 text-right">Cliques (Ads)</th>
-                                            <th className="px-4 py-3 text-right">Custo/Sessão</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
-                                        {ga4Kpis.campaignCrossAnalysis
-                                            .filter((c: any) => c.sessions > 0)
-                                            .slice(0, 15)
-                                            .map((c: any, i: number) => (
-                                                <tr key={i} className="hover:bg-muted/30 transition-colors">
-                                                    <td className="px-4 py-3 font-medium text-foreground max-w-[200px] truncate" title={c.campaign}>
-                                                        {c.campaign}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-mono font-bold text-foreground">
-                                                        {c.sessions.toLocaleString('pt-BR')}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-mono">
-                                                        {c.addToCarts?.toLocaleString('pt-BR') || '0'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-mono">
-                                                        {c.checkouts?.toLocaleString('pt-BR') || '0'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-mono text-emerald-600 font-bold">
-                                                        {c.purchases?.toLocaleString('pt-BR') || '0'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-mono">
-                                                        {c.cost > 0 ? `R$ ${c.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-mono">
-                                                        {c.clicks?.toLocaleString('pt-BR') || '-'}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right font-mono font-medium">
-                                                        {c.sessions > 0 ? `R$ ${(c.cost / c.sessions).toFixed(2)}` : '-'}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Optional Cross Bar Chart */}
-                            <div className="mt-8 h-[300px] w-full">
+                            <div className="h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={ga4Kpis.campaignCrossAnalysis.slice(0, 8)} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />

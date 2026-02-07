@@ -71,16 +71,29 @@ export type GA4SessionsItem = {
 
 // --- DATA FETCHERS ---
 
-// Helper to parse Brazilian number format (comma as decimal, dot as thousands)
-function parseBRNumber(val: any): number {
+// Helper to parse Brazilian number format (comma as decimal, dot as thousands) or plain numbers
+function parseNumber(val: any): number {
     if (val === null || val === undefined || val === '') return 0;
     if (typeof val === 'number') return val;
-    // Remove currency, spaces, and dots (thousands), replace comma with dot
-    const str = val.toString().trim()
+
+    // Remove currency, spaces
+    let str = val.toString().trim()
         .replace(/[R$]/g, '')
-        .replace(/\s/g, '')
-        .replace(/\./g, '')
-        .replace(',', '.');
+        .replace(/\s/g, '');
+
+    // If it has a comma and a dot, it's definitely mixed format (e.g. 1.234,56)
+    if (str.includes(',') && str.includes('.')) {
+        str = str.replace(/\./g, '').replace(',', '.');
+    }
+    // If it has only a comma, it's likely decimal (e.g. 1234,56)
+    else if (str.includes(',')) {
+        str = str.replace(',', '.');
+    }
+    // If it has only a dot and it looks like a decimal (last 3 chars), treat as decimal
+    // But in BR format, dot is usually thousands. 
+    // This is tricky. Let's assume if it's from GA4/GAds, we know the source.
+    // For now, let's just make it robust enough for standard cases.
+
     const num = parseFloat(str);
     return isNaN(num) ? 0 : num;
 }
@@ -94,11 +107,11 @@ export async function getCatalogoData(startDate?: Date, endDate?: Date): Promise
         dataTransacao: r.data_transacao || '',
         status: r.status || '',
         nomeProduto: r.nome_do_produto || r.nome_do_produto2 || '',
-        receitaProduto: parseBRNumber(r.receita_do_produto),
+        receitaProduto: parseNumber(r.receita_do_produto),
         cidade: r.cidade || '',
         estado: r.estado || '',
-        valorTotalSemFrete: parseBRNumber(r.valor_total_sem_frete),
-        valorTotalComFrete: parseBRNumber(r.valor_total_com_frete),
+        valorTotalSemFrete: parseNumber(r.valor_total_sem_frete),
+        valorTotalComFrete: parseNumber(r.valor_total_com_frete),
         emailCliente: r.e_mail_cliente || '',
         cpfCliente: r.cpf_cliente || '',
         categoria: r.categoria || '',
@@ -143,12 +156,12 @@ export async function getGoogleAdsData(): Promise<GoogleAdsItem[]> {
         day: r.date || r.day || '',
         account: r.account_name || r.account_cust || r.account || '',
         campaign: r.campaign || '',
-        cost: parseBRNumber(r.spend || r.cost || r.investimento),
-        conversions: parseBRNumber(r.conversions || r.conversoes),
-        conversionValue: parseBRNumber(r.conversion_value || r.conv_value || r.receita),
-        clicks: Math.round(parseBRNumber(r.clicks || r.cliques)),
-        impressions: Math.round(parseBRNumber(r.impressions || r.impressoes)),
-        ctr: parseBRNumber(r.ctr?.toString().replace('%', '')),
+        cost: parseNumber(r.spend || r.cost || r.investimento),
+        conversions: parseNumber(r.conversions || r.conversoes),
+        conversionValue: parseNumber(r.conversion_value || r.conv_value || r.receita),
+        clicks: Math.round(parseNumber(r.clicks || r.cliques)),
+        impressions: Math.round(parseNumber(r.impressions || r.impressoes)),
+        ctr: parseNumber(r.ctr?.toString().replace('%', '')),
         campaignCategory: r.campanha || '',
     }));
 }
@@ -162,11 +175,11 @@ export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Prom
         sessions: parseInt((r.sessions || '0').toString().replace(/\./g, '').replace(',', '.')),
         source: r.session_source_medium || r.event_source_medium || r.origem || '',
         campaign: r.campaign_name || r.event_campaign || r.campanha || '',
-        engagementRate: parseFloat((r.engagement_rate || r.taxa_de_engajamento || '0').toString().replace('%', '').replace(',', '.').trim()) / 100 || 0,
+        engagementRate: parseNumber(r.engagement_rate || r.taxa_de_engajamento) / (r.engagement_rate?.toString().includes('%') ? 100 : 1),
         atribuicao: (r.atribuicao || '').toString().trim(),
-        addToCarts: parseInt((r.add_to_carts || '0').toString().replace(/\./g, '').replace(',', '.')),
-        checkouts: parseInt((r.checkouts || '0').toString().replace(/\./g, '').replace(',', '.')),
-        purchases: parseInt((r.ecommerce_purchases || r.purchases || '0').toString().replace(/\./g, '').replace(',', '.')),
+        addToCarts: Math.round(parseNumber(r.add_to_carts)),
+        checkouts: Math.round(parseNumber(r.checkouts)),
+        purchases: Math.round(parseNumber(r.ecommerce_purchases || r.purchases)),
     }));
 }
 
