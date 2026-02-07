@@ -8,8 +8,8 @@ import Redis from 'ioredis';
 // ===========================================
 
 const memoryCache = new NodeCache({
-    stdTTL: 60,
-    checkperiod: 30,
+    stdTTL: 600,
+    checkperiod: 120,
     useClones: false
 });
 

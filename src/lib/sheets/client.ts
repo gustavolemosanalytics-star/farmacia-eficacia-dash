@@ -10,10 +10,6 @@ import {
     getGA4SessionsData,
     getTVSalesData,
     getMetasData,
-    type CatalogoItem,
-    type GA4Item,
-    type GoogleAdsItem,
-    type GA4SessionsItem,
 } from '@/lib/data/postgres';
 
 // ==========================================
@@ -21,21 +17,21 @@ import {
 // ==========================================
 
 // Fetch Google Ads data
-export const fetchGoogleAdsData = async () => {
+export const fetchGoogleAdsData = async (startDate?: Date, endDate?: Date) => {
     console.log('[Data] Fetching Google Ads data from PostgreSQL');
-    return await getGoogleAdsData();
+    return await getGoogleAdsData(startDate, endDate);
 };
 
 // Fetch GA4 data
-export const fetchGA4Data = async () => {
+export const fetchGA4Data = async (startDate?: Date, endDate?: Date) => {
     console.log('[Data] Fetching GA4 data from PostgreSQL');
-    return await getGA4Data();
+    return await getGA4Data(startDate, endDate);
 };
 
 // Fetch GA4 Sessions data
-export const fetchGA4SessionsData = async () => {
+export const fetchGA4SessionsData = async (startDate?: Date, endDate?: Date) => {
     console.log('[Data] Fetching GA4 Sessions data from PostgreSQL');
-    return await getGA4SessionsData();
+    return await getGA4SessionsData(startDate, endDate);
 };
 
 // Fetch TV Sales data
@@ -80,18 +76,7 @@ const parseDate = (dateStr: string): Date | null => {
 
 // Aggregate Google Ads KPIs
 export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) => {
-    let data = await fetchGoogleAdsData();
-
-    if (startDate && endDate) {
-        const start = new Date(startDate); start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate); end.setHours(23, 59, 59, 999);
-
-        data = data.filter(entry => {
-            const entryDate = parseDate(entry.day);
-            if (!entryDate) return true;
-            return entryDate >= start && entryDate <= end;
-        });
-    }
+    const data = await fetchGoogleAdsData(startDate, endDate);
 
     // Excluindo campanhas "Lead" e "Visita" para custo do ROAS conforme solicitado
     const isLeadsCampaign = (campaign: string) => (campaign || '').toLowerCase().includes('lead');
@@ -289,38 +274,11 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
 
 // Aggregate GA4 KPIs
 export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
-    const [transactionData, sessionData, gadsData] = await Promise.all([
-        fetchGA4Data(),
-        fetchGA4SessionsData(),
-        fetchGoogleAdsData()
+    const [filteredTransactions, filteredSessions, filteredGads] = await Promise.all([
+        fetchGA4Data(startDate, endDate),
+        fetchGA4SessionsData(startDate, endDate),
+        fetchGoogleAdsData(startDate, endDate)
     ]);
-
-    let filteredTransactions = transactionData;
-    let filteredSessions = sessionData;
-    let filteredGads = gadsData;
-
-    if (startDate && endDate) {
-        const start = new Date(startDate); start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate); end.setHours(23, 59, 59, 999);
-
-        filteredTransactions = transactionData.filter(entry => {
-            const entryDate = parseDate(entry.transactionDate || entry.data);
-            if (!entryDate) return true;
-            return entryDate >= start && entryDate <= end;
-        });
-
-        filteredSessions = sessionData.filter(entry => {
-            const entryDate = parseDate(entry.date);
-            if (!entryDate) return true;
-            return entryDate >= start && entryDate <= end;
-        });
-
-        filteredGads = gadsData.filter(entry => {
-            const entryDate = parseDate(entry.day);
-            if (!entryDate) return true;
-            return entryDate >= start && entryDate <= end;
-        });
-    }
 
     const totalRevenue = filteredTransactions.reduce((sum, entry) => sum + (entry.purchaseRevenue || 0), 0);
     const totalTransactions = filteredTransactions.length;
@@ -451,19 +409,7 @@ export const fetchMagData = async () => {
 
 // Aggregate Catalogo/Magento KPIs
 export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) => {
-    let data = await fetchMagData();
-
-    // Filter by Date Range if provided
-    if (startDate && endDate) {
-        const start = new Date(startDate); start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate); end.setHours(23, 59, 59, 999);
-
-        data = data.filter(order => {
-            const entryDate = parseDate(order.data);
-            if (!entryDate) return false;
-            return entryDate >= start && entryDate <= end;
-        });
-    }
+    const data = await getCatalogoData(startDate, endDate);
 
     // Filter only completed orders (status validation)
     const completedOrders = data.filter(d =>
@@ -703,28 +649,16 @@ export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date) =>
 
 // Aggregate CRM KPIs
 export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
-    const data = await fetchMagData();
+    const data = await getCatalogoData(startDate, endDate);
 
     // Filter only completed orders
-    let completedOrders = data.filter(d =>
+    const completedOrders = data.filter(d =>
         d.status?.toLowerCase().includes('complete') ||
         d.status?.toLowerCase().includes('completo') ||
         d.status?.toLowerCase().includes('pago') ||
         d.status?.toLowerCase().includes('enviado') ||
         !d.status
     );
-
-    // Filter by Date Range if provided
-    if (startDate && endDate) {
-        const start = new Date(startDate); start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate); end.setHours(23, 59, 59, 999);
-
-        completedOrders = completedOrders.filter(order => {
-            const entryDate = parseDate(order.data);
-            if (!entryDate) return false;
-            return entryDate >= start && entryDate <= end;
-        });
-    }
 
 
     // Unique customers

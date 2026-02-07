@@ -111,6 +111,42 @@ function getAttributionData() {
     return records;
 }
 
+async function computeGA4Attribution() {
+    const client = await pool.connect();
+    try {
+        console.log('Computing atribuicao for ga4...');
+
+        // Add column if it doesn't already exist (sheet may no longer include it)
+        await client.query(`ALTER TABLE ga4 ADD COLUMN IF NOT EXISTS atribuicao TEXT`);
+
+        // Replicate the Google Sheets attribution formula based on session_source_medium
+        await client.query(`
+            UPDATE ga4 SET atribuicao =
+              CASE
+                WHEN LOWER(session_source_medium) LIKE '%google%' AND LOWER(session_source_medium) LIKE '%cpc%' THEN 'Google_Ads'
+                WHEN LOWER(session_source_medium) LIKE '%google%' AND LOWER(session_source_medium) LIKE '%organic%' THEN 'Google_Organic'
+                WHEN LOWER(session_source_medium) LIKE '%youtube%' THEN 'Google_Ads'
+                WHEN LOWER(session_source_medium) ~* 'chatgpt|gemini|scholar\\.google|docs\\.google|mail\\.google|tagassistant|googleads\\.g\\.doubleclick' THEN 'Google_Organic'
+                WHEN LOWER(session_source_medium) ~* 'facebook|instagram|meta|\\yff\\y|\\yig\\y|lm\\.facebook|m\\.facebook|l\\.facebook|l\\.instagram' THEN 'Meta Organico'
+                WHEN LOWER(session_source_medium) LIKE '%cpc%' AND LOWER(session_source_medium) LIKE '%facebook%' THEN 'Meta Ads'
+                WHEN LOWER(session_source_medium) LIKE '%cpc%' AND LOWER(session_source_medium) LIKE '%meta%' THEN 'Meta Ads'
+                WHEN LOWER(session_source_medium) LIKE '%blue%' THEN 'Blue'
+                WHEN LOWER(session_source_medium) ~* 'activecampaign|email|yotpo|rdstation|edrone|btg360|allinmail|marketing|newsletter|3dactiv' THEN 'E-mail MKT'
+                WHEN LOWER(session_source_medium) ~* 'vendedor|octadesk|11tvreceptivo|12tvsuporte|35posvenda|admin\\.pedbot|aline|atendimento|recovery|vended' THEN 'Vendedor'
+                WHEN session_source_medium = '(direct) / (none)' THEN 'Direto'
+                ELSE 'Outros'
+              END
+            WHERE session_source_medium IS NOT NULL AND session_source_medium != ''
+        `);
+
+        console.log('✅ atribuicao computed for ga4');
+    } catch (e) {
+        console.error('Error computing ga4 attribution:', e);
+    } finally {
+        client.release();
+    }
+}
+
 async function main() {
     try {
         console.log('🚀 Starting Sheets -> Postgres Sync');
@@ -173,10 +209,30 @@ async function main() {
 
         await syncTable('bd_mag', processedMag);
         await syncTable('ga4', processedGA4);
+        await computeGA4Attribution();
         await syncTable('atribuicao', attributionData);
         await syncTable('google_ads', googleAdsObjects);
         await syncTable('tv_sales', tvObjects);
         await syncTable('metas', metasObjects);
+
+        // 4. Create indexes for query performance
+        console.log('📊 Creating indexes...');
+        const idxClient = await pool.connect();
+        try {
+            await idxClient.query(`CREATE INDEX IF NOT EXISTS idx_bd_mag_data ON bd_mag (data)`);
+            await idxClient.query(`CREATE INDEX IF NOT EXISTS idx_bd_mag_status ON bd_mag (status)`);
+            await idxClient.query(`CREATE INDEX IF NOT EXISTS idx_bd_mag_atribuicao ON bd_mag (atribuicao)`);
+            await idxClient.query(`CREATE INDEX IF NOT EXISTS idx_ga4_date ON ga4 (date)`);
+            await idxClient.query(`CREATE INDEX IF NOT EXISTS idx_ga4_atribuicao ON ga4 (atribuicao)`);
+            await idxClient.query(`CREATE INDEX IF NOT EXISTS idx_ga4_session_source ON ga4 (session_source_medium)`);
+            await idxClient.query(`CREATE INDEX IF NOT EXISTS idx_google_ads_date ON google_ads (date)`);
+            await idxClient.query(`CREATE INDEX IF NOT EXISTS idx_google_ads_campaign ON google_ads (campaign)`);
+            console.log('✅ Indexes created');
+        } catch (e) {
+            console.error('Warning: Index creation error (non-fatal):', e);
+        } finally {
+            idxClient.release();
+        }
 
         console.log('🎉 DB Sync Done!');
 

@@ -89,17 +89,38 @@ function parseNumber(val: any): number {
     else if (str.includes(',')) {
         str = str.replace(',', '.');
     }
-    // If it has only a dot and it looks like a decimal (last 3 chars), treat as decimal
-    // But in BR format, dot is usually thousands. 
-    // This is tricky. Let's assume if it's from GA4/GAds, we know the source.
-    // For now, let's just make it robust enough for standard cases.
 
     const num = parseFloat(str);
     return isNaN(num) ? 0 : num;
 }
 
+// Helper to build date WHERE clause for TEXT date columns
+// Supports both DD/MM/YYYY and YYYY-MM-DD formats
+function buildDateFilter(column: string, startDate?: Date, endDate?: Date): { clause: string; params: any[] } {
+    if (!startDate || !endDate) return { clause: '', params: [] };
+
+    const startStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    const endStr = endDate.toISOString().split('T')[0];
+
+    // Handle both date formats in a single query using CASE
+    const clause = ` AND (
+        CASE
+            WHEN ${column} ~ '^\\d{4}-\\d{2}-\\d{2}' THEN SUBSTRING(${column} FROM 1 FOR 10)
+            WHEN ${column} ~ '^\\d{2}/\\d{2}/\\d{4}' THEN
+                SUBSTRING(${column} FROM 7 FOR 4) || '-' || SUBSTRING(${column} FROM 4 FOR 2) || '-' || SUBSTRING(${column} FROM 1 FOR 2)
+            ELSE NULL
+        END
+    ) BETWEEN $1 AND $2`;
+
+    return { clause, params: [startStr, endStr] };
+}
+
 export async function getCatalogoData(startDate?: Date, endDate?: Date): Promise<CatalogoItem[]> {
-    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM bd_mag`);
+    const dateFilter = buildDateFilter('data', startDate, endDate);
+
+    const query = `SELECT * FROM bd_mag WHERE 1=1${dateFilter.clause}`;
+
+    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...dateFilter.params);
 
     return rows.map(r => ({
         mpn: r.mpn || '',
@@ -133,7 +154,11 @@ export async function getCatalogoData(startDate?: Date, endDate?: Date): Promise
 }
 
 export async function getGA4Data(startDate?: Date, endDate?: Date): Promise<GA4Item[]> {
-    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM ga4`);
+    const dateFilter = buildDateFilter('date', startDate, endDate);
+
+    const query = `SELECT * FROM ga4 WHERE 1=1${dateFilter.clause}`;
+
+    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...dateFilter.params);
 
     return rows.map(r => ({
         transactionId: r.transactionid || r.transaction_id || r.transaction || '',
@@ -149,8 +174,12 @@ export async function getGA4Data(startDate?: Date, endDate?: Date): Promise<GA4I
     }));
 }
 
-export async function getGoogleAdsData(): Promise<GoogleAdsItem[]> {
-    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM google_ads`);
+export async function getGoogleAdsData(startDate?: Date, endDate?: Date): Promise<GoogleAdsItem[]> {
+    const dateFilter = buildDateFilter('date', startDate, endDate);
+
+    const query = `SELECT * FROM google_ads WHERE 1=1${dateFilter.clause}`;
+
+    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...dateFilter.params);
 
     return rows.map(r => ({
         day: r.date || r.day || '',
@@ -167,8 +196,11 @@ export async function getGoogleAdsData(): Promise<GoogleAdsItem[]> {
 }
 
 export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Promise<GA4SessionsItem[]> {
-    // Reading sessions from the 'ga4' table as requested (user says sessions are in ga4 tab)
-    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM ga4`);
+    const dateFilter = buildDateFilter('date', startDate, endDate);
+
+    const query = `SELECT * FROM ga4 WHERE 1=1${dateFilter.clause}`;
+
+    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...dateFilter.params);
 
     return rows.map(r => ({
         date: r.date || '',
