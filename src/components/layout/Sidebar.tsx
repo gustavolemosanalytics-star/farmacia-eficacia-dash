@@ -31,7 +31,6 @@ import {
     Sun,
     Moon,
     Globe,
-    FolderKanban,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -51,7 +50,6 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     TrendingUp,
     ShoppingCart,
     Globe,
-    FolderKanban,
 };
 
 const gruposOrdem = ['ceo', 'marketing', 'crm', 'dados', 'operacao'] as const;
