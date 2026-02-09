@@ -5,7 +5,7 @@ import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, di
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker, DateRange } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
-import 'react-day-picker/dist/style.css';
+import 'react-day-picker/src/style.css';
 
 interface DateRangePickerProps {
     date: DateRange | undefined;
