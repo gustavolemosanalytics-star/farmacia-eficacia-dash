@@ -273,9 +273,8 @@ export default function EcommercePage() {
         { name: 'Pedidos', value: funnelMetrics.pedidos, fill: FUNNEL_COLORS[4] },
     ];
 
-    // ROAS
-    const roas = analytics?.receitaGoogleAds && gadsKpis?.spend > 0
-        ? analytics.receitaGoogleAds / gadsKpis.spend : 0;
+    // ROAS (always using data from google_ads table as requested)
+    const roas = gadsKpis?.roas || 0;
 
     // Conversion rates
     const rates = {
@@ -456,7 +455,7 @@ export default function EcommercePage() {
                     <Card className="border-border bg-card">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <Target className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium">Funil de Conversão com Gaps</CardTitle>
+                            <CardTitle className="text-sm font-medium">Funil de Conversão</CardTitle>
                         </CardHeader>
                         <CardContent>
                             {(() => {
@@ -524,10 +523,16 @@ export default function EcommercePage() {
                             <CardTitle className="text-sm font-medium">Taxas de Conversão</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg text-center">
                                     <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Taxa Conv. Ads</p>
                                     <p className="text-2xl font-bold">{rates.conversionRate}%</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg text-center">
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">% Sessões → Pedido</p>
+                                    <p className="text-2xl font-bold text-blue-600">
+                                        {ga4Kpis?.totalSessions > 0 ? ((analytics?.totalPedidos || 0) / ga4Kpis.totalSessions * 100).toFixed(2) : '0'}%
+                                    </p>
                                 </div>
                                 <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-lg text-center">
                                     <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">ROAS (Pago)</p>
@@ -661,7 +666,7 @@ export default function EcommercePage() {
                     <Card className="border-border bg-card">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <ShoppingCart className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium">Top 10 Produtos + ROAS</CardTitle>
+                            <CardTitle className="text-sm font-medium">Top 10 Produtos por Receita</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="max-h-[350px] overflow-y-auto">
@@ -670,26 +675,19 @@ export default function EcommercePage() {
                                         <tr className="border-b border-border">
                                             <th className="text-left py-2 px-2 font-medium text-muted-foreground">Produto</th>
                                             <th className="text-right py-2 px-2 font-medium text-muted-foreground">Receita</th>
-                                            <th className="text-right py-2 px-2 font-medium text-muted-foreground">Investimento</th>
-                                            <th className="text-right py-2 px-2 font-medium text-muted-foreground">ROAS</th>
+                                            <th className="text-right py-2 px-2 font-medium text-muted-foreground">Qtd.</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {analytics.topProducts.map((prod, i) => {
-                                            const productRoas = prod.roas;
-                                            const investEstimado = prod.investimento;
-
                                             return (
                                                 <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50">
-                                                    <td className="py-2 px-2 text-xs max-w-[150px] truncate" title={prod.fullName}>{prod.name}</td>
+                                                    <td className="py-2 px-2 text-xs max-w-[200px] truncate" title={prod.fullName}>{prod.name}</td>
                                                     <td className="py-2 px-2 text-right text-xs font-medium text-emerald-600">
                                                         R$ {prod.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
                                                     </td>
                                                     <td className="py-2 px-2 text-right text-xs text-muted-foreground font-mono">
-                                                        R$ {investEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-                                                    </td>
-                                                    <td className={`py-2 px-2 text-right text-xs font-bold ${productRoas >= 3 ? 'text-green-600' : productRoas >= 1.5 ? 'text-yellow-600' : 'text-red-500'}`}>
-                                                        {productRoas.toFixed(1)}x
+                                                        {prod.quantidade} un.
                                                     </td>
                                                 </tr>
                                             );
@@ -745,7 +743,7 @@ export default function EcommercePage() {
                     <Card className="border-border bg-card">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <MapPin className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium">Receita por Estado</CardTitle>
+                            <CardTitle className="text-sm font-medium">Distribuição Geográfica</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <ResponsiveContainer width="100%" height={280}>

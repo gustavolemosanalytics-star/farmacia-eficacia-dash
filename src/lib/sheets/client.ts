@@ -124,6 +124,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     const leadsConversions = leadsData.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
     const ecommerceConversions = ecommerceData.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
     const leadsClicks = leadsData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
+    const leadsImpressions = leadsData.reduce((sum, entry) => sum + (entry.impressions || 0), 0);
     const ecommerceClicks = ecommerceData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
 
     // Conversion Value for ROAS calculation (from google_ads table)
@@ -208,7 +209,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         spend_formatted: `R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         conversions: totalConversions,
         conversionValue: totalConversionValue,  // Campaign revenue from google_ads
-        roas,  // ROAS calculated from conversion_value / cost
+        roas,  // ROAS calculated from conversion_value / cost from google_ads table
         clicks: totalEcommerceClicks,
         impressions: totalEcommerceImpressions,
         ctr: avgCTR,
@@ -224,6 +225,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
                 conversions: leadsConversions,
                 conversionsLabel: 'Leads', // Label para exibição
                 clicks: leadsClicks,
+                impressions: leadsImpressions,
                 meta: LEADS_META,
                 percentMeta: LEADS_META > 0 ? (leadsSpend / LEADS_META) * 100 : 0,
             },

@@ -1,7 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 import {
     Lightbulb,
     TrendingUp,
@@ -33,6 +40,8 @@ interface ExecutiveInsightsProps {
 }
 
 export function ExecutiveInsights({ catalogoData, gadsKpis, ga4Kpis }: ExecutiveInsightsProps) {
+    const [selectedInsight, setSelectedInsight] = useState<InsightData | null>(null);
+
     const insights = useMemo(() => {
         const generatedInsights: InsightData[] = [];
 
@@ -111,9 +120,7 @@ export function ExecutiveInsights({ catalogoData, gadsKpis, ga4Kpis }: Executive
         // ========================================
         // 3. ANÁLISE DE ROAS E EFICIÊNCIA
         // ========================================
-        const investimentoAds = gadsKpis?.spend || 0;
-        const receitaMidiaPaga = catalogoData?.receitaGoogleAds || 0;
-        const roas = investimentoAds > 0 ? receitaMidiaPaga / investimentoAds : 0;
+        const roas = gadsKpis?.roas || 0;
 
         // ========================================
         // 4. ANÁLISE DE TENDÊNCIAS (Últimos 7 dias vs anterior)
@@ -341,10 +348,11 @@ export function ExecutiveInsights({ catalogoData, gadsKpis, ga4Kpis }: Executive
                         <div
                             key={idx}
                             className={cn(
-                                "p-4 rounded-xl border transition-all hover:scale-[1.01]",
+                                "p-4 rounded-xl border transition-all hover:scale-[1.01] cursor-pointer",
                                 styles.bg,
                                 styles.border
                             )}
+                            onClick={() => setSelectedInsight(insight)}
                         >
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex items-start gap-3 flex-1">
@@ -378,6 +386,53 @@ export function ExecutiveInsights({ catalogoData, gadsKpis, ga4Kpis }: Executive
                     );
                 })}
             </CardContent>
+
+            <Dialog open={!!selectedInsight} onOpenChange={(open) => !open && setSelectedInsight(null)}>
+                {selectedInsight && (
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className={cn("p-2 rounded-lg", getTypeStyles(selectedInsight.type, selectedInsight.priority).bg, getTypeStyles(selectedInsight.type, selectedInsight.priority).icon)}>
+                                    {getIcon(selectedInsight.type)}
+                                </div>
+                                <DialogTitle>{selectedInsight.title}</DialogTitle>
+                            </div>
+                            <DialogDescription className="text-base leading-relaxed pt-2">
+                                {selectedInsight.description}
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                            {selectedInsight.metric && (
+                                <div className="p-4 rounded-xl bg-muted/50 border border-border">
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Métrica Chave</p>
+                                    <p className={cn("text-2xl font-black", getTypeStyles(selectedInsight.type, selectedInsight.priority).icon)}>
+                                        {selectedInsight.metric}
+                                    </p>
+                                </div>
+                            )}
+                            {selectedInsight.impact && (
+                                <div className="p-4 rounded-xl bg-muted/50 border border-border">
+                                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Impacto/Referência</p>
+                                    <p className="text-lg font-bold text-foreground">
+                                        {selectedInsight.impact}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 p-4 rounded-lg border border-dashed border-primary/20 bg-primary/5">
+                            <h5 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                <Lightbulb className="h-4 w-4 text-primary" />
+                                Recomendação Executiva
+                            </h5>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                Com base nos dados analisados, recomendamos uma revisão imediata desta métrica para garantir que os objetivos de negócio sejam atingidos. Nossos modelos indicam que otimizações nesta área podem resultar em melhorias significativas na eficiência global da operação.
+                            </p>
+                        </div>
+                    </DialogContent>
+                )}
+            </Dialog>
         </Card>
     );
 }

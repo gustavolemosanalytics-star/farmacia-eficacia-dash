@@ -6,8 +6,15 @@ import {
     ArrowUpRight, ArrowDownRight, Trophy, ShoppingBag, Target, Share2, Lightbulb,
     TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Zap, Brain, Activity
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 
 interface IntelligentAnalysisProps {
     data: any[]; // Raw data from Magento
@@ -27,6 +34,8 @@ interface CausalInsight {
 }
 
 export function IntelligentAnalysis({ data, gadsKpis, ga4Kpis, comparisonGads, comparisonGA4 }: IntelligentAnalysisProps) {
+    const [selectedInsight, setSelectedInsight] = useState<CausalInsight | null>(null);
+
     const analysis = useMemo(() => {
         if (!data || data.length === 0) return null;
 
@@ -110,8 +119,8 @@ export function IntelligentAnalysis({ data, gadsKpis, ga4Kpis, comparisonGads, c
             d.origem?.toLowerCase().includes('google')
         );
 
-        const receitaGoogleAds = googleAdsOrders.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
-        const roas = receitaGoogleAds > 0 && gadsKpis.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
+        const roas = gadsKpis.roas || 0;
+        const receitaGoogleAds = gadsKpis.conversionValue || 0;
 
         // Get comparison metrics if available
         const hasComparison = comparisonGads && comparisonGA4;
@@ -376,13 +385,17 @@ export function IntelligentAnalysis({ data, gadsKpis, ga4Kpis, comparisonGads, c
                                     insight.type === 'warning' ? 'text-amber-500' : 'text-blue-500';
 
                             return (
-                                <Card key={i} className={`${bgColor} border`}>
+                                <Card
+                                    key={i}
+                                    className={`${bgColor} border cursor-pointer hover:scale-[1.02] transition-transform`}
+                                    onClick={() => setSelectedInsight(insight)}
+                                >
                                     <CardContent className="pt-4">
                                         <div className="flex items-start gap-3">
                                             <Icon className={`h-5 w-5 ${iconColor} flex-shrink-0 mt-0.5`} />
                                             <div className="flex-1">
                                                 <p className="font-medium text-sm">{insight.title}</p>
-                                                <p className="text-xs text-muted-foreground mt-1">{insight.description}</p>
+                                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{insight.description}</p>
 
                                                 {insight.metrics && insight.metrics.length > 0 && (
                                                     <div className="flex flex-wrap gap-3 mt-3">
@@ -390,14 +403,6 @@ export function IntelligentAnalysis({ data, gadsKpis, ga4Kpis, comparisonGads, c
                                                             <div key={idx} className="text-xs">
                                                                 <span className="text-muted-foreground">{metric.label}: </span>
                                                                 <span className="font-semibold">{metric.value}</span>
-                                                                {metric.variation !== undefined && (
-                                                                    <span className={cn(
-                                                                        "ml-1 text-[10px]",
-                                                                        metric.variation > 0 ? "text-green-500" : "text-red-500"
-                                                                    )}>
-                                                                        {metric.variation > 0 ? '↑' : '↓'}{Math.abs(metric.variation).toFixed(0)}%
-                                                                    </span>
-                                                                )}
                                                             </div>
                                                         ))}
                                                     </div>
@@ -411,6 +416,59 @@ export function IntelligentAnalysis({ data, gadsKpis, ga4Kpis, comparisonGads, c
                     </div>
                 </div>
             )}
+
+            <Dialog open={!!selectedInsight} onOpenChange={(open) => !open && setSelectedInsight(null)}>
+                {selectedInsight && (
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <div className="flex items-center gap-3 mb-2">
+                                {(() => {
+                                    const Icon = selectedInsight.icon;
+                                    const iconColor = selectedInsight.type === 'alert' ? 'text-red-500' :
+                                        selectedInsight.type === 'success' ? 'text-green-500' :
+                                            selectedInsight.type === 'warning' ? 'text-amber-500' : 'text-blue-500';
+                                    return <Icon className={`h-6 w-6 ${iconColor}`} />;
+                                })()}
+                                <DialogTitle>{selectedInsight.title}</DialogTitle>
+                            </div>
+                            <DialogDescription className="text-base leading-relaxed pt-2">
+                                {selectedInsight.description}
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {selectedInsight.metrics && selectedInsight.metrics.length > 0 && (
+                            <div className="mt-4 grid grid-cols-2 gap-4">
+                                {selectedInsight.metrics.map((metric, idx) => (
+                                    <div key={idx} className="p-3 rounded-lg bg-muted/50 border border-border">
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{metric.label}</p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-lg font-bold">{metric.value}</p>
+                                            {metric.variation !== undefined && (
+                                                <span className={cn(
+                                                    "text-xs font-bold",
+                                                    metric.variation > 0 ? "text-green-500" : "text-red-500"
+                                                )}>
+                                                    {metric.variation > 0 ? '↑' : '↓'}{Math.abs(metric.variation).toFixed(0)}%
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="mt-6 p-4 rounded-lg border border-dashed border-primary/20 bg-primary/5">
+                            <h5 className="text-sm font-bold flex items-center gap-2 mb-2">
+                                <Zap className="h-4 w-4 text-primary" />
+                                Ações Sugeridas
+                            </h5>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                Com base nos indicadores de {selectedInsight.title.toLowerCase()}, sugerimos monitorar a performance semanalmente e ajustar a segmentação de público se os desvios persistirem por mais de 72 horas.
+                            </p>
+                        </div>
+                    </DialogContent>
+                )}
+            </Dialog>
 
             {/* Top Performers Section */}
             <div className="space-y-4">

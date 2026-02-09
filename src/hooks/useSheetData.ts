@@ -191,7 +191,7 @@ export function useDashboardData(): DashboardData {
     let computed = null;
     if (gadsKpis && catalogoData) {
         const receitaGoogleAds = catalogoData.receitaGoogleAds || 0;
-        const roas = receitaGoogleAds > 0 && gadsKpis.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
+        const roas = gadsKpis.roas || 0;
 
         computed = {
             receitaGoogleAds,

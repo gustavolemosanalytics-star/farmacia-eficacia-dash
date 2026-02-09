@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 
-import { BrazilMap } from '@/components/charts/BrazilMap';
 import { CampaignRankingTable } from '@/components/tables/CampaignRankingTable';
 import { GrowthProjection } from '@/components/dashboard/GrowthProjection';
 import { ExecutiveInsights } from '@/components/dashboard/ExecutiveInsights';
@@ -33,11 +32,19 @@ export default function HomeExecutiva() {
         filterStatus || undefined,
         filterAtribuicao || undefined
     );
+
+    // Fetch unfiltered data for the goals compass (ignoring attribution filter)
+    const { data: catalogoDataUnfiltered, loading: loadingUnfiltered } = useCatalogoData(
+        undefined, undefined,
+        filterStatus || undefined,
+        undefined
+    );
+
     const { data: yoyData, loading: loadingYoY } = useCatalogoYoYData();
     const { kpis: gadsKpis, comparisonKpis: gadsComparisonKpis, loading: loadingGads } = useGoogleAdsKPIs();
     const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
 
-    const loading = loadingCatalogo || loadingGads || loadingYoY || loadingGA4;
+    const loading = loadingCatalogo || loadingGads || loadingYoY || loadingGA4 || loadingUnfiltered;
 
     // Filter options from API
     const filterOptions = catalogoData?.filterOptions || {
@@ -156,11 +163,7 @@ export default function HomeExecutiva() {
     // Calculate ROAS using:
     // - Custo: Campanhas que NÃO contêm "Lead" e NÃO contêm "Visita" (ecommerceSpend já é isso)
     // - Receita: BD Mag com Atribuição diferente de "Vendedor" e diferente de "Outros"
-    const ecommerceSpend = gadsKpis?.spend || 0; // spend já exclui Lead e Visita no backend
-    const receitaParaROASCalc = displayData.receitaParaROAS || 0;
-    const roas = receitaParaROASCalc > 0 && ecommerceSpend > 0
-        ? receitaParaROASCalc / ecommerceSpend
-        : 0;
+    const roas = gadsKpis?.roas || 0;
 
     // Filter KPIs to show only Receita Geral and Ticket Médio as requested
     const filteredKpis = kpis.filter(k => k.id === 'receita_geral' || k.id === 'ticket_medio');
@@ -214,10 +217,10 @@ export default function HomeExecutiva() {
             {!loading && gadsKpis && (
                 <section className="mb-6">
                     <Bussola
-                        currentRevenue={displayData.totalReceita || 0}
-                        currentImpressions={gadsKpis?.impressions || (gadsKpis?.clicks || 0) * 15}
-                        currentClicks={gadsKpis?.clicks || 0}
-                        currentOrders={displayData.totalPedidos || 0}
+                        currentRevenue={catalogoDataUnfiltered?.totalReceita || 0}
+                        currentImpressions={gadsKpis?.segmented?.leads?.impressions || 0}
+                        currentClicks={gadsKpis?.segmented?.leads?.clicks || 0}
+                        currentOrders={catalogoDataUnfiltered?.totalPedidos || 0}
                         targetRevenue={600000}
                         targetImpressions={2000000}
                         targetClicks={80000}
@@ -274,94 +277,7 @@ export default function HomeExecutiva() {
                 </section>
             )}
 
-            {/* Eficiência de Mídia (ROAS Real) */}
-            {!loading && displayData.byAtribuicao.length > 0 && gadsKpis && (
-                <section>
-                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                        Eficiência de Mídia por Canal (ROAS)
-                    </h2>
-                    <Card className="border-border bg-card">
-                        <CardContent className="pt-6">
-                            {(() => {
-                                const totalInvestimento = gadsKpis?.spend || 0;
 
-                                // Filter and map real data
-                                const channelMetrics = displayData.byAtribuicao.slice(0, 8).map((channel: any, idx: number) => {
-                                    // Identify Google Ads channel
-                                    const isGoogleAds = channel.name === 'Google_Ads';
-
-                                    // Attribution: We only have cost data for Google Ads currently
-                                    const investimentoCanal = isGoogleAds ? totalInvestimento : 0;
-
-                                    // "Marketing Contribution" = Revenue - Ad Spend
-                                    // This ignores COGS (Product Cost) as we don't have it in the database
-                                    const receitaLiquidaAds = channel.value - investimentoCanal;
-
-                                    const roas = investimentoCanal > 0 ? channel.value / investimentoCanal : 0;
-
-                                    return {
-                                        name: channel.name,
-                                        receita: channel.value,
-                                        investimento: investimentoCanal,
-                                        receitaLiquidaAds,
-                                        roas,
-                                        color: COLORS[idx % COLORS.length]
-                                    };
-                                });
-
-                                return (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b border-border">
-                                                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Canal</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita Captada</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Investimento (Ads)</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Receita Líquida (Ads)</th>
-                                                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">ROAS</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {channelMetrics.map((ch: any) => (
-                                                    <tr key={ch.name} className="border-b border-border/50 hover:bg-muted/50">
-                                                        <td className="py-3 px-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: ch.color }}></div>
-                                                                <span className="font-medium truncate max-w-[150px]">{ch.name}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="text-right py-3 px-2 font-mono">R$ {ch.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                                        <td className="text-right py-3 px-2 font-mono text-red-500">
-                                                            {ch.investimento > 0 ? `R$ ${ch.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
-                                                        </td>
-                                                        <td className={`text-right py-3 px-2 font-mono font-bold ${ch.receitaLiquidaAds >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                            R$ {ch.receitaLiquidaAds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                        </td>
-                                                        <td className="text-right py-3 px-2">
-                                                            {ch.roas > 0 ? (
-                                                                <span className={`font-bold ${ch.roas >= 4 ? 'text-green-600' : ch.roas >= 2 ? 'text-blue-500' : 'text-amber-500'}`}>
-                                                                    {ch.roas.toFixed(2)}x
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-muted-foreground">-</span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-                                            * <strong>Investimento (Ads):</strong> Valor gasto reportado pelo Google Ads. Atribuído apenas ao canal 'Google_Ads'.<br />
-                                            * <strong>Receita Líquida (Ads):</strong> Receita Total - Custo de Mídia. Não inclui CMV (Custo do Produto) ou impostos.<br />
-                                            * Demais canais exibem apenas Receita pois não possuem custo de mídia vinculado na base de dados atual.
-                                        </p>
-                                    </div>
-                                );
-                            })()}
-                        </CardContent>
-                    </Card>
-                </section>
-            )}
 
             {/* Funil de Conversão com Gaps de Mercado */}
             {!loading && gadsKpis && (
@@ -590,16 +506,7 @@ export default function HomeExecutiva() {
                 </section>
             )}
 
-            {/* Geographic Map */}
-            {!loading && catalogoData && (
-                <section>
-                    <BrazilMap
-                        rawData={[]}
-                        gadsData={gadsKpis}
-                        sessionsData={ga4Kpis}
-                    />
-                </section>
-            )}
+
 
             {/* YoY Analysis Section - Temporarily hidden for data verification */}
             {/* {!loading && displayData.yoy && (

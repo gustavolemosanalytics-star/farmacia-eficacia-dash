@@ -266,8 +266,8 @@ export default function MidiaPagaPage() {
             .filter(d => d.receita > 0 || d.custo > 0)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        // Dashboard Level ROAS (following exclusion logic from gadsKpis.spend)
-        const roas = receitaGoogleAds > 0 && gadsKpis.spend > 0 ? receitaGoogleAds / gadsKpis.spend : 0;
+        // Dashboard Level ROAS: always conversion_value / spend from google_ads (excluding Lead/Visita)
+        const roas = gadsKpis.roas || 0;
 
         // Revenue by Campaign Type - for CampaignTypeBreakdown
         const revenueByTypeMap: { [type: string]: { revenue: number; orders: number } } = {};
