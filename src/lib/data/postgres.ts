@@ -219,7 +219,7 @@ export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Prom
 // SQL-LEVEL AGGREGATION (avoids full table scans)
 // ============================================
 
-const COMPLETED_STATUS_FILTER = `(status IS NULL OR status = '' OR LOWER(status) LIKE '%complete%' OR LOWER(status) LIKE '%completo%' OR LOWER(status) LIKE '%pago%' OR LOWER(status) LIKE '%enviado%' OR LOWER(status) LIKE '%faturado%')`;
+const COMPLETED_STATUS_FILTER = `(status IS NULL OR status = '' OR LOWER(status) LIKE '%complete%' OR LOWER(status) LIKE '%completo%' OR LOWER(status) LIKE '%pago%' OR LOWER(status) LIKE '%enviado%' OR LOWER(status) LIKE '%faturado%' OR LOWER(status) LIKE '%entregue%' OR LOWER(status) LIKE '%delivered%')`;
 
 const NORMALIZE_DATE_EXPR = (col: string) => `
     CASE

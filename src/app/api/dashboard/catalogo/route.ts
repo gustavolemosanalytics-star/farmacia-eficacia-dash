@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { aggregateCatalogoKPIs } from '@/lib/sheets/client';
+import { aggregateCatalogoKPIs } from '@/lib/dashboard/client';
 import { getCachedAggregation, setCachedAggregation } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';

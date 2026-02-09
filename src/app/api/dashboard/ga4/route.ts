@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchGA4Data, aggregateGA4KPIs } from '@/lib/sheets/client';
+import { fetchGA4Data, aggregateGA4KPIs } from '@/lib/dashboard/client';
 import { getCachedAggregation, setCachedAggregation } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';

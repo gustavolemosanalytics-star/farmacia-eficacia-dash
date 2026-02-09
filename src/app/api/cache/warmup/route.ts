@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { aggregateCatalogoKPIs, aggregateCRMKPIs, aggregateGoogleAdsKPIs, aggregateGA4KPIs } from '@/lib/sheets/client';
+import { aggregateCatalogoKPIs, aggregateCRMKPIs, aggregateGoogleAdsKPIs, aggregateGA4KPIs } from '@/lib/dashboard/client';
 import { setCachedAggregation } from '@/lib/cache';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 

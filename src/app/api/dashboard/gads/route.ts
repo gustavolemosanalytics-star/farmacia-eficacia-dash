@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchGoogleAdsData, aggregateGoogleAdsKPIs } from '@/lib/sheets/client';
+import { fetchGoogleAdsData, aggregateGoogleAdsKPIs } from '@/lib/dashboard/client';
 import { getCachedAggregation, setCachedAggregation } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageFilters } from '@/components/ui/PageFilters';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useSheetData';
+import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useDashboardData';
 import {
     TrendingUp, TrendingDown, DollarSign, Target, ShoppingCart, Activity, BarChart3, Users, AlertTriangle, CheckCircle, Lightbulb, Clock, Zap, Package, MapPin
 } from 'lucide-react';
@@ -358,8 +358,8 @@ export default function EcommercePage() {
         {
             id: 'receita_midia_paga',
             titulo: 'Receita Mídia Paga (GAds)',
-            valor: analytics?.receitaGoogleAds || 0,
-            valorFormatado: `R$ ${(analytics?.receitaGoogleAds || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+            valor: gadsKpis?.conversionValue || 0,
+            valorFormatado: `R$ ${(gadsKpis?.conversionValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
             variacao: 0,
             tendencia: 'up' as const,
             sparklineData: [1, 1.02, 1.05, 1.08, 1.1],
@@ -785,25 +785,40 @@ export default function EcommercePage() {
                                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Investimento Ads</p>
                                         <p className="text-base font-bold">{gadsKpis?.spend_formatted || 'R$ 0'}</p>
                                     </div>
-                                    {/* Buyers vs New Buyers */}
-                                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg text-center col-span-2">
-                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">Compradores</p>
-                                        <div className="flex justify-around">
-                                            <div>
-                                                <p className="text-lg font-bold text-emerald-600">{ga4Kpis.totalPurchasers?.toLocaleString('pt-BR') || analytics?.totalPedidos || 0}</p>
-                                                <p className="text-[10px] text-muted-foreground">Total</p>
+                                    {/* Buyers vs New Buyers - Improved Layout */}
+                                    <div className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl border border-emerald-200/50 dark:border-emerald-800/50 col-span-2">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                                                👥 Compradores
+                                            </p>
+                                            <span className="text-[10px] text-muted-foreground bg-white/50 dark:bg-zinc-800/50 px-2 py-0.5 rounded-full">
+                                                Fonte: GA4
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="text-center">
+                                                <div className="bg-white/70 dark:bg-zinc-800/50 rounded-lg p-3">
+                                                    <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                                                        {ga4Kpis.totalPurchasers?.toLocaleString('pt-BR') || analytics?.totalPedidos || 0}
+                                                    </p>
+                                                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300 mt-1">Total</p>
+                                                </div>
                                             </div>
-                                            <div className="border-l border-border pl-4">
-                                                <p className="text-lg font-bold text-blue-600">
-                                                    {ga4Kpis.newPurchasers?.toLocaleString('pt-BR') || Math.round((analytics?.totalPedidos || 0) * 0.35) || 0}
-                                                </p>
-                                                <p className="text-[10px] text-muted-foreground">Novos</p>
+                                            <div className="text-center">
+                                                <div className="bg-white/70 dark:bg-zinc-800/50 rounded-lg p-3">
+                                                    <p className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                                                        {ga4Kpis.newPurchasers?.toLocaleString('pt-BR') || Math.round((analytics?.totalPedidos || 0) * 0.35) || 0}
+                                                    </p>
+                                                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mt-1">🆕 Novos</p>
+                                                </div>
                                             </div>
-                                            <div className="border-l border-border pl-4">
-                                                <p className="text-lg font-bold text-purple-600">
-                                                    {ga4Kpis.returningPurchasers?.toLocaleString('pt-BR') || Math.round((analytics?.totalPedidos || 0) * 0.65) || 0}
-                                                </p>
-                                                <p className="text-[10px] text-muted-foreground">Recorrentes</p>
+                                            <div className="text-center">
+                                                <div className="bg-white/70 dark:bg-zinc-800/50 rounded-lg p-3">
+                                                    <p className="text-2xl font-black text-purple-600 dark:text-purple-400">
+                                                        {ga4Kpis.returningPurchasers?.toLocaleString('pt-BR') || Math.round((analytics?.totalPedidos || 0) * 0.65) || 0}
+                                                    </p>
+                                                    <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mt-1">🔄 Recor.</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

@@ -91,15 +91,15 @@ export function useSheetData<T>(
 
 // Specific hooks for each data source
 export function useGoogleAdsData(aggregated: boolean = false) {
-    return useSheetData<any>('/api/sheets/gads', aggregated);
+    return useSheetData<any>('/api/dashboard/gads', aggregated);
 }
 
 export function useGA4Data(aggregated: boolean = false) {
-    return useSheetData<any>('/api/sheets/ga4', aggregated);
+    return useSheetData<any>('/api/dashboard/ga4', aggregated);
 }
 
 export function useTVSalesData() {
-    return useSheetData<any>('/api/sheets/tv', false);
+    return useSheetData<any>('/api/dashboard/tv', false);
 }
 
 // Hook for Google Ads KPIs (aggregated)
@@ -134,13 +134,13 @@ export function useCatalogoData(customStart?: Date, customEnd?: Date, status?: s
     if (status) extraParams.status = status;
     if (atribuicao) extraParams.atribuicao = atribuicao;
 
-    return useSheetData<any>('/api/sheets/catalogo', false, false, customStart, customEnd, Object.keys(extraParams).length > 0 ? extraParams : undefined);
+    return useSheetData<any>('/api/dashboard/catalogo', false, false, customStart, customEnd, Object.keys(extraParams).length > 0 ? extraParams : undefined);
 }
 
 // Hook for YoY Analysis - lightweight SQL aggregation
 export function useCatalogoYoYData() {
     const { data, error, isLoading } = useSWR<any>(
-        '/api/sheets/yoy',
+        '/api/dashboard/yoy',
         fetcher,
         { ...swrConfig, dedupingInterval: 300000 } // 5 min dedup for YoY (rarely changes)
     );
@@ -155,7 +155,7 @@ export function useCatalogoYoYData() {
 
 // Hook for CRM Data
 export function useCRMData(customStart?: Date, customEnd?: Date) {
-    return useSheetData<any>('/api/sheets/crm', false, false, customStart, customEnd);
+    return useSheetData<any>('/api/dashboard/crm', false, false, customStart, customEnd);
 }
 
 // =====================================================

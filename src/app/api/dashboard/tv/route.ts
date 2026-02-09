@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchTVSalesData } from '@/lib/sheets/client';
+import { fetchTVSalesData } from '@/lib/dashboard/client';
 
 export async function GET() {
     try {

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Target, MousePointer, Users, Percent, ShoppingCart } from 'lucide-react';
+import { Target, MousePointer, ArrowRight, Percent, ShoppingCart, TrendingUp } from 'lucide-react';
 import { useMemo } from 'react';
 
 interface GrowthProjectionProps {
@@ -7,6 +7,7 @@ interface GrowthProjectionProps {
     currentRoas: number;
     currentSessions: number;
     currentClicks: number;
+    currentCTR?: number;
     currentOrders?: number;
     currentTicketMedio?: number;
     targetRevenue: number; // 400.000
@@ -18,6 +19,7 @@ export function GrowthProjection({
     currentRoas,
     currentSessions,
     currentClicks,
+    currentCTR = 0,
     currentOrders = 0,
     currentTicketMedio = 0,
     targetRevenue = 400000,
@@ -27,64 +29,100 @@ export function GrowthProjection({
     const projections = useMemo(() => {
         // Calculate current metrics
         const revenue = currentRevenue || 0;
-        const roas = currentRoas || 0;
         const sessions = currentSessions || 0;
         const clicks = currentClicks || 0;
         const orders = currentOrders || 0;
         const ticketMedio = currentTicketMedio || (orders > 0 ? revenue / orders : 0);
+        const ctr = currentCTR || 0;
 
-        // Current conversion rate
+        // Current conversion rate (Sessions -> Orders)
         const currentConvRate = sessions > 0 ? (orders / sessions) * 100 : 0;
 
-        // Derived metrics
-        const rps = sessions > 0 ? revenue / sessions : 0; // Revenue per Session
-        const rpc = clicks > 0 ? revenue / clicks : 0; // Revenue per Click
-
-        // Target calculations
-        // Assuming RPC stays constant, how many clicks needed?
-        const targetClicks = rpc > 0 ? targetRevenue / rpc : 0;
-
-        // Assuming RPS stays constant, how many sessions needed?
-        const targetSessions = rps > 0 ? targetRevenue / rps : 0;
-
-        // Target conversion rate to hit goal (assuming same ticket and sessions)
-        // TargetRevenue = TargetOrders * TicketMedio
-        // TargetOrders = TargetRevenue / TicketMedio
-        // TargetConvRate = TargetOrders / CurrentSessions
+        // Scenario 1: Keep conversion rate, adjust clicks needed
+        // Revenue = Orders * TicketMedio
+        // Orders = Sessions * ConvRate
+        // Sessions ≈ Clicks (simplified, since click-to-session is usually ~80%)
+        // So: Revenue = Clicks * ConvRate * TicketMedio
+        // Target Clicks = TargetRevenue / (ConvRate * TicketMedio)
+        const clickToSession = sessions > 0 && clicks > 0 ? sessions / clicks : 0.8;
         const targetOrders = ticketMedio > 0 ? targetRevenue / ticketMedio : 0;
-        const targetConvRate = sessions > 0 ? (targetOrders / sessions) * 100 : 0;
+        const targetSessions = currentConvRate > 0 ? (targetOrders / (currentConvRate / 100)) : 0;
+        const targetClicks = clickToSession > 0 ? targetSessions / clickToSession : 0;
 
-        // Ideal ticket medio to hit goal (assuming same conversion rate and sessions)
-        // TargetRevenue = CurrentConvRate * Sessions * IdealTicket
-        // IdealTicket = TargetRevenue / (CurrentConvRate/100 * Sessions)
-        const idealTicketMedio = (currentConvRate / 100) * sessions > 0
-            ? targetRevenue / ((currentConvRate / 100) * sessions)
-            : ticketMedio;
+        // Scenario 2: Keep same clicks, adjust conversion rate needed
+        const currentSessionsFromClicks = clicks * clickToSession;
+        const targetConvRateForClicks = currentSessionsFromClicks > 0 && ticketMedio > 0
+            ? (targetRevenue / ticketMedio) / currentSessionsFromClicks * 100
+            : 0;
 
-        // Gaps
-        const gapRevenue = targetRevenue - revenue;
-        const gapSessions = targetSessions - sessions;
+        // Scenario 3: Keep conversion rate and clicks, adjust ticket medio needed
+        const ordersWithCurrentData = sessions * (currentConvRate / 100);
+        const idealTicketMedio = ordersWithCurrentData > 0 ? targetRevenue / ordersWithCurrentData : ticketMedio;
+
+        // Ideal CTR (keeping impressions constant, but needing more clicks)
+        // More clicks = better CTR (if we can't increase impressions)
+        // This is just a proportional calculation
+        const idealCTR = ctr > 0 && clicks > 0 && targetClicks > 0
+            ? ctr * (targetClicks / clicks)
+            : ctr;
+
+        // Gap calculations
         const gapClicks = targetClicks - clicks;
-        const gapConvRate = targetConvRate - currentConvRate;
+        const gapConvRate = targetConvRateForClicks - currentConvRate;
         const gapTicketMedio = idealTicketMedio - ticketMedio;
+        const gapCTR = idealCTR - ctr;
+
+        // Feasibility scores (which path is easiest?)
+        // Lower percentage increase = more feasible
+        const clicksFeasibility = clicks > 0 ? (gapClicks / clicks) * 100 : 999;
+        const convRateFeasibility = currentConvRate > 0 ? (gapConvRate / currentConvRate) * 100 : 999;
+        const ticketFeasibility = ticketMedio > 0 ? (gapTicketMedio / ticketMedio) * 100 : 999;
 
         return {
-            targetClicks,
-            targetSessions,
-            targetConvRate,
-            idealTicketMedio,
+            // Current metrics
             currentConvRate,
             ticketMedio,
-            gapRevenue,
-            gapSessions,
-            gapClicks,
+            ctr,
+            clicks,
+            sessions,
+            orders,
+
+            // Targets
+            targetClicks: Math.round(targetClicks),
+            targetConvRate: targetConvRateForClicks,
+            idealTicketMedio,
+            idealCTR,
+
+            // Gaps
+            gapClicks: Math.round(gapClicks),
             gapConvRate,
             gapTicketMedio,
-            percentRevenue: revenue > 0 ? ((targetRevenue - revenue) / revenue) * 100 : 0,
-            percentSessions: sessions > 0 ? ((targetSessions - sessions) / sessions) * 100 : 0,
-            percentClicks: clicks > 0 ? ((targetClicks - clicks) / clicks) * 100 : 0,
+            gapCTR,
+
+            // Feasibility
+            clicksFeasibility,
+            convRateFeasibility,
+            ticketFeasibility,
+
+            // Progress percentages
+            percentClicks: targetClicks > 0 ? Math.min((clicks / targetClicks) * 100, 100) : 0,
+            percentConvRate: targetConvRateForClicks > 0 ? Math.min((currentConvRate / targetConvRateForClicks) * 100, 100) : 0,
+            percentTicket: idealTicketMedio > 0 ? Math.min((ticketMedio / idealTicketMedio) * 100, 100) : 0,
+            percentCTR: idealCTR > 0 ? Math.min((ctr / idealCTR) * 100, 100) : 0,
         };
-    }, [currentRevenue, currentRoas, currentSessions, currentClicks, currentOrders, currentTicketMedio, targetRevenue, targetRoas]);
+    }, [currentRevenue, currentRoas, currentSessions, currentClicks, currentCTR, currentOrders, currentTicketMedio, targetRevenue, targetRoas]);
+
+    // Find the most feasible path
+    const getBestPath = () => {
+        const paths = [
+            { name: 'Aumentar Cliques', feasibility: projections.clicksFeasibility },
+            { name: 'Melhorar Conversão', feasibility: projections.convRateFeasibility },
+            { name: 'Aumentar Ticket', feasibility: projections.ticketFeasibility },
+        ];
+        return paths.sort((a, b) => a.feasibility - b.feasibility)[0];
+    };
+
+    const bestPath = getBestPath();
 
     return (
         <Card className="border-border bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-zinc-900">
@@ -93,80 +131,78 @@ export function GrowthProjection({
                     <Target className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                     <div>
                         <CardTitle className="text-base font-bold text-foreground">Planejamento de Crescimento</CardTitle>
-                        <p className="text-xs text-muted-foreground">Metas para atingir R$ {(targetRevenue / 1000).toFixed(0)}k com ROAS {targetRoas.toFixed(1)}x</p>
+                        <p className="text-xs text-muted-foreground">Cenários para atingir R$ {(targetRevenue / 1000).toFixed(0)}k de receita</p>
                     </div>
                 </div>
-                <div className="px-3 py-1 rounded-full bg-white dark:bg-zinc-800 border border-indigo-100 dark:border-indigo-900 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                    Meta Mensal
+                <div className="flex items-center gap-2">
+                    <div className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                        <TrendingUp className="h-3 w-3 inline mr-1" />
+                        Melhor Caminho: {bestPath.name}
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {/* Sessões Necessárias */}
+                    {/* CTR Ideal */}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Users className="h-4 w-4" />
-                            <span>Sessões Necessárias</span>
+                            <Percent className="h-4 w-4" />
+                            <span>CTR Ideal</span>
                         </div>
                         <div className="flex items-baseline gap-2">
                             <span className="text-2xl font-bold text-foreground">
-                                {projections.targetSessions > 1000
-                                    ? `${(projections.targetSessions / 1000).toFixed(1)}k`
-                                    : projections.targetSessions.toFixed(0)}
+                                {projections.idealCTR.toFixed(2)}%
                             </span>
-                            <span className={`text-xs font-medium ${projections.gapSessions > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                {projections.gapSessions > 0 ? '+' : ''}
-                                {projections.gapSessions > 1000
-                                    ? `${(projections.gapSessions / 1000).toFixed(1)}k`
-                                    : Math.abs(projections.gapSessions).toFixed(0)}
+                            <span className={`text-xs font-medium ${projections.gapCTR > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                {projections.gapCTR > 0 ? '+' : ''}{projections.gapCTR.toFixed(2)}pp
                             </span>
                         </div>
                         <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-indigo-500 rounded-full transition-all duration-1000"
-                                style={{ width: `${Math.min((currentSessions / projections.targetSessions) * 100, 100)}%` }}
+                                className="h-full bg-pink-500 rounded-full transition-all duration-1000"
+                                style={{ width: `${projections.percentCTR}%` }}
                             />
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                            Atualmente: {currentSessions > 1000 ? `${(currentSessions / 1000).toFixed(1)}k` : currentSessions}
+                            Atualmente: {projections.ctr.toFixed(2)}%
                         </p>
                     </div>
 
-                    {/* Cliques Necessários */}
+                    {/* Cliques Ideais */}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <MousePointer className="h-4 w-4" />
-                            <span>Cliques (Pago) Estimados</span>
+                            <span>Cliques Ideais (Pago)</span>
                         </div>
                         <div className="flex items-baseline gap-2">
                             <span className="text-2xl font-bold text-foreground">
                                 {projections.targetClicks > 1000
                                     ? `${(projections.targetClicks / 1000).toFixed(1)}k`
-                                    : projections.targetClicks.toFixed(0)}
+                                    : projections.targetClicks.toLocaleString('pt-BR')}
                             </span>
                             <span className={`text-xs font-medium ${projections.gapClicks > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
                                 {projections.gapClicks > 0 ? '+' : ''}
                                 {projections.gapClicks > 1000
                                     ? `${(projections.gapClicks / 1000).toFixed(1)}k`
-                                    : Math.abs(projections.gapClicks).toFixed(0)}
+                                    : projections.gapClicks.toLocaleString('pt-BR')}
                             </span>
                         </div>
                         <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-blue-500 rounded-full transition-all duration-1000"
-                                style={{ width: `${Math.min((currentClicks / projections.targetClicks) * 100, 100)}%` }}
+                                style={{ width: `${projections.percentClicks}%` }}
                             />
                         </div>
                         <p className="text-[10px] text-muted-foreground">
-                            Atualmente: {currentClicks > 1000 ? `${(currentClicks / 1000).toFixed(1)}k` : currentClicks}
+                            Atualmente: {projections.clicks > 1000 ? `${(projections.clicks / 1000).toFixed(1)}k` : projections.clicks.toLocaleString('pt-BR')}
                         </p>
                     </div>
 
                     {/* Taxa de Conversão Ideal */}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Percent className="h-4 w-4" />
-                            <span>Tx Conversão Ideal</span>
+                            <ArrowRight className="h-4 w-4" />
+                            <span>Tx Sessão → Compra</span>
                         </div>
                         <div className="flex items-baseline gap-2">
                             <span className="text-2xl font-bold text-foreground">
@@ -179,7 +215,7 @@ export function GrowthProjection({
                         <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-emerald-500 rounded-full transition-all duration-1000"
-                                style={{ width: `${Math.min((projections.currentConvRate / projections.targetConvRate) * 100, 100)}%` }}
+                                style={{ width: `${projections.percentConvRate}%` }}
                             />
                         </div>
                         <p className="text-[10px] text-muted-foreground">
@@ -204,13 +240,19 @@ export function GrowthProjection({
                         <div className="h-1.5 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-violet-500 rounded-full transition-all duration-1000"
-                                style={{ width: `${Math.min((projections.ticketMedio / projections.idealTicketMedio) * 100, 100)}%` }}
+                                style={{ width: `${projections.percentTicket}%` }}
                             />
                         </div>
                         <p className="text-[10px] text-muted-foreground">
                             Atualmente: R$ {projections.ticketMedio.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                         </p>
                     </div>
+                </div>
+
+                <div className="mt-6 p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800">
+                    <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+                        * Cenários calculados mantendo as outras variáveis constantes. O <strong>melhor caminho</strong> indica qual métrica precisa de menor ajuste percentual para atingir a meta.
+                    </p>
                 </div>
             </CardContent>
         </Card>

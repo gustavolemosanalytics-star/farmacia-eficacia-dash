@@ -1,5 +1,5 @@
 
-import { getSheetData, SHEETS } from '@/lib/sheets/sheets-sync';
+import { getSheetData, SHEETS } from '@/lib/dashboard/sheets-sync';
 import { processBDMag, processGA4, rowsToObjects } from './transformations';
 import pg from 'pg';
 const { Pool } = pg;

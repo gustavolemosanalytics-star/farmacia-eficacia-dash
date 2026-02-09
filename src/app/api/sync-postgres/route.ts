@@ -1,5 +1,5 @@
 import prisma from '@/lib/prisma';
-import { fetchMagData, fetchGoogleAdsData, fetchGA4Data } from '@/lib/sheets/client';
+import { fetchMagData, fetchGoogleAdsData, fetchGA4Data } from '@/lib/dashboard/client';
 
 export async function GET() {
     try {

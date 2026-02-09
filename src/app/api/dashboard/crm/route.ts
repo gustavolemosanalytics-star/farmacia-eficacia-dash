@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { aggregateCRMKPIs } from '@/lib/sheets/client';
+import { aggregateCRMKPIs } from '@/lib/dashboard/client';
 import { getCachedAggregation, setCachedAggregation } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';

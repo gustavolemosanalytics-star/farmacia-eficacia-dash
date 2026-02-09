@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageFilters } from '@/components/ui/PageFilters';
-import { useCRMData, useCatalogoData } from '@/hooks/useSheetData';
+import { useCRMData, useCatalogoData } from '@/hooks/useDashboardData';
 import {
     Users, Heart, Crown, AlertTriangle, XCircle, TrendingUp, TrendingDown, Clock, DollarSign, RefreshCw, ShoppingCart, UserCheck, Lightbulb, CheckCircle, Calendar, Layers
 } from 'lucide-react';

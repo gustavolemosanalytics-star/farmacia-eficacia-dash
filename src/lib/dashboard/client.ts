@@ -97,21 +97,22 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
 
     const costPerConversion = totalConversions > 0 ? totalCost / totalConversions : 0;
 
-    // Daily Cost and Conversions Aggregation (needed for CPA forecast)
-    const dailyMetricsMap: { [key: string]: { cost: number; conversions: number } } = {};
+    // Daily Cost, Conversions, and ConversionValue Aggregation
+    const dailyMetricsMap: { [key: string]: { cost: number; conversions: number; conversionValue: number } } = {};
     data.forEach(entry => {
         const date = parseDate(entry.day);
         if (date) {
             const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
             if (!dailyMetricsMap[dateStr]) {
-                dailyMetricsMap[dateStr] = { cost: 0, conversions: 0 };
+                dailyMetricsMap[dateStr] = { cost: 0, conversions: 0, conversionValue: 0 };
             }
             dailyMetricsMap[dateStr].cost += entry.cost || 0;
             dailyMetricsMap[dateStr].conversions += entry.conversions || 0;
+            dailyMetricsMap[dateStr].conversionValue += entry.conversionValue || 0;
         }
     });
     const dailyData = Object.entries(dailyMetricsMap)
-        .map(([date, metrics]) => ({ date, cost: metrics.cost, conversions: metrics.conversions }))
+        .map(([date, metrics]) => ({ date, cost: metrics.cost, conversions: metrics.conversions, conversionValue: metrics.conversionValue }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
     // Metas definidas pelo usuário
@@ -126,6 +127,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     const leadsClicks = leadsData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
     const leadsImpressions = leadsData.reduce((sum, entry) => sum + (entry.impressions || 0), 0);
     const ecommerceClicks = ecommerceData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
+    const ecommerceImpressions = ecommerceData.reduce((sum, entry) => sum + (entry.impressions || 0), 0);
 
     // Conversion Value for ROAS calculation (from google_ads table)
     const totalConversionValue = ecommerceData.reduce((sum, entry) => sum + (entry.conversionValue || 0), 0);
@@ -235,6 +237,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
                 conversions: ecommerceConversions,
                 conversionsLabel: 'Compras', // Label para exibição
                 clicks: ecommerceClicks,
+                impressions: ecommerceImpressions,
                 meta: ECOMMERCE_META,
                 percentMeta: ECOMMERCE_META > 0 ? (ecommerceSpend / ECOMMERCE_META) * 100 : 0,
             },
@@ -381,6 +384,31 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
     const totalGadsClicks = filteredGads.reduce((sum, g) => sum + (g.clicks || 0), 0);
     const clickToSessionRate = totalGadsClicks > 0 ? googleSessions / totalGadsClicks : 0;
 
+    // Total Add to Carts and Checkouts for entire GA4 data (funnel)
+    const totalAddToCarts = filteredSessions.reduce((sum, s) => sum + (s.addToCarts || 0), 0);
+    const totalCheckouts = filteredSessions.reduce((sum, s) => sum + (s.checkouts || 0), 0);
+    const totalPurchases = filteredSessions.reduce((sum, s) => sum + (s.purchases || 0), 0);
+
+    // Ecommerce-filtered metrics (excluding Lead and Visita campaigns from Google Ads)
+    const ecommGadsData = filteredGads.filter(g => {
+        const camp = (g.campaign || '').toLowerCase();
+        return !camp.includes('lead') && !camp.includes('visita');
+    });
+    const excludedCampaigns = filteredGads.filter(g => {
+        const camp = (g.campaign || '').toLowerCase();
+        return camp.includes('lead') || camp.includes('visita');
+    });
+    const ecommImpressions = ecommGadsData.reduce((sum, g) => sum + (g.impressions || 0), 0);
+    const ecommClicks = ecommGadsData.reduce((sum, g) => sum + (g.clicks || 0), 0);
+    const ecommCTR = ecommImpressions > 0 ? (ecommClicks / ecommImpressions) * 100 : 0;
+
+    // Debug log
+    console.log('[GA4 Funnel] Total campaigns:', filteredGads.length);
+    console.log('[GA4 Funnel] Ecommerce campaigns (excl Lead/Visita):', ecommGadsData.length);
+    console.log('[GA4 Funnel] Excluded campaigns (Lead/Visita):', excludedCampaigns.map(c => c.campaign));
+    console.log('[GA4 Funnel] Total impressions:', totalImpressions, '| Ecomm impressions:', ecommImpressions);
+    console.log('[GA4 Funnel] Total clicks:', totalGadsClicks, '| Ecomm clicks:', ecommClicks);
+
     return {
         totalRevenue,
         totalRevenue_formatted: `R$ ${totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
@@ -395,6 +423,16 @@ export const aggregateGA4KPIs = async (startDate?: Date, endDate?: Date) => {
         ticketMedio,
         ticketMedio_formatted: `R$ ${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         campaignCrossAnalysis,
+        // Funnel metrics
+        totalAddToCarts,
+        totalCheckouts,
+        totalPurchases,
+        // Ecommerce-filtered metrics (excl Lead/Visita)
+        ecomm: {
+            impressions: ecommImpressions,
+            clicks: ecommClicks,
+            ctr: ecommCTR,
+        },
         byChannel: {
             googleCPC,
             organic,

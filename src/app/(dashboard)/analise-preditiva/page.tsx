@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageFilters } from '@/components/ui/PageFilters';
-import { useCatalogoData, useGoogleAdsKPIs, useCatalogoYoYData } from '@/hooks/useSheetData';
+import { useCatalogoData, useGoogleAdsKPIs, useCatalogoYoYData } from '@/hooks/useDashboardData';
 import {
     LineChart,
     Line,

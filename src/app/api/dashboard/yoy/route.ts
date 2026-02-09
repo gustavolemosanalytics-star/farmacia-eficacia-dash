@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { aggregateYoYKPIs } from '@/lib/sheets/client';
+import { aggregateYoYKPIs } from '@/lib/dashboard/client';
 import { getCachedData, setCachedData } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';

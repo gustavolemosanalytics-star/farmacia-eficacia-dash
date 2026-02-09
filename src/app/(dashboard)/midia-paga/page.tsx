@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageFilters } from '@/components/ui/PageFilters';
-import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useSheetData';
+import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useDashboardData';
 import { CampaignTypeBreakdown } from '@/components/charts/CampaignTypeBreakdown';
 import {
     TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Activity, AlertTriangle, CheckCircle, Lightbulb, Zap, Trophy, XCircle, MousePointer, ShoppingCart, Package, Rocket, ArrowUpRight, Sparkles
@@ -298,6 +298,38 @@ export default function MidiaPagaPage() {
             orders: data.orders
         }));
 
+        // Product-level ROAS analysis: crossing bd_mag (Google_Ads) with google_ads by camp/campaign
+        const productStats: { [key: string]: { nome: string; receita: number; quantidade: number; investimento: number } } = {};
+        googleAdsOrders.forEach((o: any) => {
+            const nome = o.nomeProduto || 'Sem Nome';
+            const day = normalizeDate(o.data);
+            const camp = normalizeCamp(o.campanha);
+            const key = `${day}_${camp}`;
+
+            if (!productStats[nome]) productStats[nome] = { nome, receita: 0, quantidade: 0, investimento: 0 };
+
+            const orderRevenue = o.receitaProduto || 0;
+            productStats[nome].receita += orderRevenue;
+            productStats[nome].quantidade += 1;
+
+            const campDayRevenue = revenueByCampDayInMag[key] || 0;
+            const campDaySpend = spendByCampDay[key] || 0;
+
+            if (campDayRevenue > 0) {
+                const attributedSpend = (orderRevenue / campDayRevenue) * campDaySpend;
+                productStats[nome].investimento += attributedSpend;
+            }
+        });
+
+        const productAnalysis = Object.values(productStats)
+            .map(p => ({
+                ...p,
+                roas: p.investimento > 0 ? p.receita / p.investimento : 0,
+            }))
+            .filter(p => p.receita > 0)
+            .sort((a, b) => b.receita - a.receita)
+            .slice(0, 20);
+
         return {
             receitaGoogleAds,
             googleAdsOrdersCount: googleAdsOrders.length,
@@ -312,6 +344,7 @@ export default function MidiaPagaPage() {
             avgSpend,
             avgRoas,
             revenueByType,
+            productAnalysis,
         };
     }, [catalogoData, gadsKpis, ga4Kpis]);
 
@@ -515,69 +548,51 @@ export default function MidiaPagaPage() {
                 </section>
             )}
 
-            {/* Receita por Categoria + ROAS (Moved from Home) */}
-            {!loading && analytics?.topCategoriesGads && analytics.topCategoriesGads.length > 0 && (
+            {/* Status da Operação Google Ads */}
+            {!loading && (
                 <section>
-                    <Card className="border-border bg-card">
-                        <CardHeader className="flex flex-row items-center gap-2">
-                            <Package className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium text-card-foreground">Receita por Categoria + ROAS (Google Ads)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {(() => {
-                                const totalRevenue = analytics.receitaGoogleAds || 1;
+                    <h2 className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">
+                        <div className="h-px w-8 bg-zinc-200 dark:bg-zinc-800" />
+                        Status da Operação Google Ads
+                    </h2>
 
-                                // Enriched with share for table display
-                                const enrichedCats = analytics.topCategoriesGads.map((cat: any) => ({
-                                    ...cat,
-                                    share: (cat.receita / totalRevenue) * 100
-                                }));
-
-                                return (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
-                                            <thead>
-                                                <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
-                                                    <th className="text-left py-3 px-2 font-bold">Categoria</th>
-                                                    <th className="text-right py-3 px-2 font-bold">Receita (GAds)</th>
-                                                    <th className="text-right py-3 px-2 font-bold">% Share</th>
-                                                    <th className="text-right py-3 px-2 font-bold">Invest. Est.</th>
-                                                    <th className="text-right py-3 px-2 font-bold">ROAS Est.</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {enrichedCats.map((cat: any, index: number) => (
-                                                    <tr key={index} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
-                                                        <td className="py-3 px-2 font-semibold text-zinc-700 dark:text-zinc-300">{cat.name}</td>
-                                                        <td className="text-right py-3 px-2 font-mono font-medium">
-                                                            R$ {cat.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                        </td>
-                                                        <td className="text-right py-3 px-2 text-muted-foreground text-xs">
-                                                            {cat.share.toFixed(1)}%
-                                                        </td>
-                                                        <td className="text-right py-3 px-2 font-mono text-muted-foreground text-xs">
-                                                            R$ {cat.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                        </td>
-                                                        <td className="text-right py-3 px-2">
-                                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${cat.roas >= 3 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                                                                cat.roas >= 2 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                                                    'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                                                                }`}>
-                                                                {cat.roas.toFixed(2)}x
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        <p className="text-[10px] text-muted-foreground mt-4 italic">
-                                            * ROAS calculado via atribuição direta: cruzamento de Campanha e Data entre Magento (bd_mag) e Google Ads.
-                                        </p>
+                    <div className="space-y-4">
+                        {/* Top row - 4 items */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {/* ROAS Card - Specialized */}
+                            <Card className="group relative overflow-hidden transition-all duration-300 border border-zinc-200/50 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1">
+                                <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-10 blur-3xl transition-all group-hover:opacity-20 bg-emerald-500" />
+                                <CardContent className="p-6">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500 mb-1">ROAS (Retorno)</span>
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="font-black tracking-tight text-zinc-900 dark:text-white leading-none text-3xl">{roas.toFixed(2)}x</span>
+                                            </div>
+                                        </div>
+                                        <div className={cn("rounded-full px-2 py-1 text-[10px] font-bold flex items-center gap-1 shadow-sm", roas >= 1.5 ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500")}>
+                                            {roas >= 1.5 ? 'Positivo' : 'Atenção'}
+                                        </div>
                                     </div>
-                                );
-                            })()}
-                        </CardContent>
-                    </Card>
+                                    <div className="h-1 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
+                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((roas / 3) * 100, 100)}%` }} />
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">Conv. Value: R$ {(gadsKpis?.conversionValue || 0).toLocaleString('pt-BR')}</p>
+                                </CardContent>
+                            </Card>
+
+                            {kpis.filter(k => ['impressoes', 'cliques', 'conversoes'].includes(k.id)).map((kpi) => (
+                                <KPICard key={kpi.id} data={kpi} />
+                            ))}
+                        </div>
+
+                        {/* Bottom row - 4 items */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {kpis.filter(k => ['ctr', 'cpc', 'cpm', 'engajamento'].includes(k.id)).map((kpi) => (
+                                <KPICard key={kpi.id} data={kpi} invertedVariation={['cpc', 'cpm'].includes(kpi.id)} />
+                            ))}
+                        </div>
+                    </div>
                 </section>
             )}
 
@@ -846,54 +861,6 @@ export default function MidiaPagaPage() {
                 </section>
             )}
 
-            {/* KPIs de Mídia */}
-            {!loading && (
-                <section>
-                    <h2 className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500 flex items-center gap-2">
-                        <div className="h-px w-8 bg-zinc-200 dark:bg-zinc-800" />
-                        Status da Operação Google Ads
-                    </h2>
-
-                    <div className="space-y-4">
-                        {/* Top row - 4 items */}
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            {/* ROAS Card - Specialized */}
-                            <Card className="group relative overflow-hidden transition-all duration-300 border border-zinc-200/50 dark:border-zinc-800/50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl hover:shadow-2xl hover:shadow-emerald-500/10 hover:-translate-y-1">
-                                <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-10 blur-3xl transition-all group-hover:opacity-20 bg-emerald-500" />
-                                <CardContent className="p-6">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] uppercase tracking-widest font-bold text-zinc-400 dark:text-zinc-500 mb-1">ROAS (Retorno)</span>
-                                            <div className="flex items-baseline gap-1">
-                                                <span className="font-black tracking-tight text-zinc-900 dark:text-white leading-none text-3xl">{roas.toFixed(2)}x</span>
-                                            </div>
-                                        </div>
-                                        <div className={cn("rounded-full px-2 py-1 text-[10px] font-bold flex items-center gap-1 shadow-sm", roas >= 1.5 ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500")}>
-                                            {roas >= 1.5 ? 'Positivo' : 'Atenção'}
-                                        </div>
-                                    </div>
-                                    <div className="h-1 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
-                                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((roas / 3) * 100, 100)}%` }} />
-                                    </div>
-                                    <p className="text-[10px] text-muted-foreground">Rec. Atribuída: R$ {receitaGoogleAds.toLocaleString('pt-BR')}</p>
-                                </CardContent>
-                            </Card>
-
-                            {kpis.filter(k => ['impressoes', 'cliques', 'conversoes'].includes(k.id)).map((kpi) => (
-                                <KPICard key={kpi.id} data={kpi} />
-                            ))}
-                        </div>
-
-                        {/* Bottom row - 4 items */}
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            {kpis.filter(k => ['ctr', 'cpc', 'cpm', 'engajamento'].includes(k.id)).map((kpi) => (
-                                <KPICard key={kpi.id} data={kpi} invertedVariation={['cpc', 'cpm'].includes(kpi.id)} />
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            )}
-
             {/* Campaign Type Breakdown - Interactive */}
             {!loading && gadsKpis?.byCampaignType && gadsKpis.byCampaignType.length > 0 && (
                 <section>
@@ -1030,7 +997,7 @@ export default function MidiaPagaPage() {
 
             {/* Cross-Analysis GA4 vs Google Ads */}
             {!loading && ga4Kpis?.campaignCrossAnalysis && ga4Kpis.campaignCrossAnalysis.length > 0 && (
-                <section className="pb-10">
+                <section>
                     <CampaignCrossAnalysisTable data={ga4Kpis.campaignCrossAnalysis} />
 
                     <Card className="border-border bg-card mt-6">
@@ -1055,6 +1022,71 @@ export default function MidiaPagaPage() {
                                         <Bar dataKey="purchases" name="Purchases" fill="#10b981" radius={[4, 4, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
+
+            {/* Estudo de Produtos por Investimento e ROAS (Google Ads) */}
+            {!loading && analytics?.productAnalysis && analytics.productAnalysis.length > 0 && (
+                <section className="pb-10">
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Package className="h-4 w-4 text-primary" />
+                        Produtos por Investimento e ROAS (Google Ads)
+                    </h2>
+                    <Card className="border-border bg-card">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-card-foreground">Quais produtos trazem mais retorno via Google Ads?</CardTitle>
+                            <p className="text-xs text-muted-foreground">
+                                Cruzamento de bd_mag (atribuição Google_Ads) com google_ads por campanha e data
+                            </p>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
+                                            <th className="text-left py-3 px-2 font-bold">#</th>
+                                            <th className="text-left py-3 px-2 font-bold">Produto</th>
+                                            <th className="text-right py-3 px-2 font-bold">Receita</th>
+                                            <th className="text-right py-3 px-2 font-bold">Qtd</th>
+                                            <th className="text-right py-3 px-2 font-bold">Invest. Atribuído</th>
+                                            <th className="text-right py-3 px-2 font-bold">ROAS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {analytics.productAnalysis.map((prod: any, index: number) => (
+                                            <tr key={index} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
+                                                <td className="py-3 px-2 text-xs text-muted-foreground">{index + 1}</td>
+                                                <td className="py-3 px-2 font-medium text-zinc-700 dark:text-zinc-300 max-w-[300px] truncate" title={prod.nome}>
+                                                    {prod.nome.length > 50 ? prod.nome.substring(0, 50) + '...' : prod.nome}
+                                                </td>
+                                                <td className="text-right py-3 px-2 font-mono font-medium">
+                                                    R$ {prod.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="text-right py-3 px-2 text-muted-foreground">
+                                                    {prod.quantidade}
+                                                </td>
+                                                <td className="text-right py-3 px-2 font-mono text-muted-foreground text-xs">
+                                                    R$ {prod.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="text-right py-3 px-2">
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${prod.roas >= 3 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                                        prod.roas >= 1.5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                                            prod.roas > 0 ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                                                                'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                                                        }`}>
+                                                        {prod.roas > 0 ? `${prod.roas.toFixed(2)}x` : 'N/A'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <p className="text-[10px] text-muted-foreground mt-4 italic">
+                                    * Investimento atribuído proporcionalmente pela receita do produto dentro da campanha+dia. ROAS = Receita / Investimento Atribuído.
+                                </p>
                             </div>
                         </CardContent>
                     </Card>

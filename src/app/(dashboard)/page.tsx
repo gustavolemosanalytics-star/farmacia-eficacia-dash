@@ -10,7 +10,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart as RechartsPie, Pie, Cell, Legend, AreaChart, Area, LabelList, Line, LineChart
 } from 'recharts';
-import { useCatalogoData, useGoogleAdsKPIs, useCatalogoYoYData, useGA4KPIs } from '@/hooks/useSheetData';
+import { useCatalogoData, useGoogleAdsKPIs, useCatalogoYoYData, useGA4KPIs } from '@/hooks/useDashboardData';
 import { GlobalDatePicker } from '@/components/ui/GlobalDatePicker';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +20,7 @@ import { CampaignRankingTable } from '@/components/tables/CampaignRankingTable';
 import { GrowthProjection } from '@/components/dashboard/GrowthProjection';
 import { ExecutiveInsights } from '@/components/dashboard/ExecutiveInsights';
 import { Bussola } from '@/components/dashboard/Bussola';
+import { CityRevenueChart } from '@/components/charts/CityRevenueChart';
 
 export default function HomeExecutiva() {
     // Filter states
@@ -83,7 +84,26 @@ export default function HomeExecutiva() {
         googleAdsOrdersCount: catalogoData?.googleAdsOrdersCount || 0,
         variations,
         yoy: yoyData || null,
+        rawData: catalogoData?.rawData || [],
     };
+
+    // Calculate Top Products from Raw Data (Client-side)
+    const topProducts = useMemo(() => {
+        if (!displayData.rawData || !displayData.rawData.length) return [];
+
+        const productMap: Record<string, { name: string, receita: number, qtd: number }> = {};
+
+        displayData.rawData.forEach((item: any) => {
+            const name = item.nomeProduto || item.sku || 'Desconhecido';
+            if (!productMap[name]) productMap[name] = { name, receita: 0, qtd: 0 };
+            productMap[name].receita += item.receitaProduto || 0;
+            productMap[name].qtd += item.quantidade || 1;
+        });
+
+        return Object.values(productMap)
+            .sort((a, b) => b.receita - a.receita)
+            .slice(0, 5);
+    }, [displayData.rawData]);
 
     // Receita Geral: Agora reflete os filtros de Status e Atribuição selecionados
     const receitaGeral = displayData.totalReceita;
@@ -179,8 +199,16 @@ export default function HomeExecutiva() {
         }).sort((a: any, b: any) => b.roas - a.roas);
     }, [gadsKpis]);
 
-    // Chart data
-    const atribuicaoData = displayData.byAtribuicao.slice(0, 6).map((c: any, i: number) => ({
+    // Use server-computed data directly - ORIGEM BD MAGENTO (POSTGRES) 
+    // O usuário solicitou explicitamente para NÃO substituir dados do BD pelos da API do Google
+    const adjustedByAtribuicao = displayData.byAtribuicao || [];
+    const adjustedDailyByAtribuicao = displayData.dailyRevenueByAtribuicao || [];
+
+    // Get all unique attribution names for the data
+    const adjustedAtribuicoes = displayData.allAtribuicoes || [];
+
+    // Chart data using adjusted values
+    const atribuicaoData = adjustedByAtribuicao.slice(0, 6).map((c: any, i: number) => ({
         ...c,
         color: COLORS[i % COLORS.length]
     }));
@@ -218,8 +246,8 @@ export default function HomeExecutiva() {
                 <section className="mb-6">
                     <Bussola
                         currentRevenue={catalogoDataUnfiltered?.totalReceita || 0}
-                        currentImpressions={gadsKpis?.segmented?.leads?.impressions || 0}
-                        currentClicks={gadsKpis?.segmented?.leads?.clicks || 0}
+                        currentImpressions={gadsKpis?.segmented?.ecommerce?.impressions || 0}
+                        currentClicks={gadsKpis?.segmented?.ecommerce?.clicks || 0}
                         currentOrders={catalogoDataUnfiltered?.totalPedidos || 0}
                         targetRevenue={600000}
                         targetImpressions={2000000}
@@ -235,8 +263,9 @@ export default function HomeExecutiva() {
                     <GrowthProjection
                         currentRevenue={displayData.receitaParaROAS}
                         currentRoas={roas}
-                        currentSessions={ga4Kpis?.totalSessions || 0}
+                        currentSessions={ga4Kpis?.googleSessions || 0}
                         currentClicks={gadsKpis?.clicks || 0}
+                        currentCTR={gadsKpis?.ctr || 0}
                         currentOrders={displayData.totalPedidos || 0}
                         currentTicketMedio={displayData.ticketMedio || 0}
                         targetRevenue={400000}
@@ -244,6 +273,7 @@ export default function HomeExecutiva() {
                     />
                 </section>
             )}
+
 
             {/* Executive Insights - AI Analysis */}
             {!loading && catalogoData && gadsKpis && (
@@ -279,129 +309,185 @@ export default function HomeExecutiva() {
 
 
 
-            {/* Funil de Conversão com Gaps de Mercado */}
+            {/* Funil de Conversão com Gaps de Mercado - REDESIGNED */}
             {!loading && gadsKpis && (
                 <section>
                     <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                         Funil de Conversão vs Benchmarks de Mercado
                     </h2>
-                    <Card className="border-border bg-card">
+                    <Card className="border-border bg-gradient-to-br from-slate-50 to-white dark:from-zinc-900 dark:to-zinc-950">
                         <CardContent className="pt-6">
                             {(() => {
-                                const impressoes = ga4Kpis?.totalImpressions || gadsKpis?.impressions || 0;
-                                const cliques = gadsKpis.clicks || 0;
-                                const conversoes = gadsKpis.conversions || 0;
-                                const pedidos = displayData.totalPedidos || 0;
+                                // Usando segmented.ecommerce (exclui campanhas Lead e Visita)
+                                // Mesma abordagem da Bússola que usa segmented.leads
+                                const impressoes = gadsKpis?.segmented?.ecommerce?.impressions || 0;
+                                const cliques = gadsKpis?.segmented?.ecommerce?.clicks || 0;
                                 const sessoesGoogle = ga4Kpis?.googleSessions || 0;
+                                const addToCarts = ga4Kpis?.totalAddToCarts || 0;
+                                const checkouts = ga4Kpis?.totalCheckouts || 0;
+                                const pedidos = displayData.totalPedidos || 0;
 
-                                // Market benchmarks (industry averages)
+                                // Market benchmarks
                                 const benchmarks = {
-                                    impToClick: 2.5,  // 2.5% CTR benchmark
-                                    clickToSession: 80, // 80% of clicks should become sessions
-                                    sessionToConv: 6.97, // 6.97% should become orders (User target)
+                                    ctr: 2.5,
+                                    clickToSession: 80,
+                                    sessionToCart: 8.0,
+                                    cartToCheckout: 50,
+                                    checkoutToOrder: 70,
                                 };
 
+                                // Calculate rates
+                                const ctr = impressoes > 0 ? (cliques / impressoes) * 100 : 0;
+                                const clickToSession = cliques > 0 ? (sessoesGoogle / cliques) * 100 : 0;
+                                const sessionToCart = sessoesGoogle > 0 ? (addToCarts / sessoesGoogle) * 100 : 0;
+                                const cartToCheckout = addToCarts > 0 ? (checkouts / addToCarts) * 100 : 0;
+                                const checkoutToOrder = checkouts > 0 ? (pedidos / checkouts) * 100 : 0;
+
                                 const funnelSteps = [
-                                    {
-                                        name: 'Impressões Ads',
-                                        value: impressoes,
-                                        rate: 100,
-                                        benchmark: 100,
-                                        color: '#ec4899'
-                                    },
-                                    {
-                                        name: 'Cliques Ads',
-                                        value: cliques,
-                                        rate: impressoes > 0 ? (cliques / impressoes) * 100 : 0,
-                                        benchmark: benchmarks.impToClick,
-                                        label: 'Efficiency (Cliques/Impressoes)',
-                                        color: '#3b82f6'
-                                    },
-                                    {
-                                        name: 'Sessões (Google)',
-                                        value: sessoesGoogle,
-                                        rate: cliques > 0 ? (sessoesGoogle / cliques) * 100 : 0,
-                                        benchmark: benchmarks.clickToSession,
-                                        label: 'Engajamento (Sessões/Cliques)',
-                                        color: '#8b5cf6'
-                                    },
-                                    {
-                                        name: 'Pedidos (BD MAG)',
-                                        value: pedidos,
-                                        rate: sessoesGoogle > 0 ? (pedidos / sessoesGoogle) * 100 : 0,
-                                        benchmark: benchmarks.sessionToConv,
-                                        label: 'Taxa de Conversão Real',
-                                        color: '#10b981'
-                                    },
+                                    { name: 'Impressões', value: impressoes, rate: null, benchmark: null, color: '#ec4899' },
+                                    { name: 'Cliques', value: cliques, rate: ctr, benchmark: benchmarks.ctr, label: 'CTR', color: '#3b82f6' },
+                                    { name: 'Sessões', value: sessoesGoogle, rate: clickToSession, benchmark: benchmarks.clickToSession, label: 'Click→Session', color: '#8b5cf6' },
+                                    { name: 'Add to Cart', value: addToCarts, rate: sessionToCart, benchmark: benchmarks.sessionToCart, label: 'Session→Cart', color: '#f59e0b' },
+                                    { name: 'Checkout', value: checkouts, rate: cartToCheckout, benchmark: benchmarks.cartToCheckout, label: 'Cart→Checkout', color: '#14b8a6' },
+                                    { name: 'Pedidos', value: pedidos, rate: checkoutToOrder, benchmark: benchmarks.checkoutToOrder, label: 'Checkout→Compra', color: '#10b981' },
                                 ];
 
-                                const maxValue = Math.max(...funnelSteps.map(s => s.value));
+                                const maxValue = funnelSteps[0].value || 1;
+
+                                const formatValue = (val: number) => {
+                                    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+                                    if (val >= 1000) return `${(val / 1000).toFixed(1)}k`;
+                                    return val.toLocaleString('pt-BR');
+                                };
 
                                 return (
                                     <div className="space-y-6">
-                                        {funnelSteps.map((step, idx) => (
-                                            <div key={step.name} className="relative group/funnel">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-xs uppercase tracking-wider text-zinc-500">{step.name}</span>
-                                                        {step.label && (
-                                                            <span className="text-[10px] text-muted-foreground">{step.label}</span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex items-center gap-6">
-                                                        <div className="text-right">
-                                                            <p className="text-lg font-black tracking-tighter">{step.value.toLocaleString('pt-BR')}</p>
+                                        {/* Horizontal Funnel Grid */}
+                                        <div className="grid grid-cols-6 gap-1">
+                                            {funnelSteps.map((step, idx) => {
+                                                const widthPercent = 100 - (idx * 10); // Decreasing visual effect
+                                                const isGood = step.rate === null || ((step.rate || 0) >= (step.benchmark || 0));
+
+                                                return (
+                                                    <div key={step.name} className="relative">
+                                                        {/* Step Box */}
+                                                        <div
+                                                            className="rounded-lg p-3 text-center transition-all hover:scale-105"
+                                                            style={{
+                                                                background: `linear-gradient(180deg, ${step.color}ee, ${step.color}99)`,
+                                                                minHeight: `${60 + (6 - idx) * 8}px` // Tapered height
+                                                            }}
+                                                        >
+                                                            <p className="text-white font-bold text-xs truncate">{step.name}</p>
+                                                            <p className="text-white font-black text-lg mt-1">
+                                                                {formatValue(step.value)}
+                                                            </p>
+                                                            {step.rate !== null && (
+                                                                <p className={cn(
+                                                                    "text-[10px] font-semibold mt-1 px-1 py-0.5 rounded",
+                                                                    isGood
+                                                                        ? "bg-white/30 text-white"
+                                                                        : "bg-rose-900/50 text-rose-200"
+                                                                )}>
+                                                                    {step.rate.toFixed(1)}%
+                                                                </p>
+                                                            )}
                                                         </div>
-                                                        {idx > 0 && (
-                                                            <div className={cn(
-                                                                "flex flex-col items-end min-w-[80px]",
-                                                                step.rate >= step.benchmark ? "text-emerald-500" : "text-rose-500"
-                                                            )}>
-                                                                <span className="text-lg font-black tracking-tighter">{step.rate.toFixed(1)}%</span>
-                                                                <span className="text-[9px] font-bold opacity-70 uppercase tracking-tighter">vs {step.benchmark}% benchmark</span>
+
+                                                        {/* Arrow */}
+                                                        {idx < funnelSteps.length - 1 && (
+                                                            <div className="absolute top-1/2 -right-1 transform -translate-y-1/2 text-muted-foreground/50 text-xs z-10">
+                                                                →
                                                             </div>
                                                         )}
                                                     </div>
-                                                </div>
-
-                                                <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden relative shadow-inner border border-zinc-200/20">
-                                                    <div
-                                                        className="h-full rounded-full transition-all duration-1000 ease-in-out group-hover/funnel:brightness-110"
-                                                        style={{
-                                                            width: `${(step.value / maxValue) * 100}%`,
-                                                            backgroundColor: step.color,
-                                                            boxShadow: `0 0 15px ${step.color}33`
-                                                        }}
-                                                    />
-                                                </div>
-
-                                                {idx > 0 && step.rate < step.benchmark && (
-                                                    <div className="flex items-center gap-1.5 mt-2 text-[10px] font-medium text-rose-500/80 bg-rose-500/5 p-1 px-2 rounded-md w-fit">
-                                                        <AlertTriangle className="h-3 w-3" />
-                                                        <span>Identificamos um gap de {(step.benchmark - step.rate).toFixed(1)}pp em relação ao benchmark</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-
-                                        <div className="mt-8 p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                                            <p className="text-[10px] text-muted-foreground leading-relaxed text-center">
-                                                * Benchmarks baseados em médias de mercado para o segmento: <br />
-                                                <strong>CTR (Click Through Rate): 2.5%</strong> |
-                                                <strong> Click to Session: 80%</strong> |
-                                                <strong> Session to Order: 6.97%</strong>
-                                            </p>
+                                                );
+                                            })}
                                         </div>
+
+                                        {/* Detailed Rates Table */}
+                                        <div className="grid grid-cols-5 gap-2 text-center">
+                                            {funnelSteps.slice(1).map((step) => {
+                                                const isGood = (step.rate || 0) >= (step.benchmark || 0);
+                                                return (
+                                                    <div
+                                                        key={step.name}
+                                                        className={cn(
+                                                            "p-2 rounded-lg border",
+                                                            isGood
+                                                                ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800"
+                                                                : "bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800"
+                                                        )}
+                                                    >
+                                                        <p className="text-[10px] text-muted-foreground truncate">{step.label}</p>
+                                                        <p className={cn(
+                                                            "text-lg font-black",
+                                                            isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                                                        )}>
+                                                            {step.rate?.toFixed(1)}%
+                                                        </p>
+                                                        <p className="text-[9px] text-muted-foreground">
+                                                            Bench: {step.benchmark}%
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Summary Stats */}
+                                        <div className="grid grid-cols-4 gap-3">
+                                            <div className="text-center p-3 rounded-lg bg-muted/30">
+                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Taxa Geral</p>
+                                                <p className="text-lg font-black text-foreground">
+                                                    {impressoes > 0 ? ((pedidos / impressoes) * 100).toFixed(3) : 0}%
+                                                </p>
+                                            </div>
+                                            <div className="text-center p-3 rounded-lg bg-muted/30">
+                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">CTR</p>
+                                                <p className={cn(
+                                                    "text-lg font-black",
+                                                    ctr >= 2.5 ? "text-emerald-500" : "text-rose-500"
+                                                )}>
+                                                    {ctr.toFixed(2)}%
+                                                </p>
+                                            </div>
+                                            <div className="text-center p-3 rounded-lg bg-muted/30">
+                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Conversão</p>
+                                                <p className={cn(
+                                                    "text-lg font-black",
+                                                    (pedidos / sessoesGoogle * 100) >= 3.0 ? "text-emerald-500" : "text-rose-500"
+                                                )}>
+                                                    {sessoesGoogle > 0 ? ((pedidos / sessoesGoogle) * 100).toFixed(2) : 0}%
+                                                </p>
+                                            </div>
+                                            <div className="text-center p-3 rounded-lg bg-muted/30">
+                                                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Abandono</p>
+                                                <p className={cn(
+                                                    "text-lg font-black",
+                                                    (1 - checkouts / addToCarts) * 100 <= 50 ? "text-emerald-500" : "text-amber-500"
+                                                )}>
+                                                    {addToCarts > 0 ? ((1 - checkouts / addToCarts) * 100).toFixed(1) : 0}%
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer note */}
+                                        <p className="text-[10px] text-muted-foreground text-center">
+                                            * Impressões e Cliques filtrados para <strong>E-commerce</strong> (excluindo campanhas Lead e Visita)
+                                        </p>
                                     </div>
                                 );
+
                             })()}
                         </CardContent>
                     </Card>
                 </section>
             )}
 
+
+
             {/* Receita por Atribuição - Pie Chart + Line Chart */}
-            {!loading && displayData.byAtribuicao.length > 0 && (
+            {!loading && adjustedByAtribuicao.length > 0 && (
                 <section>
                     <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                         Receita por Atribuição - Análise Detalhada
@@ -411,13 +497,16 @@ export default function HomeExecutiva() {
                         <Card className="border-border bg-card">
                             <CardHeader className="flex flex-row items-center gap-2">
                                 <PieChart className="h-5 w-5 text-primary" />
-                                <CardTitle className="text-sm font-medium text-card-foreground">Distribuição por Canal de Atribuição</CardTitle>
+                                <div>
+                                    <CardTitle className="text-sm font-medium text-card-foreground">Distribuição por Canal de Atribuição</CardTitle>
+                                    <p className="text-[10px] text-muted-foreground">Dados do Banco de Dados (Magento)</p>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 <ResponsiveContainer width="100%" height={350}>
                                     <RechartsPie>
                                         <Pie
-                                            data={displayData.byAtribuicao.slice(0, 8).map((item: any, idx: number) => ({
+                                            data={adjustedByAtribuicao.slice(0, 8).map((item: any, idx: number) => ({
                                                 ...item,
                                                 color: COLORS[idx % COLORS.length]
                                             }))}
@@ -431,7 +520,7 @@ export default function HomeExecutiva() {
                                             label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(1)}%`}
                                             labelLine={false}
                                         >
-                                            {displayData.byAtribuicao.slice(0, 8).map((_: any, index: number) => (
+                                            {adjustedByAtribuicao.slice(0, 8).map((_: any, index: number) => (
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
@@ -449,11 +538,14 @@ export default function HomeExecutiva() {
                         <Card className="border-border bg-card">
                             <CardHeader className="flex flex-row items-center gap-2">
                                 <TrendingUp className="h-5 w-5 text-primary" />
-                                <CardTitle className="text-sm font-medium text-card-foreground">Evolução Diária por Atribuição</CardTitle>
+                                <div>
+                                    <CardTitle className="text-sm font-medium text-card-foreground">Evolução Diária por Atribuição</CardTitle>
+                                    <p className="text-[10px] text-muted-foreground">Dados do Banco de Dados (Magento)</p>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 <ResponsiveContainer width="100%" height={350}>
-                                    <LineChart data={displayData.dailyRevenueByAtribuicao?.slice(-30) || []} margin={{ top: 10, right: 30, left: 0, bottom: 50 }}>
+                                    <LineChart data={adjustedDailyByAtribuicao.slice(-30) || []} margin={{ top: 10, right: 30, left: 0, bottom: 50 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                                         <XAxis
                                             dataKey="date"
@@ -483,7 +575,7 @@ export default function HomeExecutiva() {
                                             contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                                         />
                                         <Legend />
-                                        {(displayData.allAtribuicoes || []).slice(0, 6).map((atrib: string, idx: number) => (
+                                        {adjustedAtribuicoes.slice(0, 6).map((atrib: string, idx: number) => (
                                             <Line
                                                 key={atrib}
                                                 type="monotone"
@@ -498,7 +590,7 @@ export default function HomeExecutiva() {
                                     </LineChart>
                                 </ResponsiveContainer>
                                 <p className="text-xs text-muted-foreground text-center mt-2">
-                                    Últimos 30 dias • Receita diária por canal de atribuição
+                                    Últimos 30 dias • Dados extraídos diretamente do Magento (PostgreSQL)
                                 </p>
                             </CardContent>
                         </Card>
@@ -508,7 +600,93 @@ export default function HomeExecutiva() {
 
 
 
+            {/* Vendas por Cidade */}
+            {!loading && catalogoData && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Análise Geográfica - Vendas por Cidade
+                    </h2>
+                    <CityRevenueChart catalogoData={catalogoData} />
+                </section>
+            )}
+
+            {/* Detalhes de Vendas (Magento) - RESTORED CHARTS */}
+            {!loading && catalogoData && (
+                <section>
+                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                        Detalhes de Vendas (Magento)
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Top Products Table */}
+                        <Card className="border-border bg-card">
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <Package className="h-5 w-5 text-primary" />
+                                <div>
+                                    <CardTitle className="text-sm font-medium">Top 5 Produtos</CardTitle>
+                                    <p className="text-[10px] text-muted-foreground">Por Receita (BD Magento)</p>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-4">
+                                    {(topProducts || []).map((prod: any, i: number) => (
+                                        <div key={i} className="flex items-center justify-between border-b border-border last:border-0 pb-2">
+                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                                                    #{i + 1}
+                                                </div>
+                                                <div className="truncate text-xs font-medium" title={prod.name}>
+                                                    {prod.name.length > 30 ? prod.name.substring(0, 30) + '...' : prod.name}
+                                                </div>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <div className="text-xs font-bold text-emerald-600">R$ {prod.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
+                                                <div className="text-[10px] text-muted-foreground">{prod.qtd} un.</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {(!topProducts || topProducts.length === 0) && (
+                                        <p className="text-xs text-muted-foreground text-center py-4">Nenhum dado encontrado.</p>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Top Categories Chart */}
+                        <Card className="border-border bg-card">
+                            <CardHeader className="flex flex-row items-center gap-2">
+                                <PieChart className="h-5 w-5 text-primary" />
+                                <div>
+                                    <CardTitle className="text-sm font-medium">Top Categorias</CardTitle>
+                                    <p className="text-[10px] text-muted-foreground">Por Receita (BD Magento)</p>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <ResponsiveContainer width="100%" height={250}>
+                                    <BarChart
+                                        data={displayData.byCategory.slice(0, 5)}
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 10 }} />
+                                        <Tooltip
+                                            formatter={(value: any) => [`R$ ${Number(value).toLocaleString('pt-BR')}`, 'Receita']}
+                                            contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                        />
+                                        <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]}>
+                                            <LabelList dataKey="value" position="right" formatter={(v: any) => `R$ ${(Number(v) / 1000).toFixed(0)}k`} style={{ fontSize: '10px', fill: 'var(--muted-foreground)' }} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </section>
+            )}
+
             {/* YoY Analysis Section - Temporarily hidden for data verification */}
+
             {/* {!loading && displayData.yoy && (
                 <section className="space-y-6">
                    ... (YoY content)
