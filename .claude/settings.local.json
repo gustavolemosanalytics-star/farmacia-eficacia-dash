@@ -5,7 +5,16 @@
       "Bash(npm install:*)",
       "Bash(npx tsx:*)",
       "Bash(node:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: add missing sheets-sync module and exclude scripts from build\n\n- Create src/lib/dashboard/sheets-sync.ts with Google Sheets API client\n  \\(getSheetData + SHEETS exports used by db-sync.ts\\)\n- Exclude scripts/ from tsconfig to prevent old Prisma ETL from breaking\n  the Next.js build\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(node -e:*)",
+      "Bash(npx next dev:*)",
+      "Bash(curl:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(npx dotenv -e .env.local -- npx ts-node --compiler-options '{\"\"module\"\":\"\"commonjs\"\"}' -e \"\nconst { Pool } = require\\(''pg''\\);\nconst pool = new Pool\\({ connectionString: ''postgresql://postgres:cvZxBYKzFaOJmWAWZLTBSwULPQSsERlf@caboose.proxy.rlwy.net:20804/railway'' }\\);\npool.query\\(''SELECT tablename FROM pg_tables WHERE schemaname = \\\\''public\\\\''''\\).then\\(r => { console.log\\(''Tables:'', r.rows.map\\(r => r.tablename\\)\\); pool.end\\(\\); }\\).catch\\(e => { console.error\\(''Error:'', e.message\\); pool.end\\(\\); }\\);\n\")"
     ]
   }
 }
