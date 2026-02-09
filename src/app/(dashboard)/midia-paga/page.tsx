@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
@@ -8,7 +8,7 @@ import { PageFilters } from '@/components/ui/PageFilters';
 import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useDashboardData';
 import { CampaignTypeBreakdown } from '@/components/charts/CampaignTypeBreakdown';
 import {
-    TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Activity, AlertTriangle, CheckCircle, Lightbulb, Zap, Trophy, XCircle, MousePointer, ShoppingCart, Package, Rocket, ArrowUpRight, Sparkles
+    TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Activity, AlertTriangle, CheckCircle, Lightbulb, Zap, Trophy, XCircle, MousePointer, ShoppingCart, Package, Rocket, ArrowUpRight, Sparkles, ArrowUpDown
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area, Legend, LabelList
@@ -19,6 +19,109 @@ import { CampaignCrossAnalysisTable } from '@/components/tables/CampaignCrossAna
 import { IntelligentAnalysis } from '@/components/dashboard/IntelligentAnalysis';
 
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
+
+type ProductSortKey = 'receita' | 'quantidade' | 'investimento' | 'roas';
+
+function ProductROASTable({ products }: { products: any[] }) {
+    const [sortKey, setSortKey] = useState<ProductSortKey>('receita');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+    const handleSort = (key: ProductSortKey) => {
+        if (sortKey === key) {
+            setSortDir(sortDir === 'desc' ? 'asc' : 'desc');
+        } else {
+            setSortKey(key);
+            setSortDir('desc');
+        }
+    };
+
+    const sorted = useMemo(() => {
+        return [...products].sort((a, b) => {
+            const diff = (a[sortKey] || 0) - (b[sortKey] || 0);
+            return sortDir === 'desc' ? -diff : diff;
+        });
+    }, [products, sortKey, sortDir]);
+
+    const SortHeader = ({ label, field, align = 'right' }: { label: string; field: ProductSortKey; align?: string }) => (
+        <th
+            className={`${align === 'right' ? 'text-right' : 'text-left'} py-3 px-2 font-bold cursor-pointer select-none hover:text-foreground transition-colors`}
+            onClick={() => handleSort(field)}
+        >
+            <span className="inline-flex items-center gap-1">
+                {label}
+                {sortKey === field ? (
+                    sortDir === 'desc' ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />
+                ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+            </span>
+        </th>
+    );
+
+    return (
+        <section className="pb-10">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Package className="h-4 w-4 text-primary" />
+                Produtos por Investimento e ROAS (Google Ads)
+            </h2>
+            <Card className="border-border bg-card">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-card-foreground">Quais produtos trazem mais retorno via Google Ads?</CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                        Cruzamento de bd_mag (atribuição Google_Ads) com google_ads por campanha e data
+                    </p>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
+                                    <th className="text-left py-3 px-2 font-bold">#</th>
+                                    <th className="text-left py-3 px-2 font-bold">Produto</th>
+                                    <SortHeader label="Receita" field="receita" />
+                                    <SortHeader label="Qtd" field="quantidade" />
+                                    <SortHeader label="Invest. Atribuído" field="investimento" />
+                                    <SortHeader label="ROAS" field="roas" />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sorted.map((prod: any, index: number) => (
+                                    <tr key={index} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
+                                        <td className="py-3 px-2 text-xs text-muted-foreground">{index + 1}</td>
+                                        <td className="py-3 px-2 font-medium text-zinc-700 dark:text-zinc-300 max-w-[300px] truncate" title={prod.nome}>
+                                            {prod.nome.length > 50 ? prod.nome.substring(0, 50) + '...' : prod.nome}
+                                        </td>
+                                        <td className="text-right py-3 px-2 font-mono font-medium">
+                                            R$ {prod.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td className="text-right py-3 px-2 text-muted-foreground">
+                                            {prod.quantidade}
+                                        </td>
+                                        <td className="text-right py-3 px-2 font-mono text-muted-foreground text-xs">
+                                            R$ {prod.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td className="text-right py-3 px-2">
+                                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${prod.roas >= 3 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                                prod.roas >= 1.5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                                    prod.roas > 0 ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                                                        'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                                                }`}>
+                                                {prod.roas > 0 ? `${prod.roas.toFixed(2)}x` : 'N/A'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <p className="text-[10px] text-muted-foreground mt-4 italic">
+                            * Investimento atribuído proporcionalmente pela receita do produto dentro da campanha+dia. ROAS = Receita / Investimento Atribuído.
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+        </section>
+    );
+}
 
 export default function MidiaPagaPage() {
     const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
@@ -269,35 +372,6 @@ export default function MidiaPagaPage() {
         // Dashboard Level ROAS: always conversion_value / spend from google_ads (excluding Lead/Visita)
         const roas = gadsKpis.roas || 0;
 
-        // Revenue by Campaign Type - for CampaignTypeBreakdown
-        const revenueByTypeMap: { [type: string]: { revenue: number; orders: number } } = {};
-
-        // Classify campaigns and aggregate revenue
-        const classifyCampaign = (campaign: string): string => {
-            const lower = (campaign || '').toLowerCase();
-            if (lower.includes('visita')) return 'visita_loja';
-            if (lower.includes('lead')) return 'search_leads';
-            if (lower.includes('institucional') && !lower.includes('lead') && !lower.includes('visita')) return 'search_institucional';
-            if (lower.includes('shopping')) return 'shopping';
-            if (lower.includes('pmax') && !lower.includes('lead') && !lower.includes('visita')) return 'pmax_ecommerce';
-            return 'outros';
-        };
-
-        // Calculate revenue per campaign type from Magento orders
-        googleAdsOrders.forEach((d: any) => {
-            const campanha = d.campanha || '';
-            const type = classifyCampaign(campanha);
-            if (!revenueByTypeMap[type]) revenueByTypeMap[type] = { revenue: 0, orders: 0 };
-            revenueByTypeMap[type].revenue += d.receitaProduto || 0;
-            revenueByTypeMap[type].orders += 1;
-        });
-
-        const revenueByType = Object.entries(revenueByTypeMap).map(([type, data]) => ({
-            type,
-            revenue: data.revenue,
-            orders: data.orders
-        }));
-
         // Product-level ROAS analysis: crossing bd_mag (Google_Ads) with google_ads by camp/campaign
         const productStats: { [key: string]: { nome: string; receita: number; quantidade: number; investimento: number } } = {};
         googleAdsOrders.forEach((o: any) => {
@@ -343,7 +417,6 @@ export default function MidiaPagaPage() {
             investmentPotential,
             avgSpend,
             avgRoas,
-            revenueByType,
             productAnalysis,
         };
     }, [catalogoData, gadsKpis, ga4Kpis]);
@@ -870,7 +943,6 @@ export default function MidiaPagaPage() {
                     <CampaignTypeBreakdown
                         byCampaignType={gadsKpis.byCampaignType}
                         byCampaign={analytics?.campaignAnalysis || []}
-                        revenueByType={analytics?.revenueByType || []}
                     />
                 </section>
             )}
@@ -1030,67 +1102,7 @@ export default function MidiaPagaPage() {
 
             {/* Estudo de Produtos por Investimento e ROAS (Google Ads) */}
             {!loading && analytics?.productAnalysis && analytics.productAnalysis.length > 0 && (
-                <section className="pb-10">
-                    <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Package className="h-4 w-4 text-primary" />
-                        Produtos por Investimento e ROAS (Google Ads)
-                    </h2>
-                    <Card className="border-border bg-card">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-card-foreground">Quais produtos trazem mais retorno via Google Ads?</CardTitle>
-                            <p className="text-xs text-muted-foreground">
-                                Cruzamento de bd_mag (atribuição Google_Ads) com google_ads por campanha e data
-                            </p>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
-                                            <th className="text-left py-3 px-2 font-bold">#</th>
-                                            <th className="text-left py-3 px-2 font-bold">Produto</th>
-                                            <th className="text-right py-3 px-2 font-bold">Receita</th>
-                                            <th className="text-right py-3 px-2 font-bold">Qtd</th>
-                                            <th className="text-right py-3 px-2 font-bold">Invest. Atribuído</th>
-                                            <th className="text-right py-3 px-2 font-bold">ROAS</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {analytics.productAnalysis.map((prod: any, index: number) => (
-                                            <tr key={index} className="border-b border-border/50 hover:bg-muted/50 transition-colors">
-                                                <td className="py-3 px-2 text-xs text-muted-foreground">{index + 1}</td>
-                                                <td className="py-3 px-2 font-medium text-zinc-700 dark:text-zinc-300 max-w-[300px] truncate" title={prod.nome}>
-                                                    {prod.nome.length > 50 ? prod.nome.substring(0, 50) + '...' : prod.nome}
-                                                </td>
-                                                <td className="text-right py-3 px-2 font-mono font-medium">
-                                                    R$ {prod.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                </td>
-                                                <td className="text-right py-3 px-2 text-muted-foreground">
-                                                    {prod.quantidade}
-                                                </td>
-                                                <td className="text-right py-3 px-2 font-mono text-muted-foreground text-xs">
-                                                    R$ {prod.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                </td>
-                                                <td className="text-right py-3 px-2">
-                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${prod.roas >= 3 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                                                        prod.roas >= 1.5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                                            prod.roas > 0 ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
-                                                                'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
-                                                        }`}>
-                                                        {prod.roas > 0 ? `${prod.roas.toFixed(2)}x` : 'N/A'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                                <p className="text-[10px] text-muted-foreground mt-4 italic">
-                                    * Investimento atribuído proporcionalmente pela receita do produto dentro da campanha+dia. ROAS = Receita / Investimento Atribuído.
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
+                <ProductROASTable products={analytics.productAnalysis} />
             )}
         </div>
     );

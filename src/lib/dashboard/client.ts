@@ -245,13 +245,13 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         byCampaign,
         // Agregação por tipo de campanha (5 tipos) para drill-down interativo
         byCampaignType: (() => {
-            const typeMap: Record<CampaignType, { spend: number; conversions: number; clicks: number; impressions: number; campaigns: string[] }> = {
-                'pmax_ecommerce': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
-                'shopping': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
-                'search_institucional': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
-                'search_leads': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
-                'visita_loja': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
-                'outros': { spend: 0, conversions: 0, clicks: 0, impressions: 0, campaigns: [] },
+            const typeMap: Record<CampaignType, { spend: number; conversions: number; conversionValue: number; clicks: number; impressions: number; campaigns: string[] }> = {
+                'pmax_ecommerce': { spend: 0, conversions: 0, conversionValue: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'shopping': { spend: 0, conversions: 0, conversionValue: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'search_institucional': { spend: 0, conversions: 0, conversionValue: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'search_leads': { spend: 0, conversions: 0, conversionValue: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'visita_loja': { spend: 0, conversions: 0, conversionValue: 0, clicks: 0, impressions: 0, campaigns: [] },
+                'outros': { spend: 0, conversions: 0, conversionValue: 0, clicks: 0, impressions: 0, campaigns: [] },
             };
 
             byCampaign.forEach(c => {
@@ -259,6 +259,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
                 if (t) {
                     t.spend += c.spend;
                     t.conversions += c.conversions;
+                    t.conversionValue += c.conversionValue || 0;
                     t.clicks += c.clicks;
                     t.impressions += c.impressions;
                     t.campaigns.push(c.campaign);
@@ -272,8 +273,9 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
                 ctr: data.impressions > 0 ? (data.clicks / data.impressions) * 100 : 0,
                 cpc: data.clicks > 0 ? data.spend / data.clicks : 0,
                 cpa: data.conversions > 0 ? data.spend / data.conversions : 0,
+                roas: data.spend > 0 ? data.conversionValue / data.spend : 0,
                 campaignCount: data.campaigns.length,
-            })).filter(t => t.spend > 0); // Only include types with spend
+            })).filter(t => t.spend > 0);
         })(),
         rawData: data,
     };

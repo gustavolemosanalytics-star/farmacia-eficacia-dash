@@ -273,6 +273,15 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
     const { where, params } = buildCatalogoWhere(filters);
 
     // Run all aggregation queries in parallel
+    // Build date filter for google_ads table (date is YYYY-MM-DD format)
+    const gadsDateParams: any[] = [];
+    let gadsDateClause = '';
+    if (filters.startDate && filters.endDate) {
+        const startStr = filters.startDate.toISOString().split('T')[0];
+        const endStr = filters.endDate.toISOString().split('T')[0];
+        gadsDateClause = ` AND date BETWEEN '${startStr}' AND '${endStr}'`;
+    }
+
     const [
         totalsResult,
         byAtribuicaoResult,
@@ -286,6 +295,8 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
         googleAdsRevenueResult,
         roasRevenueResult,
         uniqueCustomersResult,
+        gadsConversionValueResult,
+        gadsDailyConversionValueResult,
     ] = await Promise.all([
         // 1. Totals
         prisma.$queryRawUnsafe<any[]>(`
@@ -409,6 +420,25 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
             SELECT COUNT(DISTINCT NULLIF(cpf_cliente, '')) as total
             FROM bd_mag ${where}
         `, ...params),
+
+        // 13. Google Ads conversion_value total (from google_ads table)
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT COALESCE(SUM(CASE WHEN conversion_value ~ '^[0-9]' THEN
+                CAST(REPLACE(REPLACE(conversion_value, '.', ''), ',', '.') AS NUMERIC)
+                ELSE 0 END), 0) as value
+            FROM google_ads WHERE 1=1${gadsDateClause}
+        `),
+
+        // 14. Google Ads daily conversion_value (from google_ads table)
+        prisma.$queryRawUnsafe<any[]>(`
+            SELECT date,
+                COALESCE(SUM(CASE WHEN conversion_value ~ '^[0-9]' THEN
+                    CAST(REPLACE(REPLACE(conversion_value, '.', ''), ',', '.') AS NUMERIC)
+                    ELSE 0 END), 0) as receita
+            FROM google_ads WHERE 1=1${gadsDateClause}
+            GROUP BY date
+            ORDER BY date ASC
+        `),
     ]);
 
     const totals = totalsResult[0] || {};
@@ -420,7 +450,17 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
     const totalClientes = parseInt(uniqueCustomersResult[0]?.total || '0');
     const ticketMedio = totalPedidos > 0 ? totalValorSemFrete / totalPedidos : 0;
 
-    const byAtribuicao = byAtribuicaoResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
+    // Replace Google_Ads value with conversion_value from google_ads table
+    const gadsConversionTotal = parseFloat(gadsConversionValueResult[0]?.value || '0');
+    const byAtribuicao = byAtribuicaoResult.map(r => {
+        const name = r.name;
+        const value = parseFloat(r.value || '0');
+        // Override Google_Ads with conversion_value from google_ads table
+        if (name === 'Google_Ads') {
+            return { name, value: gadsConversionTotal };
+        }
+        return { name, value };
+    });
     const byCategory = byCategoryResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
     const byState = byStateResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
     const bySeller = bySellerResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
@@ -433,20 +473,44 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
         pedidos: parseInt(r.pedidos || '0'),
     }));
 
-    // Pivot daily atribuicao data
+    // Build daily google_ads conversion_value lookup
+    const gadsDailyMap: Record<string, number> = {};
+    gadsDailyConversionValueResult.forEach(r => {
+        gadsDailyMap[r.date] = parseFloat(r.receita || '0');
+    });
+
+    // Pivot daily atribuicao data, replacing Google_Ads with conversion_value
     const allAtribuicoes = [...new Set(dailyAtribuicaoResult.map(r => r.atribuicao))];
     const dailyAtribuicaoMap: Record<string, Record<string, number>> = {};
     dailyAtribuicaoResult.forEach(r => {
         if (!dailyAtribuicaoMap[r.date]) dailyAtribuicaoMap[r.date] = {};
         dailyAtribuicaoMap[r.date][r.atribuicao] = parseFloat(r.receita || '0');
     });
+
+    // Also inject google_ads daily data for dates that only exist in google_ads
+    Object.keys(gadsDailyMap).forEach(date => {
+        if (!dailyAtribuicaoMap[date]) dailyAtribuicaoMap[date] = {};
+    });
+
     const dailyRevenueByAtribuicao = Object.entries(dailyAtribuicaoMap).map(([date, atribData]) => {
         const entry: any = { date };
-        allAtribuicoes.forEach(a => { entry[a] = atribData[a] || 0; });
+        // Normalize date format for gadsDailyMap lookup (bd_mag may have DD/MM/YYYY)
+        let normalizedDate = date;
+        if (date.includes('/')) {
+            const [d, m, y] = date.split('/');
+            normalizedDate = `${y}-${m}-${d}`;
+        }
+        allAtribuicoes.forEach(a => {
+            if (a === 'Google_Ads') {
+                entry[a] = gadsDailyMap[normalizedDate] || 0;
+            } else {
+                entry[a] = atribData[a] || 0;
+            }
+        });
         return entry;
     });
 
-    const receitaGoogleAds = parseFloat(googleAdsRevenueResult[0]?.value || '0');
+    const receitaGoogleAds = gadsConversionTotal;
     const receitaParaROAS = parseFloat(roasRevenueResult[0]?.value || '0');
 
     const filterOpts = filterOptionsResult[0] || {};

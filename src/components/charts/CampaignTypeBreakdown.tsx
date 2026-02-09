@@ -11,11 +11,13 @@ interface CampaignType {
     label: string;
     spend: number;
     conversions: number;
+    conversionValue: number;
     clicks: number;
     impressions: number;
     ctr: number;
     cpc: number;
     cpa: number;
+    roas: number;
     campaigns: string[];
     campaignCount: number;
 }
@@ -24,25 +26,18 @@ interface Campaign {
     campaign: string;
     spend: number;
     conversions: number;
+    conversionValue: number;
     clicks: number;
     tipo: string;
     ctr: number;
     cpc: number;
     cpa: number;
-    roas?: number;
-    revenue?: number;
-}
-
-interface RevenueByType {
-    type: string;
-    revenue: number;
-    orders: number;
+    roas: number;
 }
 
 interface Props {
     byCampaignType: CampaignType[];
     byCampaign: Campaign[];
-    revenueByType?: RevenueByType[]; // Optional revenue data per campaign type
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -54,7 +49,7 @@ const TYPE_COLORS: Record<string, string> = {
     'outros': '#6b7280',
 };
 
-export function CampaignTypeBreakdown({ byCampaignType, byCampaign, revenueByType }: Props) {
+export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
     const [expandedType, setExpandedType] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<'spend' | 'roas'>('spend');
 
@@ -72,30 +67,15 @@ export function CampaignTypeBreakdown({ byCampaignType, byCampaign, revenueByTyp
         return filtered.sort((a, b) => b.spend - a.spend).slice(0, 10);
     };
 
-    // Get revenue for a campaign type
+    // Get revenue for a campaign type — uses conversionValue/roas from byCampaignType directly
     const getRevenueForType = (type: string): { revenue: number; roas: number; orders: number } => {
-        if (!revenueByType) {
-            // Calculate from byCampaign if revenueByType not provided
-            const campaignsOfType = byCampaign.filter(c => c.tipo === type);
-            const revenue = campaignsOfType.reduce((sum, c) => sum + (c.revenue || 0), 0);
-            const spend = campaignsOfType.reduce((sum, c) => sum + c.spend, 0);
-            return {
-                revenue,
-                roas: spend > 0 ? revenue / spend : 0,
-                orders: 0
-            };
-        }
-
-        const typeRevenue = revenueByType.find(r => r.type === type);
-        if (!typeRevenue) return { revenue: 0, roas: 0, orders: 0 };
-
         const typeData = byCampaignType.find(t => t.type === type);
-        const spend = typeData?.spend || 0;
+        if (!typeData) return { revenue: 0, roas: 0, orders: 0 };
 
         return {
-            revenue: typeRevenue.revenue,
-            roas: spend > 0 ? typeRevenue.revenue / spend : 0,
-            orders: typeRevenue.orders
+            revenue: typeData.conversionValue || 0,
+            roas: typeData.roas || 0,
+            orders: 0,
         };
     };
 
