@@ -65,7 +65,7 @@ export function CityRevenueChart({ catalogoData }: CityRevenueProps) {
         sortedCities.forEach(cityEntry => {
             const products = Object.entries(cityEntry.products)
                 .map(([name, data]) => ({ name, ...data }))
-                .sort((a, b) => b.revenue - a.revenue);
+                .sort((a, b) => b.qty - a.qty);
 
             if (products.length > 0) {
                 topProductsMap[cityEntry.city] = products[0];

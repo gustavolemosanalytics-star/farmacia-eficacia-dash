@@ -278,6 +278,28 @@ export default function CrmPage() {
 
         const revenueConcentration = customers.length > 0 ? (([...customers].sort((a, b) => b.totalReceita - a.totalReceita).slice(0, Math.ceil(customers.length * 0.2)).reduce((s, c) => s + c.totalReceita, 0) / totalLTV) * 100) : 0;
 
+        // --- Monthly New vs Recurring Clients ---
+        const monthlyClientMap: Record<string, { novos: Set<string>; recorrentes: Set<string> }> = {};
+        customers.forEach(cust => {
+            cust.orders.forEach((order: any) => {
+                const month = getMonthStr(order.orderDate);
+                if (!monthlyClientMap[month]) monthlyClientMap[month] = { novos: new Set(), recorrentes: new Set() };
+                if (month === cust.cohortMonth) {
+                    monthlyClientMap[month].novos.add(cust.cpf);
+                } else {
+                    monthlyClientMap[month].recorrentes.add(cust.cpf);
+                }
+            });
+        });
+        const monthlyClientData = Object.entries(monthlyClientMap)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([month, data]) => ({
+                month: month.slice(5) + '/' + month.slice(0, 4), // MM/YYYY format
+                novos: data.novos.size,
+                recorrentes: data.recorrentes.size,
+                total: data.novos.size + data.recorrentes.size,
+            }));
+
         return {
             totalCustomers: customers.length,
             recurringCustomers: recurringCustomers.length,
@@ -292,7 +314,8 @@ export default function CrmPage() {
             ltvEvolutionData,
             rfmData,
             categoryAffinity,
-            freqDistData
+            freqDistData,
+            monthlyClientData,
         };
     }, [catalogoData]);
 
@@ -347,6 +370,53 @@ export default function CrmPage() {
             )}
 
             {!loading && (<section><div className="grid grid-cols-2 gap-4 md:grid-cols-4">{kpis.map((kpi) => (<KPICard key={kpi.id} data={kpi} compact />))}</div></section>)}
+
+            {/* Monthly New vs Recurring Clients */}
+            {!loading && analytics?.monthlyClientData && analytics.monthlyClientData.length > 0 && (
+                <section>
+                    <Card className="border-border bg-card">
+                        <CardHeader className="flex flex-row items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-primary" />
+                            <div className="flex-1">
+                                <CardTitle className="text-sm font-medium">Crescimento da Base de Clientes</CardTitle>
+                                <p className="text-xs text-muted-foreground mt-0.5">Clientes novos vs recorrentes por mês</p>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs">
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-3 h-0.5 bg-[#10b981] inline-block rounded" />
+                                    Novos
+                                </span>
+                                <span className="flex items-center gap-1.5">
+                                    <span className="w-3 h-0.5 bg-[#8b5cf6] inline-block rounded" />
+                                    Recorrentes
+                                </span>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <ResponsiveContainer width="100%" height={320}>
+                                <LineChart data={analytics.monthlyClientData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                                    <XAxis
+                                        dataKey="month"
+                                        stroke="var(--muted-foreground)"
+                                        fontSize={11}
+                                        angle={-30}
+                                        textAnchor="end"
+                                        height={45}
+                                    />
+                                    <YAxis stroke="var(--muted-foreground)" fontSize={11} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                        formatter={(value: any, name: any) => [value, name === 'novos' ? 'Clientes Novos' : name === 'recorrentes' ? 'Clientes Recorrentes' : 'Total']}
+                                    />
+                                    <Line type="monotone" dataKey="novos" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: '#10b981' }} name="novos" />
+                                    <Line type="monotone" dataKey="recorrentes" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 4, fill: '#8b5cf6' }} name="recorrentes" />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                </section>
+            )}
 
             {/* New Advanced Charts Section */}
             {!loading && analytics && (

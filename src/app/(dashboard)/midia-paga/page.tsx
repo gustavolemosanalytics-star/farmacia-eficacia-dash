@@ -284,7 +284,7 @@ export default function MidiaPagaPage() {
 
         // Calculate potential score for each campaign
         const investmentPotential = campaignAnalysis
-            .filter((c: any) => c.spend > 50 && c.roas > 0) // Only campaigns with some spend and positive ROAS
+            .filter((c: any) => c.spend >= 1000 && c.roas > 0) // Only campaigns with >= R$1000 spend and positive ROAS
             .map((camp: any) => {
                 // Score components (0-100 each)
                 const roasScore = Math.min((camp.roas / avgRoas) * 50, 100); // Higher ROAS = better

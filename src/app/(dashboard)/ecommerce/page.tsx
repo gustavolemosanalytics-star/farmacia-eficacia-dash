@@ -7,7 +7,7 @@ import { PageFilters } from '@/components/ui/PageFilters';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useDashboardData';
 import {
-    TrendingUp, TrendingDown, DollarSign, Target, ShoppingCart, Activity, BarChart3, Users, AlertTriangle, CheckCircle, Lightbulb, Clock, Zap, Package, MapPin
+    TrendingUp, TrendingDown, DollarSign, Target, ShoppingCart, Activity, BarChart3, Users, AlertTriangle, CheckCircle, Lightbulb, Clock, Zap, Package, MapPin, Search, ArrowUpDown
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList,
@@ -17,9 +17,126 @@ import {
 const COLORS = ['#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899', '#14b8a6', '#f97316'];
 const FUNNEL_COLORS = ['#94a3b8', '#4285F4', '#60a5fa', '#FBBC05', '#EA4335', '#34A853'];
 
+function TopProductsTable({ products, comparisonProductMap }: {
+    products: any[];
+    comparisonProductMap: Record<string, { receita: number; quantidade: number }>;
+}) {
+    const [search, setSearch] = useState('');
+    const [sortKey, setSortKey] = useState<'receita' | 'quantidade'>('receita');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+    const handleSort = (key: 'receita' | 'quantidade') => {
+        if (sortKey === key) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+        else { setSortKey(key); setSortDir('desc'); }
+    };
+
+    const filtered = useMemo(() => {
+        const list = search.trim()
+            ? products.filter(p => p.fullName.toLowerCase().includes(search.toLowerCase()))
+            : products;
+        return [...list].sort((a, b) => {
+            const diff = (a[sortKey] || 0) - (b[sortKey] || 0);
+            return sortDir === 'desc' ? -diff : diff;
+        }).slice(0, 10);
+    }, [products, search, sortKey, sortDir]);
+
+    const totals = useMemo(() => filtered.reduce((acc, p) => ({
+        receita: acc.receita + p.receita,
+        quantidade: acc.quantidade + p.quantidade,
+    }), { receita: 0, quantidade: 0 }), [filtered]);
+
+    const hasComparison = Object.keys(comparisonProductMap).length > 0;
+
+    const SortBtn = ({ field }: { field: 'receita' | 'quantidade' }) => (
+        <span className="inline-flex items-center gap-1 justify-end">
+            {field === 'receita' ? 'Receita' : 'Qtd.'}
+            {sortKey === field
+                ? sortDir === 'desc' ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />
+                : <ArrowUpDown className="h-3 w-3 opacity-30" />}
+        </span>
+    );
+
+    return (
+        <div>
+            <div className="mb-3 relative">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                    type="text"
+                    placeholder="Buscar produto..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 text-xs border border-border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+            </div>
+            <div className="max-h-[320px] overflow-y-auto">
+                <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-card">
+                        <tr className="border-b border-border">
+                            <th className="text-left py-2 px-2 font-medium text-muted-foreground text-xs">Produto</th>
+                            <th
+                                className="text-right py-2 px-2 font-medium text-muted-foreground text-xs cursor-pointer select-none hover:text-foreground"
+                                onClick={() => handleSort('receita')}
+                            >
+                                <SortBtn field="receita" />
+                            </th>
+                            <th
+                                className="text-right py-2 px-2 font-medium text-muted-foreground text-xs cursor-pointer select-none hover:text-foreground"
+                                onClick={() => handleSort('quantidade')}
+                            >
+                                <SortBtn field="quantidade" />
+                            </th>
+                            {hasComparison && (
+                                <th className="text-right py-2 px-2 font-medium text-muted-foreground text-xs">Var.</th>
+                            )}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filtered.map((prod, i) => {
+                            const prev = comparisonProductMap[prod.fullName];
+                            const receitaVar = prev?.receita > 0 ? ((prod.receita - prev.receita) / prev.receita) * 100 : null;
+                            return (
+                                <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50">
+                                    <td className="py-2 px-2 text-xs max-w-[180px] truncate" title={prod.fullName}>{prod.name}</td>
+                                    <td className="py-2 px-2 text-right text-xs font-medium text-emerald-600">
+                                        R$ {prod.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                                    </td>
+                                    <td className="py-2 px-2 text-right text-xs text-muted-foreground font-mono">{prod.quantidade} un.</td>
+                                    {hasComparison && (
+                                        <td className="py-2 px-2 text-right text-xs font-semibold">
+                                            {receitaVar !== null ? (
+                                                <span className={receitaVar >= 0 ? 'text-emerald-600' : 'text-red-500'}>
+                                                    {receitaVar >= 0 ? '+' : ''}{receitaVar.toFixed(1)}%
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted-foreground">—</span>
+                                            )}
+                                        </td>
+                                    )}
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                    {search.trim() && (
+                        <tfoot>
+                            <tr className="border-t-2 border-border bg-muted/30">
+                                <td className="py-2 px-2 text-xs font-bold">Total ({filtered.length} produtos)</td>
+                                <td className="py-2 px-2 text-right text-xs font-bold text-emerald-600">
+                                    R$ {totals.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                                </td>
+                                <td className="py-2 px-2 text-right text-xs font-bold">{totals.quantidade} un.</td>
+                                {hasComparison && <td />}
+                            </tr>
+                        </tfoot>
+                    )}
+                </table>
+            </div>
+        </div>
+    );
+}
+
 export default function EcommercePage() {
-    const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
-    const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
+    const { kpis: gadsKpis, comparisonKpis: gadsComparisonKpis, loading: loadingGads } = useGoogleAdsKPIs();
+    const { data: catalogoData, comparisonData: catalogoComparisonData, loading: loadingCatalogo } = useCatalogoData();
     const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
 
     const loading = loadingGads || loadingCatalogo || loadingGA4;
@@ -30,6 +147,7 @@ export default function EcommercePage() {
     const filterOptions = catalogoData?.filterOptions || { status: [], atribuicoes: [] };
 
     // Analytics and Insights
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     const analytics = useMemo(() => {
         if (!catalogoData?.rawData) return null;
 
@@ -176,8 +294,8 @@ export default function EcommercePage() {
             totalCampaignRevenue[campaign] = (totalCampaignRevenue[campaign] || 0) + revenue;
         });
 
-        // 3. Calculate investment and ROAS per product
-        const topProducts = Object.values(productData)
+        // 3. Calculate investment and ROAS per product (all products, UI will filter)
+        const allProducts = Object.values(productData)
             .map(prod => {
                 let investment = 0;
                 Object.entries(prod.campaigns).forEach(([campaign, revenueGenerated]) => {
@@ -199,9 +317,51 @@ export default function EcommercePage() {
                     roas: investment > 0 ? prod.receita / investment : 0
                 };
             })
-            .sort((a, b) => b.receita - a.receita)
-            .slice(0, 10);
+            .sort((a, b) => b.receita - a.receita);
+
+        const topProducts = allProducts; // kept for backwards compatibility
         // ========================================================
+
+        // 4. Comparison product data for variation column
+        const comparisonProductMap: Record<string, { receita: number; quantidade: number }> = {};
+        if (catalogoComparisonData?.rawData) {
+            let compFiltered = catalogoComparisonData.rawData.filter((d: any) =>
+                d.status?.toLowerCase().includes('complete') ||
+                d.status?.toLowerCase().includes('completo') ||
+                d.status?.toLowerCase().includes('pago') ||
+                d.status?.toLowerCase().includes('enviado') ||
+                d.status?.toLowerCase().includes('faturado') ||
+                !d.status
+            );
+            if (filterAtribuicao) compFiltered = compFiltered.filter((d: any) => d.atribuicao === filterAtribuicao);
+            compFiltered.forEach((d: any) => {
+                const name = d.nomeProduto || d.sku;
+                if (!name) return;
+                if (!comparisonProductMap[name]) comparisonProductMap[name] = { receita: 0, quantidade: 0 };
+                comparisonProductMap[name].receita += d.receitaProduto || 0;
+                comparisonProductMap[name].quantidade += d.quantidade || 1;
+            });
+        }
+
+        // 5. Comparison KPI totals for variation display
+        const comparisonTotals = catalogoComparisonData?.rawData ? (() => {
+            const compBase = catalogoComparisonData.rawData.filter((d: any) => {
+                if (filterStatus) return d.status === filterStatus;
+                return d.status?.toLowerCase().includes('complete') ||
+                    d.status?.toLowerCase().includes('completo') ||
+                    d.status?.toLowerCase().includes('pago') ||
+                    d.status?.toLowerCase().includes('enviado') ||
+                    d.status?.toLowerCase().includes('faturado') ||
+                    !d.status;
+            });
+            const compAll = filterAtribuicao ? compBase.filter((d: any) => d.atribuicao === filterAtribuicao) : compBase;
+            const compReceita = compAll.reduce((s: number, d: any) => s + (d.receitaProduto || 0), 0);
+            const compOrderSet = new Set(compAll.map((d: any) => d.pedido).filter(Boolean));
+            const compOrders = compOrderSet.size || compAll.length;
+            const compGeral = compBase.reduce((s: number, d: any) => s + (d.receitaProduto || 0), 0);
+            const compTicket = compOrders > 0 ? compReceita / compOrders : 0;
+            return { totalReceita: compReceita, totalPedidos: compOrders, totalReceitaGeral: compGeral, ticketMedio: compTicket };
+        })() : null;
 
         // Revenue by State
         const stateMap: { [key: string]: number } = {};
@@ -257,8 +417,10 @@ export default function EcommercePage() {
             topProducts,
             byState,
             receitaGoogleAds,
+            comparisonProductMap,
+            comparisonTotals,
         };
-    }, [catalogoData, filterStatus, filterAtribuicao, gadsKpis]);
+    }, [catalogoData, catalogoComparisonData, filterStatus, filterAtribuicao, gadsKpis]);
 
     // Funnel data
     const funnelMetrics = {
@@ -275,6 +437,11 @@ export default function EcommercePage() {
 
     // ROAS (always using data from google_ads table as requested)
     const roas = gadsKpis?.roas || 0;
+
+    // CPA
+    const cpa = gadsKpis?.conversions > 0 ? (gadsKpis?.spend || 0) / gadsKpis.conversions : 0;
+    const prevCpa = gadsComparisonKpis?.conversions > 0 ? (gadsComparisonKpis?.spend || 0) / gadsComparisonKpis.conversions : 0;
+    const cpaVar = prevCpa > 0 ? ((cpa - prevCpa) / prevCpa) * 100 : 0;
 
     // Conversion rates
     const rates = {
@@ -344,6 +511,28 @@ export default function EcommercePage() {
         return result;
     }, [analytics, roas]);
 
+    // KPI variation helpers
+    const pctVar = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : 0;
+    const compTotals = analytics?.comparisonTotals;
+
+    const receitaGeralVar = pctVar(analytics?.totalReceitaGeral || 0, compTotals?.totalReceitaGeral || 0);
+    const receitaGeralTend: 'up' | 'down' | 'stable' = !compTotals ? 'up' : receitaGeralVar > 1 ? 'up' : receitaGeralVar < -1 ? 'down' : 'stable';
+
+    const receitaMidiaVar = pctVar(gadsKpis?.conversionValue || 0, gadsComparisonKpis?.conversionValue || 0);
+    const receitaMidiaTend: 'up' | 'down' | 'stable' = !gadsComparisonKpis ? 'up' : receitaMidiaVar > 1 ? 'up' : receitaMidiaVar < -1 ? 'down' : 'stable';
+
+    const pedidosVar = pctVar(analytics?.totalPedidos || 0, compTotals?.totalPedidos || 0);
+    const pedidosTend: 'up' | 'down' | 'stable' = !compTotals ? 'up' : pedidosVar > 1 ? 'up' : pedidosVar < -1 ? 'down' : 'stable';
+
+    const ticketVar = pctVar(analytics?.ticketMedio || 0, compTotals?.ticketMedio || 0);
+    const ticketTend: 'up' | 'down' | 'stable' = !compTotals ? 'stable' : ticketVar > 1 ? 'up' : ticketVar < -1 ? 'down' : 'stable';
+
+    const roasVar = pctVar(roas, gadsComparisonKpis?.roas || 0);
+    const roasTend: 'up' | 'down' | 'stable' = !gadsComparisonKpis ? (roas >= 3 ? 'up' : 'down') : roasVar > 1 ? 'up' : roasVar < -1 ? 'down' : 'stable';
+
+    // CPA - lower is better, so flip the tendency
+    const cpaTend: 'up' | 'down' | 'stable' = !prevCpa ? 'stable' : cpaVar < -1 ? 'up' : cpaVar > 1 ? 'down' : 'stable';
+
     // KPIs
     const kpis = [
         {
@@ -351,8 +540,8 @@ export default function EcommercePage() {
             titulo: 'Receita Geral Magento',
             valor: analytics?.totalReceitaGeral || 0,
             valorFormatado: `R$ ${(analytics?.totalReceitaGeral || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            variacao: 0,
-            tendencia: 'up' as const,
+            variacao: compTotals ? receitaGeralVar : 0,
+            tendencia: receitaGeralTend,
             sparklineData: [1, 1.02, 1.05, 1.08, 1.1],
         },
         {
@@ -360,8 +549,8 @@ export default function EcommercePage() {
             titulo: 'Receita Mídia Paga (GAds)',
             valor: gadsKpis?.conversionValue || 0,
             valorFormatado: `R$ ${(gadsKpis?.conversionValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            variacao: 0,
-            tendencia: 'up' as const,
+            variacao: gadsComparisonKpis ? receitaMidiaVar : 0,
+            tendencia: receitaMidiaTend,
             sparklineData: [1, 1.02, 1.05, 1.08, 1.1],
         },
         {
@@ -369,8 +558,8 @@ export default function EcommercePage() {
             titulo: 'Total Pedidos',
             valor: analytics?.totalPedidos || 0,
             valorFormatado: (analytics?.totalPedidos || 0).toLocaleString('pt-BR'),
-            variacao: 5.2,
-            tendencia: 'up' as const,
+            variacao: compTotals ? pedidosVar : 0,
+            tendencia: pedidosTend,
             sparklineData: [1, 1.01, 1.03, 1.04, 1.06],
         },
         {
@@ -378,8 +567,8 @@ export default function EcommercePage() {
             titulo: 'Ticket Médio',
             valor: analytics?.ticketMedio || 0,
             valorFormatado: `R$ ${(analytics?.ticketMedio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-            variacao: 3.1,
-            tendencia: 'stable' as const,
+            variacao: compTotals ? ticketVar : 0,
+            tendencia: ticketTend,
             sparklineData: [1, 1, 1.01, 1.02, 1.03],
         },
         {
@@ -387,9 +576,18 @@ export default function EcommercePage() {
             titulo: 'ROAS',
             valor: roas,
             valorFormatado: `${roas.toFixed(2)}x`,
-            variacao: roas >= 3 ? 5.0 : -2.0,
-            tendencia: roas >= 3 ? 'up' as const : 'down' as const,
+            variacao: gadsComparisonKpis ? roasVar : 0,
+            tendencia: roasTend,
             sparklineData: [1, 1.01, 1.03, 1.04, 1.05],
+        },
+        {
+            id: 'cpa',
+            titulo: 'CPA (Custo por Conversão)',
+            valor: cpa,
+            valorFormatado: cpa > 0 ? `R$ ${cpa.toFixed(2)}` : '—',
+            variacao: prevCpa ? -cpaVar : 0, // Negate: falling CPA = good
+            tendencia: cpaTend,
+            sparklineData: [1, 1.01, 1.0, 0.99, 0.98],
         },
     ];
 
@@ -440,7 +638,7 @@ export default function EcommercePage() {
             {/* KPIs */}
             {!loading && (
                 <section>
-                    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
                         {kpis.map((kpi) => (
                             <KPICard key={kpi.id} data={kpi} compact />
                         ))}
@@ -662,42 +860,17 @@ export default function EcommercePage() {
                         </CardContent>
                     </Card>
 
-                    {/* Top Products Table with ROAS and Investment */}
+                    {/* Top Products Table with search, sort and variation */}
                     <Card className="border-border bg-card">
                         <CardHeader className="flex flex-row items-center gap-2">
                             <ShoppingCart className="h-5 w-5 text-primary" />
-                            <CardTitle className="text-sm font-medium">Top 10 Produtos por Receita</CardTitle>
+                            <CardTitle className="text-sm font-medium">Top Produtos por Receita</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="max-h-[350px] overflow-y-auto">
-                                <table className="w-full text-sm">
-                                    <thead className="sticky top-0 bg-card">
-                                        <tr className="border-b border-border">
-                                            <th className="text-left py-2 px-2 font-medium text-muted-foreground">Produto</th>
-                                            <th className="text-right py-2 px-2 font-medium text-muted-foreground">Receita</th>
-                                            <th className="text-right py-2 px-2 font-medium text-muted-foreground">Qtd.</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {analytics.topProducts.map((prod, i) => {
-                                            return (
-                                                <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50">
-                                                    <td className="py-2 px-2 text-xs max-w-[200px] truncate" title={prod.fullName}>{prod.name}</td>
-                                                    <td className="py-2 px-2 text-right text-xs font-medium text-emerald-600">
-                                                        R$ {prod.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-                                                    </td>
-                                                    <td className="py-2 px-2 text-right text-xs text-muted-foreground font-mono">
-                                                        {prod.quantidade} un.
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground mt-2">
-                                * Investimento calculado via cruzamento de Campanhas (BD Mag x GAds)
-                            </p>
+                            <TopProductsTable
+                                products={analytics.topProducts}
+                                comparisonProductMap={analytics.comparisonProductMap || {}}
+                            />
                         </CardContent>
                     </Card>
                 </section>
