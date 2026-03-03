@@ -1,6 +1,23 @@
-import prisma from '@/lib/prisma';
+/**
+ * postgres.ts — In-Memory Data Layer (replaces PostgreSQL)
+ *
+ * All data comes from the public Google Sheets via sheets-store.ts.
+ * Function signatures and return types are IDENTICAL to the old SQL version
+ * so that client.ts and API routes need zero changes.
+ */
 
-// Helper to define types based on the contract needed by useSheetData/page.tsx
+import {
+    getBdMagData,
+    getGa4StoreData,
+    getGoogleAdsStoreData,
+    getTvSalesStoreData,
+    getMetasStoreData,
+} from './sheets-store';
+
+// ============================================
+// TYPE EXPORTS (unchanged)
+// ============================================
+
 export type CatalogoItem = {
     mpn: string;
     pedido: string;
@@ -50,11 +67,11 @@ export type GoogleAdsItem = {
     campaign: string;
     cost: number;
     conversions: number;
-    conversionValue: number;  // For ROAS calculation
+    conversionValue: number;
     clicks: number;
     impressions: number;
     ctr: number;
-    campaignCategory: string; // 'Campanha' column
+    campaignCategory: string;
 };
 
 export type GA4SessionsItem = {
@@ -69,24 +86,21 @@ export type GA4SessionsItem = {
     purchases: number;
 };
 
-// --- DATA FETCHERS ---
+// ============================================
+// HELPERS
+// ============================================
 
-// Helper to parse Brazilian number format (comma as decimal, dot as thousands) or plain numbers
 function parseNumber(val: any): number {
     if (val === null || val === undefined || val === '') return 0;
     if (typeof val === 'number') return val;
 
-    // Remove currency, spaces
     let str = val.toString().trim()
         .replace(/[R$]/g, '')
         .replace(/\s/g, '');
 
-    // If it has a comma and a dot, it's definitely mixed format (e.g. 1.234,56)
     if (str.includes(',') && str.includes('.')) {
         str = str.replace(/\./g, '').replace(',', '.');
-    }
-    // If it has only a comma, it's likely decimal (e.g. 1234,56)
-    else if (str.includes(',')) {
+    } else if (str.includes(',')) {
         str = str.replace(',', '.');
     }
 
@@ -94,35 +108,67 @@ function parseNumber(val: any): number {
     return isNaN(num) ? 0 : num;
 }
 
-// Helper to build date WHERE clause for TEXT date columns
-// Supports both DD/MM/YYYY and YYYY-MM-DD formats
-function buildDateFilter(column: string, startDate?: Date, endDate?: Date): { clause: string; params: any[] } {
-    if (!startDate || !endDate) return { clause: '', params: [] };
-
-    const startStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
-    const endStr = endDate.toISOString().split('T')[0];
-
-    // Handle both date formats in a single query using CASE
-    const clause = ` AND (
-        CASE
-            WHEN ${column} ~ '^\\d{4}-\\d{2}-\\d{2}' THEN SUBSTRING(${column} FROM 1 FOR 10)
-            WHEN ${column} ~ '^\\d{2}/\\d{2}/\\d{4}' THEN
-                SUBSTRING(${column} FROM 7 FOR 4) || '-' || SUBSTRING(${column} FROM 4 FOR 2) || '-' || SUBSTRING(${column} FROM 1 FOR 2)
-            ELSE NULL
-        END
-    ) BETWEEN $1 AND $2`;
-
-    return { clause, params: [startStr, endStr] };
+function normalizeDate(dateStr: string | null | undefined): string | null {
+    if (!dateStr) return null;
+    const s = dateStr.toString().trim().split(' ')[0]; // strip time part
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+    if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+        return s.substring(6, 10) + '-' + s.substring(3, 5) + '-' + s.substring(0, 2);
+    }
+    return null;
 }
 
-export async function getCatalogoData(filters: CatalogoFilters = {}): Promise<CatalogoItem[]> {
-    const { where, params } = buildCatalogoWhere(filters);
+function isCompletedStatus(status: string | null | undefined): boolean {
+    if (!status || status === '') return true;
+    const lower = status.toLowerCase();
+    return lower.includes('complete') || lower.includes('completo') ||
+        lower.includes('pago') || lower.includes('enviado') ||
+        lower.includes('faturado') || lower.includes('entregue') ||
+        lower.includes('delivered');
+}
 
-    const query = `SELECT * FROM bd_mag ${where}`;
+function isInDateRange(dateStr: string | null | undefined, startDate?: Date, endDate?: Date): boolean {
+    if (!startDate || !endDate) return true;
+    const normalized = normalizeDate(dateStr);
+    if (!normalized) return false;
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
+    return normalized >= startStr && normalized <= endStr;
+}
 
-    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...params);
+// ============================================
+// FILTERS
+// ============================================
 
-    return rows.map(r => ({
+interface CatalogoFilters {
+    startDate?: Date;
+    endDate?: Date;
+    status?: string;
+    atribuicao?: string;
+}
+
+function filterBdMagRows(rows: Record<string, any>[], filters: CatalogoFilters): Record<string, any>[] {
+    return rows.filter(r => {
+        // Date filter
+        if (filters.startDate && filters.endDate) {
+            if (!isInDateRange(r.data, filters.startDate, filters.endDate)) return false;
+        }
+        // Status filter
+        if (filters.status) {
+            if (r.status !== filters.status) return false;
+        } else {
+            if (!isCompletedStatus(r.status)) return false;
+        }
+        // Atribuicao filter
+        if (filters.atribuicao) {
+            if (r.atribuicao !== filters.atribuicao) return false;
+        }
+        return true;
+    });
+}
+
+function mapRowToCatalogoItem(r: Record<string, any>): CatalogoItem {
+    return {
         mpn: r.mpn || '',
         pedido: r.pedido || '',
         dataTransacao: r.data_transacao || '',
@@ -143,24 +189,31 @@ export async function getCatalogoData(filters: CatalogoFilters = {}): Promise<Ca
         origem: r.origem || '',
         midia: r.midia || '',
         campanha: r.camp || r.camp2 || '',
-        cupom: r.cupom || '',
+        cupom: r.cupom || r.especialmente || '',
         atribuicao: r.atribuicao || '',
         qtdTotalPedidos: parseInt(r.qde_total_pedidos || '1'),
         pertenceA: r.pertence_a || '',
         diaSemana: r.dia_da_semana || '',
         mes: r.mes || '',
         semana: r.semana || '',
-    }));
+    };
+}
+
+// ============================================
+// DATA FETCHERS
+// ============================================
+
+export async function getCatalogoData(filters: CatalogoFilters = {}): Promise<CatalogoItem[]> {
+    const allRows = await getBdMagData();
+    const filtered = filterBdMagRows(allRows, filters);
+    return filtered.map(mapRowToCatalogoItem);
 }
 
 export async function getGA4Data(startDate?: Date, endDate?: Date): Promise<GA4Item[]> {
-    const dateFilter = buildDateFilter('date', startDate, endDate);
+    const allRows = await getGa4StoreData();
+    const filtered = allRows.filter(r => isInDateRange(r.date, startDate, endDate));
 
-    const query = `SELECT * FROM ga4 WHERE 1=1${dateFilter.clause}`;
-
-    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...dateFilter.params);
-
-    return rows.map(r => ({
+    return filtered.map(r => ({
         transactionId: r.transactionid || r.transaction_id || r.transaction || '',
         transactionDate: r.date || '',
         eventSourceMedium: r.session_source_medium || r.event_source_medium || '',
@@ -175,13 +228,10 @@ export async function getGA4Data(startDate?: Date, endDate?: Date): Promise<GA4I
 }
 
 export async function getGoogleAdsData(startDate?: Date, endDate?: Date): Promise<GoogleAdsItem[]> {
-    const dateFilter = buildDateFilter('date', startDate, endDate);
+    const allRows = await getGoogleAdsStoreData();
+    const filtered = allRows.filter(r => isInDateRange(r.date, startDate, endDate));
 
-    const query = `SELECT * FROM google_ads WHERE 1=1${dateFilter.clause}`;
-
-    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...dateFilter.params);
-
-    return rows.map(r => ({
+    return filtered.map(r => ({
         day: r.date || r.day || '',
         account: r.account_name || r.account_cust || r.account || '',
         campaign: r.campaign || '',
@@ -196,13 +246,10 @@ export async function getGoogleAdsData(startDate?: Date, endDate?: Date): Promis
 }
 
 export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Promise<GA4SessionsItem[]> {
-    const dateFilter = buildDateFilter('date', startDate, endDate);
+    const allRows = await getGa4StoreData();
+    const filtered = allRows.filter(r => isInDateRange(r.date, startDate, endDate));
 
-    const query = `SELECT * FROM ga4 WHERE 1=1${dateFilter.clause}`;
-
-    const rows = await prisma.$queryRawUnsafe<any[]>(query, ...dateFilter.params);
-
-    return rows.map(r => ({
+    return filtered.map(r => ({
         date: r.date || '',
         sessions: parseInt((r.sessions || '0').toString().replace(/\./g, '').replace(',', '.')),
         source: r.session_source_medium || r.event_source_medium || r.origem || '',
@@ -216,304 +263,172 @@ export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Prom
 }
 
 // ============================================
-// SQL-LEVEL AGGREGATION (avoids full table scans)
+// CATALOGO KPIs AGGREGATION (replaces 14 SQL queries)
 // ============================================
 
-const COMPLETED_STATUS_FILTER = `(status IS NULL OR status = '' OR LOWER(status) LIKE '%complete%' OR LOWER(status) LIKE '%completo%' OR LOWER(status) LIKE '%pago%' OR LOWER(status) LIKE '%enviado%' OR LOWER(status) LIKE '%faturado%' OR LOWER(status) LIKE '%entregue%' OR LOWER(status) LIKE '%delivered%')`;
-
-const NORMALIZE_DATE_EXPR = (col: string) => `
-    CASE
-        WHEN ${col} ~ '^\\d{4}-\\d{2}-\\d{2}' THEN SUBSTRING(${col} FROM 1 FOR 10)
-        WHEN ${col} ~ '^\\d{2}/\\d{2}/\\d{4}' THEN
-            SUBSTRING(${col} FROM 7 FOR 4) || '-' || SUBSTRING(${col} FROM 4 FOR 2) || '-' || SUBSTRING(${col} FROM 1 FOR 2)
-        ELSE NULL
-    END`;
-
-interface CatalogoFilters {
-    startDate?: Date;
-    endDate?: Date;
-    status?: string;
-    atribuicao?: string;
-}
-
-function buildCatalogoWhere(filters: CatalogoFilters): { where: string; params: any[] } {
-    const conditions: string[] = [];
-    const params: any[] = [];
-    let idx = 1;
-
-    if (filters.startDate && filters.endDate) {
-        const startStr = filters.startDate.toISOString().split('T')[0];
-        const endStr = filters.endDate.toISOString().split('T')[0];
-        conditions.push(`(${NORMALIZE_DATE_EXPR('data')}) BETWEEN $${idx} AND $${idx + 1}`);
-        params.push(startStr, endStr);
-        idx += 2;
-    }
-
-    if (filters.status) {
-        conditions.push(`status = $${idx}`);
-        params.push(filters.status);
-        idx++;
-    } else {
-        conditions.push(COMPLETED_STATUS_FILTER);
-    }
-
-    if (filters.atribuicao) {
-        conditions.push(`atribuicao = $${idx}`);
-        params.push(filters.atribuicao);
-        idx++;
-    }
-
-    return {
-        where: conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '',
-        params
-    };
-}
-
 export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
-    const { where, params } = buildCatalogoWhere(filters);
-
-    // Run all aggregation queries in parallel
-    // Build date filter for google_ads table (date is YYYY-MM-DD format)
-    const gadsDateParams: any[] = [];
-    let gadsDateClause = '';
-    if (filters.startDate && filters.endDate) {
-        const startStr = filters.startDate.toISOString().split('T')[0];
-        const endStr = filters.endDate.toISOString().split('T')[0];
-        gadsDateClause = ` AND date BETWEEN '${startStr}' AND '${endStr}'`;
-    }
-
-    const [
-        totalsResult,
-        byAtribuicaoResult,
-        byCategoryResult,
-        byStateResult,
-        bySellerResult,
-        byDayOfWeekResult,
-        dailyRevenueResult,
-        dailyAtribuicaoResult,
-        filterOptionsResult,
-        googleAdsRevenueResult,
-        roasRevenueResult,
-        uniqueCustomersResult,
-        gadsConversionValueResult,
-        gadsDailyConversionValueResult,
-    ] = await Promise.all([
-        // 1. Totals
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT
-                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as total_receita,
-                COALESCE(SUM(CASE WHEN valor_total_sem_frete ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(valor_total_sem_frete, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as total_sem_frete,
-                COALESCE(SUM(CASE WHEN valor_total_com_frete ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(valor_total_com_frete, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as total_com_frete,
-                COUNT(DISTINCT NULLIF(pedido, '')) as total_pedidos,
-                COUNT(*) as total_produtos
-            FROM bd_mag ${where}
-        `, ...params),
-
-        // 2. By Atribuição
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT COALESCE(NULLIF(atribuicao, ''), 'Não identificado') as name,
-                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as value
-            FROM bd_mag ${where}
-            GROUP BY COALESCE(NULLIF(atribuicao, ''), 'Não identificado')
-            ORDER BY value DESC
-        `, ...params),
-
-        // 3. By Categoria (top 8)
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT COALESCE(NULLIF(categoria, ''), 'Sem Categoria') as name,
-                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as value
-            FROM bd_mag ${where}
-            GROUP BY COALESCE(NULLIF(categoria, ''), 'Sem Categoria')
-            ORDER BY value DESC LIMIT 8
-        `, ...params),
-
-        // 4. By Estado (top 10)
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT COALESCE(NULLIF(estado, ''), 'N/A') as name,
-                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as value
-            FROM bd_mag ${where}
-            GROUP BY COALESCE(NULLIF(estado, ''), 'N/A')
-            ORDER BY value DESC LIMIT 10
-        `, ...params),
-
-        // 5. By Seller (top 5) - FALLBACK if column missing
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT 'Não atribuído' as name, 0 as value
-        `),
-
-        // 6. By Day of Week
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT COALESCE(NULLIF(dia_da_semana, ''), 'N/A') as name,
-                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as value
-            FROM bd_mag ${where}
-            GROUP BY COALESCE(NULLIF(dia_da_semana, ''), 'N/A')
-        `, ...params),
-
-        // 7. Daily Revenue
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT SPLIT_PART(data, ' ', 1) as date,
-                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as receita,
-                COUNT(*) as pedidos
-            FROM bd_mag ${where} AND data IS NOT NULL AND data != ''
-            GROUP BY SPLIT_PART(data, ' ', 1)
-            ORDER BY (${NORMALIZE_DATE_EXPR("SPLIT_PART(data, ' ', 1)")}) ASC
-        `, ...params),
-
-        // 8. Daily Revenue by Atribuição
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT SPLIT_PART(data, ' ', 1) as date,
-                COALESCE(NULLIF(atribuicao, ''), 'Não identificado') as atribuicao,
-                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as receita
-            FROM bd_mag ${where} AND data IS NOT NULL AND data != ''
-            GROUP BY SPLIT_PART(data, ' ', 1), COALESCE(NULLIF(atribuicao, ''), 'Não identificado')
-            ORDER BY (${NORMALIZE_DATE_EXPR("SPLIT_PART(data, ' ', 1)")}) ASC
-        `, ...params),
-
-        // 9. Filter options (distinct values)
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT
-                array_agg(DISTINCT status) FILTER (WHERE status IS NOT NULL AND status != '') as statuses,
-                array_agg(DISTINCT atribuicao) FILTER (WHERE atribuicao IS NOT NULL AND atribuicao != '') as atribuicoes,
-                array_agg(DISTINCT origem) FILTER (WHERE origem IS NOT NULL AND origem != '') as origens,
-                array_agg(DISTINCT midia) FILTER (WHERE midia IS NOT NULL AND midia != '') as midias,
-                array_agg(DISTINCT categoria) FILTER (WHERE categoria IS NOT NULL AND categoria != '') as categorias
-            FROM bd_mag
-        `),
-
-        // 10. Google Ads revenue (atribuicao contains 'google')
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as value
-            FROM bd_mag ${where} AND LOWER(atribuicao) LIKE '%google%'
-        `, ...params),
-
-        // 11. ROAS revenue (atribuicao not in 'vendedor', 'outros', '')
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as value
-            FROM bd_mag ${where} AND LOWER(atribuicao) NOT IN ('vendedor', 'outros', '')
-                AND atribuicao IS NOT NULL
-        `, ...params),
-
-        // 12. Unique customers
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT COUNT(DISTINCT NULLIF(cpf_cliente, '')) as total
-            FROM bd_mag ${where}
-        `, ...params),
-
-        // 13. Google Ads conversion_value total (from google_ads table)
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT COALESCE(SUM(CASE WHEN conversion_value ~ '^[0-9]' THEN
-                CAST(REPLACE(REPLACE(conversion_value, '.', ''), ',', '.') AS NUMERIC)
-                ELSE 0 END), 0) as value
-            FROM google_ads WHERE 1=1${gadsDateClause}
-        `),
-
-        // 14. Google Ads daily conversion_value (from google_ads table)
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT date,
-                COALESCE(SUM(CASE WHEN conversion_value ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(conversion_value, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as receita
-            FROM google_ads WHERE 1=1${gadsDateClause}
-            GROUP BY date
-            ORDER BY date ASC
-        `),
+    const [allBdMag, allGoogleAds] = await Promise.all([
+        getBdMagData(),
+        getGoogleAdsStoreData(),
     ]);
 
-    const totals = totalsResult[0] || {};
-    const totalReceita = parseFloat(totals.total_receita || '0');
-    const totalValorSemFrete = parseFloat(totals.total_sem_frete || '0');
-    const totalValorComFrete = parseFloat(totals.total_com_frete || '0');
-    const totalPedidos = parseInt(totals.total_pedidos || '0');
-    const totalProdutosVendidos = parseInt(totals.total_produtos || '0');
-    const totalClientes = parseInt(uniqueCustomersResult[0]?.total || '0');
-    const ticketMedio = totalPedidos > 0 ? totalValorSemFrete / totalPedidos : 0;
+    const rows = filterBdMagRows(allBdMag, filters);
 
-    // Replace Google_Ads value with conversion_value from google_ads table
-    const gadsConversionTotal = parseFloat(gadsConversionValueResult[0]?.value || '0');
-    const byAtribuicao = byAtribuicaoResult.map(r => {
-        const name = r.name;
-        const value = parseFloat(r.value || '0');
-        // Override Google_Ads with conversion_value from google_ads table
-        if (name === 'Google_Ads') {
-            return { name, value: gadsConversionTotal };
+    // Single-pass aggregation
+    let totalReceita = 0;
+    let totalSemFrete = 0;
+    let totalComFrete = 0;
+    const pedidoSet = new Set<string>();
+    const cpfSet = new Set<string>();
+    const atribuicaoMap: Record<string, number> = {};
+    const categoriaMap: Record<string, number> = {};
+    const estadoMap: Record<string, number> = {};
+    const diaSemanaMap: Record<string, number> = {};
+    const dailyMap: Record<string, { receita: number; pedidos: number }> = {};
+    const dailyAtribMap: Record<string, Record<string, number>> = {};
+    const allAtribuicoesSet = new Set<string>();
+    let googleAdsReceita = 0;
+    let roasReceita = 0;
+
+    for (const r of rows) {
+        const receita = parseNumber(r.receita_do_produto);
+        const semFrete = parseNumber(r.valor_total_sem_frete);
+        const comFrete = parseNumber(r.valor_total_com_frete);
+        const pedido = r.pedido || '';
+        const cpf = r.cpf_cliente || '';
+        const atrib = r.atribuicao || '';
+        const cat = r.categoria || '';
+        const estado = r.estado || '';
+        const diaSemana = r.dia_da_semana || '';
+        const dateRaw = (r.data || '').split(' ')[0];
+
+        totalReceita += receita;
+        totalSemFrete += semFrete;
+        totalComFrete += comFrete;
+        if (pedido) pedidoSet.add(pedido);
+        if (cpf) cpfSet.add(cpf);
+
+        // By atribuicao
+        const atribKey = atrib || 'Não identificado';
+        atribuicaoMap[atribKey] = (atribuicaoMap[atribKey] || 0) + receita;
+        allAtribuicoesSet.add(atribKey);
+
+        // By categoria
+        const catKey = cat || 'Sem Categoria';
+        categoriaMap[catKey] = (categoriaMap[catKey] || 0) + receita;
+
+        // By estado
+        const estKey = estado || 'N/A';
+        estadoMap[estKey] = (estadoMap[estKey] || 0) + receita;
+
+        // By dia da semana
+        const dsKey = diaSemana || 'N/A';
+        diaSemanaMap[dsKey] = (diaSemanaMap[dsKey] || 0) + receita;
+
+        // Daily (normalize to YYYY-MM-DD for consistent keys)
+        const normalizedDate = normalizeDate(dateRaw);
+        if (normalizedDate) {
+            if (!dailyMap[normalizedDate]) dailyMap[normalizedDate] = { receita: 0, pedidos: 0 };
+            dailyMap[normalizedDate].receita += receita;
+            dailyMap[normalizedDate].pedidos += 1;
+
+            if (!dailyAtribMap[normalizedDate]) dailyAtribMap[normalizedDate] = {};
+            dailyAtribMap[normalizedDate][atribKey] = (dailyAtribMap[normalizedDate][atribKey] || 0) + receita;
         }
-        return { name, value };
-    });
-    const byCategory = byCategoryResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
-    const byState = byStateResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
-    const bySeller = bySellerResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
-    const byDayOfWeek = byDayOfWeekResult.map(r => ({ name: r.name, value: parseFloat(r.value || '0') }));
-    const byChannel = byAtribuicao; // same data, different name
 
-    const dailyRevenue = dailyRevenueResult.map(r => ({
-        date: r.date,
-        receita: parseFloat(r.receita || '0'),
-        pedidos: parseInt(r.pedidos || '0'),
-    }));
+        // Google Ads revenue
+        if (atrib.toLowerCase().includes('google')) {
+            googleAdsReceita += receita;
+        }
 
-    // Build daily google_ads conversion_value lookup
+        // ROAS revenue
+        const lowerAtrib = atrib.toLowerCase();
+        if (atrib && lowerAtrib !== 'vendedor' && lowerAtrib !== 'outros') {
+            roasReceita += receita;
+        }
+    }
+
+    // Google Ads conversion_value from google_ads table
+    const gadsFiltered = allGoogleAds.filter(r => isInDateRange(r.date, filters.startDate, filters.endDate));
+    let gadsConversionTotal = 0;
     const gadsDailyMap: Record<string, number> = {};
-    gadsDailyConversionValueResult.forEach(r => {
-        gadsDailyMap[r.date] = parseFloat(r.receita || '0');
-    });
-
-    // Pivot daily atribuicao data, replacing Google_Ads with conversion_value
-    const allAtribuicoes = [...new Set(dailyAtribuicaoResult.map(r => r.atribuicao))];
-    const dailyAtribuicaoMap: Record<string, Record<string, number>> = {};
-    dailyAtribuicaoResult.forEach(r => {
-        if (!dailyAtribuicaoMap[r.date]) dailyAtribuicaoMap[r.date] = {};
-        dailyAtribuicaoMap[r.date][r.atribuicao] = parseFloat(r.receita || '0');
-    });
-
-    // Also inject google_ads daily data for dates that only exist in google_ads
-    Object.keys(gadsDailyMap).forEach(date => {
-        if (!dailyAtribuicaoMap[date]) dailyAtribuicaoMap[date] = {};
-    });
-
-    const dailyRevenueByAtribuicao = Object.entries(dailyAtribuicaoMap).map(([date, atribData]) => {
-        const entry: any = { date };
-        // Normalize date format for gadsDailyMap lookup (bd_mag may have DD/MM/YYYY)
-        let normalizedDate = date;
-        if (date.includes('/')) {
-            const [d, m, y] = date.split('/');
-            normalizedDate = `${y}-${m}-${d}`;
+    for (const g of gadsFiltered) {
+        const cv = parseNumber(g.conversion_value || g.conv_value || g.receita);
+        gadsConversionTotal += cv;
+        const gDate = normalizeDate(g.date) || '';
+        if (gDate) {
+            gadsDailyMap[gDate] = (gadsDailyMap[gDate] || 0) + cv;
         }
-        allAtribuicoes.forEach(a => {
-            if (a === 'Google_Ads') {
-                entry[a] = gadsDailyMap[normalizedDate] || 0;
-            } else {
-                entry[a] = atribData[a] || 0;
-            }
-        });
-        return entry;
+    }
+
+    // Build results
+    const totalPedidos = pedidoSet.size;
+    const totalClientes = cpfSet.size;
+    const totalProdutosVendidos = rows.length;
+    const ticketMedio = totalPedidos > 0 ? totalSemFrete / totalPedidos : 0;
+
+    // Override Google_Ads with conversion_value from google_ads table
+    const byAtribuicao = Object.entries(atribuicaoMap)
+        .map(([name, value]) => ({
+            name,
+            value: name === 'Google_Ads' ? gadsConversionTotal : value,
+        }))
+        .sort((a, b) => b.value - a.value);
+
+    const byCategory = Object.entries(categoriaMap)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 8);
+
+    const byState = Object.entries(estadoMap)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10);
+
+    const bySeller = [{ name: 'Não atribuído', value: 0 }];
+
+    const byDayOfWeek = Object.entries(diaSemanaMap)
+        .map(([name, value]) => ({ name, value }));
+
+    const byChannel = byAtribuicao;
+
+    // Daily revenue sorted by date (already YYYY-MM-DD)
+    const dailyRevenue = Object.entries(dailyMap)
+        .map(([date, d]) => ({ date, receita: d.receita, pedidos: d.pedidos }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Inject google_ads daily data for dates only in google_ads
+    Object.keys(gadsDailyMap).forEach(date => {
+        if (!dailyAtribMap[date]) dailyAtribMap[date] = {};
     });
+
+    const allAtribuicoes = [...allAtribuicoesSet];
+
+    const dailyRevenueByAtribuicao = Object.entries(dailyAtribMap)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, atribData]) => {
+            const entry: any = { date };
+            allAtribuicoes.forEach(a => {
+                if (a === 'Google_Ads') {
+                    entry[a] = gadsDailyMap[date] || 0;
+                } else {
+                    entry[a] = atribData[a] || 0;
+                }
+            });
+            return entry;
+        });
 
     const receitaGoogleAds = gadsConversionTotal;
-    const receitaParaROAS = parseFloat(roasRevenueResult[0]?.value || '0');
+    const receitaParaROAS = roasReceita;
 
-    const filterOpts = filterOptionsResult[0] || {};
+    // Filter options from ALL data (not filtered)
+    const filterOptions = {
+        origens: [...new Set(allBdMag.map(r => r.origem).filter(Boolean))].sort(),
+        midias: [...new Set(allBdMag.map(r => r.midia).filter(Boolean))].sort(),
+        categorias: [...new Set(allBdMag.map(r => r.categoria).filter(Boolean))].sort(),
+        atribuicoes: [...new Set(allBdMag.map(r => r.atribuicao).filter(Boolean))].sort(),
+        status: [...new Set(allBdMag.map(r => r.status).filter(Boolean))].sort(),
+    };
 
     return {
         totalReceita,
@@ -522,16 +437,16 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
         receitaGoogleAds_formatted: `R$ ${receitaGoogleAds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         receitaParaROAS,
         receitaParaROAS_formatted: `R$ ${receitaParaROAS.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        totalValorSemFrete,
-        totalValorSemFrete_formatted: `R$ ${totalValorSemFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-        totalValorComFrete,
-        totalValorComFrete_formatted: `R$ ${totalValorComFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        totalValorSemFrete: totalSemFrete,
+        totalValorSemFrete_formatted: `R$ ${totalSemFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        totalValorComFrete: totalComFrete,
+        totalValorComFrete_formatted: `R$ ${totalComFrete.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         totalPedidos,
         ticketMedio,
         ticketMedio_formatted: `R$ ${ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         totalClientes,
         totalProdutosVendidos,
-        topSkus: [] as any[], // Not computed in SQL to avoid complexity
+        topSkus: [] as any[],
         byCategory,
         byState,
         byChannel,
@@ -541,73 +456,54 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
         dailyRevenue,
         dailyRevenueByAtribuicao,
         allAtribuicoes,
-        filterOptions: {
-            origens: (filterOpts.origens || []).sort(),
-            midias: (filterOpts.midias || []).sort(),
-            categorias: (filterOpts.categorias || []).sort(),
-            atribuicoes: (filterOpts.atribuicoes || []).sort(),
-            status: (filterOpts.statuses || []).sort(),
-        },
+        filterOptions,
     };
 }
 
-// YoY aggregation - SQL-level, returns ~24 rows instead of 198k
+// ============================================
+// YoY AGGREGATION
+// ============================================
+
 export async function getCatalogoYoYAggregated() {
+    const allRows = await getBdMagData();
     const currentYear = new Date().getFullYear();
     const previousYear = currentYear - 1;
 
-    const [monthlyResult, categoryResult] = await Promise.all([
-        // Monthly aggregation by year
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT
-                CAST(SUBSTRING(normalized_date FROM 1 FOR 4) AS INTEGER) as year,
-                CAST(SUBSTRING(normalized_date FROM 6 FOR 2) AS INTEGER) as month,
-                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as receita,
-                COUNT(DISTINCT NULLIF(pedido, '')) as pedidos
-            FROM (
-                SELECT *, ${NORMALIZE_DATE_EXPR('data')} as normalized_date
-                FROM bd_mag
-                WHERE ${COMPLETED_STATUS_FILTER}
-            ) sub
-            WHERE normalized_date IS NOT NULL
-                AND CAST(SUBSTRING(normalized_date FROM 1 FOR 4) AS INTEGER) IN ($1, $2)
-            GROUP BY year, month
-            ORDER BY year, month
-        `, currentYear, previousYear),
+    // Filter: completed status, valid date, year in [currentYear, previousYear]
+    const filtered = allRows.filter(r => {
+        if (!isCompletedStatus(r.status)) return false;
+        const normalized = normalizeDate(r.data);
+        if (!normalized) return false;
+        const year = parseInt(normalized.substring(0, 4));
+        return year === currentYear || year === previousYear;
+    });
 
-        // Category aggregation by year
-        prisma.$queryRawUnsafe<any[]>(`
-            SELECT
-                CAST(SUBSTRING(normalized_date FROM 1 FOR 4) AS INTEGER) as year,
-                COALESCE(NULLIF(categoria, ''), 'Sem Categoria') as categoria,
-                COALESCE(SUM(CASE WHEN receita_do_produto ~ '^[0-9]' THEN
-                    CAST(REPLACE(REPLACE(receita_do_produto, '.', ''), ',', '.') AS NUMERIC)
-                    ELSE 0 END), 0) as receita
-            FROM (
-                SELECT *, ${NORMALIZE_DATE_EXPR('data')} as normalized_date
-                FROM bd_mag
-                WHERE ${COMPLETED_STATUS_FILTER}
-            ) sub
-            WHERE normalized_date IS NOT NULL
-                AND CAST(SUBSTRING(normalized_date FROM 1 FOR 4) AS INTEGER) IN ($1, $2)
-                AND categoria IS NOT NULL AND categoria != ''
-            GROUP BY year, categoria
-            ORDER BY receita DESC
-        `, currentYear, previousYear),
-    ]);
+    // Monthly aggregation
+    const monthlyByYear: Record<number, Record<number, { receita: number; pedidos: Set<string> }>> = {};
+    const categoryByYear: Record<number, Record<string, number>> = {};
+
+    for (const r of filtered) {
+        const normalized = normalizeDate(r.data)!;
+        const year = parseInt(normalized.substring(0, 4));
+        const month = parseInt(normalized.substring(5, 7)) - 1; // 0-indexed
+        const receita = parseNumber(r.receita_do_produto);
+        const pedido = r.pedido || '';
+        const cat = r.categoria || '';
+
+        // Monthly
+        if (!monthlyByYear[year]) monthlyByYear[year] = {};
+        if (!monthlyByYear[year][month]) monthlyByYear[year][month] = { receita: 0, pedidos: new Set() };
+        monthlyByYear[year][month].receita += receita;
+        if (pedido) monthlyByYear[year][month].pedidos.add(pedido);
+
+        // Category
+        if (cat) {
+            if (!categoryByYear[year]) categoryByYear[year] = {};
+            categoryByYear[year][cat] = (categoryByYear[year][cat] || 0) + receita;
+        }
+    }
 
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-    // Build monthly data by year
-    const monthlyByYear: Record<number, Record<number, { receita: number; pedidos: number }>> = {};
-    monthlyResult.forEach(r => {
-        const year = parseInt(r.year);
-        const month = parseInt(r.month) - 1; // 0-indexed
-        if (!monthlyByYear[year]) monthlyByYear[year] = {};
-        monthlyByYear[year][month] = { receita: parseFloat(r.receita || '0'), pedidos: parseInt(r.pedidos || '0') };
-    });
 
     const monthlyComparison = monthNames.map((name, idx) => ({
         month: name,
@@ -617,8 +513,8 @@ export async function getCatalogoYoYAggregated() {
 
     const currentYearReceita = Object.values(monthlyByYear[currentYear] || {}).reduce((sum, m) => sum + m.receita, 0);
     const previousYearReceita = Object.values(monthlyByYear[previousYear] || {}).reduce((sum, m) => sum + m.receita, 0);
-    const currentYearPedidos = Object.values(monthlyByYear[currentYear] || {}).reduce((sum, m) => sum + m.pedidos, 0);
-    const previousYearPedidos = Object.values(monthlyByYear[previousYear] || {}).reduce((sum, m) => sum + m.pedidos, 0);
+    const currentYearPedidos = Object.values(monthlyByYear[currentYear] || {}).reduce((sum, m) => sum + m.pedidos.size, 0);
+    const previousYearPedidos = Object.values(monthlyByYear[previousYear] || {}).reduce((sum, m) => sum + m.pedidos.size, 0);
 
     const receitaYoYPercent = previousYearReceita > 0 ? ((currentYearReceita - previousYearReceita) / previousYearReceita) * 100 : 0;
     const pedidosYoYPercent = previousYearPedidos > 0 ? ((currentYearPedidos - previousYearPedidos) / previousYearPedidos) * 100 : 0;
@@ -627,13 +523,6 @@ export async function getCatalogoYoYAggregated() {
     const ticketYoYPercent = previousYearTicket > 0 ? ((currentYearTicket - previousYearTicket) / previousYearTicket) * 100 : 0;
 
     // Category growth
-    const categoryByYear: Record<number, Record<string, number>> = {};
-    categoryResult.forEach(r => {
-        const year = parseInt(r.year);
-        if (!categoryByYear[year]) categoryByYear[year] = {};
-        categoryByYear[year][r.categoria] = parseFloat(r.receita || '0');
-    });
-
     const currentCats = categoryByYear[currentYear] || {};
     const previousCats = categoryByYear[previousYear] || {};
     const allCats = new Set([...Object.keys(currentCats), ...Object.keys(previousCats)]);
@@ -662,8 +551,12 @@ export async function getCatalogoYoYAggregated() {
     };
 }
 
+// ============================================
+// TV SALES & METAS
+// ============================================
+
 export async function getTVSalesData(): Promise<any[]> {
-    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM tv_sales`);
+    const rows = await getTvSalesStoreData();
     return rows.map(r => ({
         orderNumber: r.n_pedido || r.pedido || '',
         orderDate: r.data || '',
@@ -673,6 +566,6 @@ export async function getTVSalesData(): Promise<any[]> {
 }
 
 export async function getMetasData(): Promise<any[]> {
-    const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM metas`);
+    const rows = await getMetasStoreData();
     return rows;
 }

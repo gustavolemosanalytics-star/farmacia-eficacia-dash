@@ -176,26 +176,22 @@ export const invalidateCache = async (pattern: string): Promise<number> => {
 };
 
 // ===========================================
-// RAW SHEET DATA CACHE
+// RAW SHEET DATA CACHE (deprecated — raw caching now in sheets-store.ts)
 // ===========================================
 
+/** @deprecated Raw sheet data is now cached in sheets-store.ts with 6h TTL */
 export const getCachedSheetData = async (
-    sheetName: string
+    _sheetName: string
 ): Promise<any[][] | undefined> => {
-    const key = `farm:raw:${sheetName}`;
-    const result = await getCachedData<any[][]>(key, {
-        ttlSeconds: RAW_DATA_TTL,
-        staleWhileRevalidate: true
-    });
-    return result.data;
+    return undefined; // No longer used — sheets-store.ts handles raw data caching
 };
 
+/** @deprecated Raw sheet data is now cached in sheets-store.ts with 6h TTL */
 export const setCachedSheetData = async (
-    sheetName: string,
-    data: any[][]
+    _sheetName: string,
+    _data: any[][]
 ): Promise<void> => {
-    const key = `farm:raw:${sheetName}`;
-    await setCachedData(key, data, { ttlSeconds: RAW_DATA_TTL });
+    // No-op — sheets-store.ts handles raw data caching
 };
 
 // ===========================================

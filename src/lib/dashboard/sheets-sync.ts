@@ -1,57 +1,67 @@
-import { google } from 'googleapis';
-import { getCachedSheetData, setCachedSheetData } from '@/lib/cache';
-
-function getAuth() {
-  const raw = process.env.GOOGLE_CREDENTIALS;
-  if (!raw) {
-    throw new Error('GOOGLE_CREDENTIALS environment variable is required');
-  }
-  const credentials = JSON.parse(raw);
-  return new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-  });
-}
+/**
+ * sheets-sync.ts — Public Google Sheets CSV Fetcher
+ *
+ * No authentication needed. The spreadsheets are shared as read-only.
+ * Data fetching and caching is handled by sheets-store.ts.
+ * This file is kept for backward compatibility with any remaining imports.
+ */
 
 export const SHEETS = {
-  BD_MAG: "'BD Mag'",
-  GA4: "'ga4'",
-  GOOGLE_ADS: "'google_ads'",
-  BD_TV: "'bd tv'",
-  METAS: "'Meta 2026'",
+    BD_MAG: 'BD Mag',
+    GA4: 'ga4',
+    GOOGLE_ADS: 'google_ads',
+    BD_TV: 'bd tv',
+    METAS: 'Meta 2026',
 } as const;
 
+export function buildCSVUrl(spreadsheetId: string, sheetName: string): string {
+    return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+}
+
+/**
+ * @deprecated Use sheets-store.ts functions instead (getBdMagData, getGa4StoreData, etc.)
+ */
 export async function getSheetData(
-  range: string,
-  _unused?: unknown,
-  spreadsheetId?: string
+    range: string,
+    _unused?: unknown,
+    spreadsheetId?: string
 ): Promise<any[][]> {
-  if (!spreadsheetId) {
-    throw new Error('spreadsheetId is required');
-  }
+    if (!spreadsheetId) {
+        throw new Error('spreadsheetId is required');
+    }
 
-  // Check cache first
-  const cacheKey = `${spreadsheetId}:${range}`;
-  const cached = await getCachedSheetData(cacheKey);
-  if (cached) {
-    console.log(`[Sheets] Cache hit for ${range}`);
-    return cached;
-  }
+    const sheetName = range.replace(/^'|'$/g, '');
+    const url = buildCSVUrl(spreadsheetId, sheetName);
 
-  console.log(`[Sheets] Fetching ${range} from spreadsheet ${spreadsheetId}`);
-  const auth = getAuth();
-  const sheets = google.sheets({ version: 'v4', auth });
+    console.log(`[Sheets] Fetching ${sheetName} from public CSV`);
+    const response = await fetch(url, {
+        signal: AbortSignal.timeout(120_000),
+    });
 
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range,
-  });
+    if (!response.ok) {
+        throw new Error(`Failed to fetch ${sheetName}: HTTP ${response.status}`);
+    }
 
-  const values = response.data.values || [];
-  console.log(`[Sheets] Got ${values.length} rows for ${range}`);
+    const csvText = await response.text();
+    const lines = csvText.split('\n').map(line => {
+        // Simple CSV line split (handles quoted fields)
+        const fields: string[] = [];
+        let current = '';
+        let inQuotes = false;
+        for (const char of line) {
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                fields.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        fields.push(current);
+        return fields;
+    });
 
-  // Cache the result
-  await setCachedSheetData(cacheKey, values);
-
-  return values;
+    console.log(`[Sheets] Got ${lines.length} rows for ${sheetName}`);
+    return lines;
 }

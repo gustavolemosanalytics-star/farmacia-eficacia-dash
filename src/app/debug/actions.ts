@@ -1,10 +1,23 @@
 'use server';
 
-import prisma from '@/lib/prisma';
+import {
+    getBdMagData,
+    getGa4StoreData,
+    getGoogleAdsStoreData,
+    getTvSalesStoreData,
+    getMetasStoreData,
+} from '@/lib/data/sheets-store';
+
+const TABLE_FETCHERS: Record<string, () => Promise<Record<string, any>[]>> = {
+    bd_mag: getBdMagData,
+    ga4: getGa4StoreData,
+    google_ads: getGoogleAdsStoreData,
+    tv_sales: getTvSalesStoreData,
+    metas: getMetasStoreData,
+};
 
 export async function getTableNames() {
-    // Return the list of tables we care about
-    return ['bd_mag', 'ga4', 'google_ads', 'atribuicao', 'tv_sales', 'metas'];
+    return Object.keys(TABLE_FETCHERS);
 }
 
 export async function getTableData(
@@ -16,67 +29,40 @@ export async function getTableData(
     endDate?: string,
     columnFilters?: Record<string, string>
 ) {
-    // Whitelist table names to prevent SQL injection
-    const allowedTables = ['bd_mag', 'ga4', 'google_ads', 'atribuicao', 'tv_sales', 'metas'];
-    if (!allowedTables.includes(tableName)) {
+    const fetcher = TABLE_FETCHERS[tableName];
+    if (!fetcher) {
         throw new Error('Invalid table name');
     }
 
-    const offset = (page - 1) * pageSize;
+    let data = await fetcher();
 
-    // Build WHERE clauses
-    const whereClauses: string[] = [];
-    const params: any[] = [];
-    let paramIndex = 1;
-
-    // Date filter
+    // Apply date filter
     if (dateColumn && startDate && endDate) {
-        whereClauses.push(`${dateColumn} BETWEEN $${paramIndex} AND $${paramIndex + 1}`);
-        params.push(startDate, endDate);
-        paramIndex += 2;
+        data = data.filter(row => {
+            const val = row[dateColumn];
+            if (!val) return false;
+            return val >= startDate && val <= endDate;
+        });
     }
 
-    // Column filters
+    // Apply column filters
     if (columnFilters) {
         for (const [col, val] of Object.entries(columnFilters)) {
             if (val && val.trim()) {
-                // Use ILIKE for case-insensitive partial match
-                whereClauses.push(`${col}::text ILIKE $${paramIndex}`);
-                params.push(`%${val}%`);
-                paramIndex++;
+                const lower = val.toLowerCase();
+                data = data.filter(row =>
+                    (row[col] || '').toString().toLowerCase().includes(lower)
+                );
             }
         }
     }
 
-    const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-
-    // Get total count
-    const countQuery = `SELECT COUNT(*) as count FROM "${tableName}" ${whereClause}`;
-    const countResult = await prisma.$queryRawUnsafe<{ count: bigint }[]>(countQuery, ...params);
-    const totalCount = Number(countResult[0]?.count || 0);
-
-    // Get Data
-    const dataQuery = `
-        SELECT * FROM "${tableName}" 
-        ${whereClause}
-        ORDER BY id ASC 
-        LIMIT ${pageSize} OFFSET ${offset}
-    `;
-    const data = await prisma.$queryRawUnsafe<any[]>(dataQuery, ...params);
-
-    // Convert BigInt to string for JSON serialization
-    const serializedData = data.map(row => {
-        const newRow: any = { ...row };
-        for (const key in newRow) {
-            if (typeof newRow[key] === 'bigint') {
-                newRow[key] = newRow[key].toString();
-            }
-        }
-        return newRow;
-    });
+    const totalCount = data.length;
+    const offset = (page - 1) * pageSize;
+    const pageData = data.slice(offset, offset + pageSize);
 
     return {
-        data: serializedData,
+        data: pageData,
         totalCount,
         page,
         pageSize,
@@ -85,17 +71,12 @@ export async function getTableData(
 }
 
 export async function getTableColumns(tableName: string): Promise<string[]> {
-    const allowedTables = ['bd_mag', 'ga4', 'google_ads', 'atribuicao', 'tv_sales', 'metas'];
-    if (!allowedTables.includes(tableName)) {
+    const fetcher = TABLE_FETCHERS[tableName];
+    if (!fetcher) {
         throw new Error('Invalid table name');
     }
 
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = $1 
-        ORDER BY ordinal_position
-    `, tableName);
-
-    return result.map(r => r.column_name);
+    const data = await fetcher();
+    if (data.length === 0) return [];
+    return Object.keys(data[0]);
 }
