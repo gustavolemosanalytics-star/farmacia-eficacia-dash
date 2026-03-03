@@ -59,10 +59,13 @@ function processMonth(
         return true;
     });
 
-    // Filter Google Ads by date range
+    // Filter Google Ads by date range, excluding Lead and Visita campaigns
     const filteredGads = gadsRows.filter(r => {
         const d = normalizeDate(r.date);
-        return d && d >= monthStart && d <= monthEnd;
+        if (!d || d < monthStart || d > monthEnd) return false;
+        const camp = (r.campaign || '').toLowerCase();
+        if (camp.includes('lead') || camp.includes('visita')) return false;
+        return true;
     });
 
     // Google Ads: investment (cost) and revenue (conversion_value)
