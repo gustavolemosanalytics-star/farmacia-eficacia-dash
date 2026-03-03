@@ -42,7 +42,7 @@ interface MonthData {
     receita: number;
     roas: number;
     totalPedidos: number;
-    byCidade: { cidade: string; receita: number; pedidos: number; percentual: number }[];
+    byCidade: { cidade: string; receita: number; pedidos: number; percentual: number; investimento: number; roas: number }[];
 }
 
 function processMonth(
@@ -93,12 +93,18 @@ function processMonth(
     const pedidoSet = new Set(paidMediaOrders.map(r => r.pedido).filter(Boolean));
 
     const byCidade = Object.entries(cityMap)
-        .map(([cidade, d]) => ({
-            cidade,
-            receita: d.receita,
-            pedidos: d.pedidos.size,
-            percentual: receita > 0 ? (d.receita / receita) * 100 : 0,
-        }))
+        .map(([cidade, d]) => {
+            const percentual = receita > 0 ? (d.receita / receita) * 100 : 0;
+            const cidadeInvestimento = investimento * (percentual / 100);
+            return {
+                cidade,
+                receita: d.receita,
+                pedidos: d.pedidos.size,
+                percentual,
+                investimento: cidadeInvestimento,
+                roas: cidadeInvestimento > 0 ? d.receita / cidadeInvestimento : 0,
+            };
+        })
         .sort((a, b) => b.receita - a.receita);
 
     return {

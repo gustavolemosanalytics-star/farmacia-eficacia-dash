@@ -8,6 +8,8 @@ interface CidadeData {
     receita: number;
     pedidos: number;
     percentual: number;
+    investimento: number;
+    roas: number;
 }
 
 interface MonthData {
@@ -78,7 +80,9 @@ function MonthSection({ title, data }: { title: string; data: MonthData }) {
                                 <tr className="border-b text-left text-zinc-500">
                                     <th className="pb-2 pr-4">#</th>
                                     <th className="pb-2 pr-4">Cidade</th>
+                                    <th className="pb-2 pr-4 text-right">Investimento*</th>
                                     <th className="pb-2 pr-4 text-right">Receita</th>
+                                    <th className="pb-2 pr-4 text-right">ROAS</th>
                                     <th className="pb-2 pr-4 text-right">Pedidos</th>
                                     <th className="pb-2 text-right">%</th>
                                 </tr>
@@ -88,13 +92,27 @@ function MonthSection({ title, data }: { title: string; data: MonthData }) {
                                     <tr key={c.cidade} className="border-b border-zinc-100 dark:border-zinc-800">
                                         <td className="py-2 pr-4 text-zinc-400">{i + 1}</td>
                                         <td className="py-2 pr-4 font-medium">{c.cidade}</td>
+                                        <td className="py-2 pr-4 text-right">{formatBRL(c.investimento)}</td>
                                         <td className="py-2 pr-4 text-right">{formatBRL(c.receita)}</td>
+                                        <td className="py-2 pr-4 text-right">{c.roas.toFixed(2)}x</td>
                                         <td className="py-2 pr-4 text-right">{c.pedidos}</td>
                                         <td className="py-2 text-right">{c.percentual.toFixed(1)}%</td>
                                     </tr>
                                 ))}
                             </tbody>
+                            <tfoot>
+                                <tr className="font-semibold border-t-2">
+                                    <td className="py-2 pr-4"></td>
+                                    <td className="py-2 pr-4">Total</td>
+                                    <td className="py-2 pr-4 text-right">{formatBRL(data.investimento)}</td>
+                                    <td className="py-2 pr-4 text-right">{formatBRL(data.receita)}</td>
+                                    <td className="py-2 pr-4 text-right">{data.roas.toFixed(2)}x</td>
+                                    <td className="py-2 pr-4 text-right">{data.totalPedidos}</td>
+                                    <td className="py-2 text-right">100%</td>
+                                </tr>
+                            </tfoot>
                         </table>
+                        <p className="text-xs text-zinc-400 mt-2">* Investimento proporcional à participação de receita da cidade</p>
                     </div>
                 </CardContent>
             </Card>
