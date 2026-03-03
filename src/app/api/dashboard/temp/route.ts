@@ -65,44 +65,48 @@ function processMonth(
         return d && d >= monthStart && d <= monthEnd;
     });
 
-    // Total investment from Google Ads
+    // Google Ads: investment (cost) and revenue (conversion_value)
     let investimento = 0;
+    let receita = 0;
     for (const g of filteredGads) {
         investimento += parseNumber(g.spend || g.cost || g.investimento);
+        receita += parseNumber(g.conversion_value || g.conv_value || g.receita);
     }
 
-    // Group by city — only paid media attributed orders
+    // Group by city from BD Mag (paid media attributed orders) for proportional distribution
     const paidMediaOrders = filteredBdMag.filter(r =>
         PAID_MEDIA_ATTRIBUTIONS.includes(r.atribuicao)
     );
 
-    const cityMap: Record<string, { receita: number; pedidos: Set<string> }> = {};
-    let receita = 0;
+    const cityMap: Record<string, { receitaBdMag: number; pedidos: Set<string> }> = {};
+    let totalReceitaBdMag = 0;
 
     for (const r of paidMediaOrders) {
         const cidade = (r.cidade || 'N/A').trim();
         const rev = parseNumber(r.receita_do_produto);
         const pedido = r.pedido || '';
 
-        receita += rev;
-        if (!cityMap[cidade]) cityMap[cidade] = { receita: 0, pedidos: new Set() };
-        cityMap[cidade].receita += rev;
+        totalReceitaBdMag += rev;
+        if (!cityMap[cidade]) cityMap[cidade] = { receitaBdMag: 0, pedidos: new Set() };
+        cityMap[cidade].receitaBdMag += rev;
         if (pedido) cityMap[cidade].pedidos.add(pedido);
     }
 
     const pedidoSet = new Set(paidMediaOrders.map(r => r.pedido).filter(Boolean));
 
+    // Distribute Google Ads revenue and investment proportionally by city's BD Mag share
     const byCidade = Object.entries(cityMap)
         .map(([cidade, d]) => {
-            const percentual = receita > 0 ? (d.receita / receita) * 100 : 0;
+            const percentual = totalReceitaBdMag > 0 ? (d.receitaBdMag / totalReceitaBdMag) * 100 : 0;
+            const cidadeReceita = receita * (percentual / 100);
             const cidadeInvestimento = investimento * (percentual / 100);
             return {
                 cidade,
-                receita: d.receita,
+                receita: cidadeReceita,
                 pedidos: d.pedidos.size,
                 percentual,
                 investimento: cidadeInvestimento,
-                roas: cidadeInvestimento > 0 ? d.receita / cidadeInvestimento : 0,
+                roas: cidadeInvestimento > 0 ? cidadeReceita / cidadeInvestimento : 0,
             };
         })
         .sort((a, b) => b.receita - a.receita);
