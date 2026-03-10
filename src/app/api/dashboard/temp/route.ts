@@ -123,6 +123,16 @@ function processMonth(
     };
 }
 
+const MONTH_NAMES = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const MONTH_LABELS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+function getMonthRange(year: number, month: number): { start: string; end: string } {
+    const start = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { start, end };
+}
+
 export async function GET() {
     try {
         const [bdMag, gads] = await Promise.all([
@@ -130,13 +140,35 @@ export async function GET() {
             getGoogleAdsStoreData(),
         ]);
 
-        const janeiro = processMonth(bdMag, gads, '2026-01-01', '2026-01-31');
-        const fevereiro = processMonth(bdMag, gads, '2026-02-01', '2026-02-28');
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1; // 1-based
 
-        const totalInvestimento = janeiro.investimento + fevereiro.investimento;
-        const totalReceita = janeiro.receita + fevereiro.receita;
+        const startYear = 2026;
+        const startMonth = 1;
+
+        const months: Record<string, MonthData> = {};
+        const monthLabels: Record<string, string> = {};
+        let totalInvestimento = 0;
+        let totalReceita = 0;
+        let totalPedidos = 0;
+
+        for (let y = startYear; y <= currentYear; y++) {
+            const mStart = y === startYear ? startMonth : 1;
+            const mEnd = y === currentYear ? currentMonth : 12;
+            for (let m = mStart; m <= mEnd; m++) {
+                const { start, end } = getMonthRange(y, m);
+                const key = MONTH_NAMES[m - 1] + (y > startYear ? `_${y}` : '');
+                const data = processMonth(bdMag, gads, start, end);
+                months[key] = data;
+                monthLabels[key] = `${MONTH_LABELS[m - 1]} ${y}`;
+                totalInvestimento += data.investimento;
+                totalReceita += data.receita;
+                totalPedidos += data.totalPedidos;
+            }
+        }
+
         const totalROAS = totalInvestimento > 0 ? totalReceita / totalInvestimento : 0;
-        const totalPedidos = janeiro.totalPedidos + fevereiro.totalPedidos;
 
         return NextResponse.json({
             success: true,
@@ -147,8 +179,8 @@ export async function GET() {
                     roas: totalROAS,
                     pedidos: totalPedidos,
                 },
-                janeiro,
-                fevereiro,
+                months,
+                monthLabels,
             },
         });
     } catch (error: any) {

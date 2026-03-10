@@ -22,8 +22,8 @@ interface MonthData {
 
 interface TempData {
     totais: { investimento: number; receita: number; roas: number; pedidos: number };
-    janeiro: MonthData;
-    fevereiro: MonthData;
+    months: Record<string, MonthData>;
+    monthLabels: Record<string, string>;
 }
 
 function formatBRL(value: number): string {
@@ -157,7 +157,7 @@ export default function TempPage() {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
-            <h1 className="text-2xl font-bold">Relatório Mídia Paga — Jan/Fev 2026</h1>
+            <h1 className="text-2xl font-bold">Relatório Mídia Paga — 2026</h1>
 
             {/* Totais */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -195,10 +195,11 @@ export default function TempPage() {
                 </Card>
             </div>
 
-            {/* Meses lado a lado */}
+            {/* Meses dinâmicos */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <MonthSection title="Janeiro 2026" data={data.janeiro} />
-                <MonthSection title="Fevereiro 2026" data={data.fevereiro} />
+                {Object.entries(data.months).map(([key, monthData]) => (
+                    <MonthSection key={key} title={data.monthLabels[key] || key} data={monthData} />
+                ))}
             </div>
         </div>
     );
