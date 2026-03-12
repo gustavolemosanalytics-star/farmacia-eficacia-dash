@@ -22,6 +22,7 @@ const SHEET_CONFIG = {
     GOOGLE_ADS: { spreadsheetId: HISTORICAL_SPREADSHEET_ID, sheetName: 'google_ads' },
     BD_TV: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'bd tv' },
     METAS: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'Meta 2026' },
+    VENDA_POR_CANAL: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'Venda por Canal' },
 } as const;
 
 // ============================================
@@ -129,6 +130,7 @@ declare global {
         googleAds: SheetStore;
         tvSales: SheetStore;
         metas: SheetStore;
+        vendaPorCanal: SheetStore;
     } | undefined;
 }
 
@@ -141,6 +143,7 @@ function getStore() {
             googleAds: empty(),
             tvSales: empty(),
             metas: empty(),
+            vendaPorCanal: empty(),
         };
     }
     return globalThis.__sheetsStore;
@@ -238,6 +241,15 @@ export async function getMetasStoreData(): Promise<Record<string, any>[]> {
     );
 }
 
+export async function getVendaPorCanalData(): Promise<Record<string, any>[]> {
+    const store = getStore();
+    return getStoreData(
+        store.vendaPorCanal,
+        SHEET_CONFIG.VENDA_POR_CANAL.spreadsheetId,
+        SHEET_CONFIG.VENDA_POR_CANAL.sheetName
+    );
+}
+
 // Force refresh all data (bypasses cache)
 export async function refreshAllData(): Promise<void> {
     const store = getStore();
@@ -247,6 +259,7 @@ export async function refreshAllData(): Promise<void> {
     store.googleAds.fetchedAt = 0;
     store.tvSales.fetchedAt = 0;
     store.metas.fetchedAt = 0;
+    store.vendaPorCanal.fetchedAt = 0;
 
     console.log('[Sheets] Refreshing all data...');
     await Promise.all([
@@ -255,6 +268,7 @@ export async function refreshAllData(): Promise<void> {
         getGoogleAdsStoreData(),
         getTvSalesStoreData(),
         getMetasStoreData(),
+        getVendaPorCanalData(),
     ]);
     console.log('[Sheets] All data refreshed');
 }
@@ -269,5 +283,6 @@ export function getCacheStatus() {
         googleAds: { rows: store.googleAds.data.length, ageMinutes: Math.round((now - store.googleAds.fetchedAt) / 60000), loading: !!store.googleAds.loading },
         tvSales: { rows: store.tvSales.data.length, ageMinutes: Math.round((now - store.tvSales.fetchedAt) / 60000), loading: !!store.tvSales.loading },
         metas: { rows: store.metas.data.length, ageMinutes: Math.round((now - store.metas.fetchedAt) / 60000), loading: !!store.metas.loading },
+        vendaPorCanal: { rows: store.vendaPorCanal.data.length, ageMinutes: Math.round((now - store.vendaPorCanal.fetchedAt) / 60000), loading: !!store.vendaPorCanal.loading },
     };
 }

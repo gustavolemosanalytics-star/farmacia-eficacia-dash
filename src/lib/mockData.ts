@@ -505,6 +505,7 @@ export const timeSeriesSessoes = gerarTimeSeries(30, 10333, 'down');
 export const navegacaoItems = [
     { titulo: 'Home Executiva', href: '/', icone: 'LayoutDashboard', grupo: 'ceo' as const, isMockData: false },
     { titulo: 'Diagnóstico IA', href: '/diagnostico', icone: 'Brain', grupo: 'dados' as const, isMockData: true },
+    { titulo: 'Visão GA4', href: '/visao-ga4', icone: 'TrendingUp', grupo: 'marketing' as const, isMockData: false },
     { titulo: 'Ecommerce', href: '/ecommerce', icone: 'ShoppingCart', grupo: 'marketing' as const, isMockData: false },
     { titulo: 'Mídia Paga', href: '/midia-paga', icone: 'Target', grupo: 'marketing' as const, isMockData: true },
     { titulo: 'SEO & Demanda', href: '/seo', icone: 'Search', grupo: 'marketing' as const, isMockData: true },
