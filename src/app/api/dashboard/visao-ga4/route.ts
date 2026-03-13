@@ -1,28 +1,7 @@
-import { NextResponse } from 'next/server';
-import { getVendaPorCanalData } from '@/lib/data/sheets-store';
+import { NextRequest, NextResponse } from 'next/server';
+import { getGa4StoreData } from '@/lib/data/sheets-store';
 
 export const dynamic = 'force-dynamic';
-
-// Column names after sanitization by sheets-store:
-// Header: "SUM de Purchase revenue Mês" → "sum_de_purchase_revenue_mes" (but csv-parse uses "Atribuição 1 Blue" etc as subsequent cols)
-// Actually csv-parse maps: col0 = "sum_de_purchase_revenue_mes", col1 = "atribuicao_1_blue", col2 = "direto", etc.
-// But looking at the CSV, the header is: "SUM de Purchase revenue Mês","Atribuição 1 Blue","Direto",...
-// After sanitization: sum_de_purchase_revenue_mes, atribuicao_1_blue, direto, e_mail_mkt, google_ads, google_organic, meta_ads, outros, vendedor, whatsapp, _n_a, total_geral
-
-const FIRST_COL = 'sum_de_purchase_revenue_mes';
-const CANAIS = ['atribuicao_1_blue', 'direto', 'e_mail_mkt', 'google_ads', 'google_organic', 'meta_ads', 'outros', 'vendedor', 'whatsapp', '_n_a'];
-const CANAIS_LABELS: Record<string, string> = {
-    atribuicao_1_blue: 'Blue',
-    direto: 'Direto',
-    e_mail_mkt: 'E-mail MKT',
-    google_ads: 'Google Ads',
-    google_organic: 'Google Organic',
-    meta_ads: 'Meta Ads',
-    outros: 'Outros',
-    vendedor: 'Vendedor',
-    whatsapp: 'Whatsapp',
-    _n_a: 'N/A',
-};
 
 function parseNumber(val: any): number {
     if (val === null || val === undefined || val === '') return 0;
@@ -37,80 +16,169 @@ function parseNumber(val: any): number {
     return isNaN(num) ? 0 : num;
 }
 
-function extractCanais(row: Record<string, any>): Record<string, number> {
-    const canais: Record<string, number> = {};
-    for (const c of CANAIS) {
-        const val = parseNumber(row[c]);
-        if (val > 0) canais[c] = val;
+function parseDate(val: string): Date | null {
+    if (!val) return null;
+    const str = val.trim();
+    // YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [y, m, d] = str.split('-').map(Number);
+        return new Date(y, m - 1, d);
     }
-    return canais;
+    // DD/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+        const [d, m, y] = str.split('/').map(Number);
+        return new Date(y, m - 1, d);
+    }
+    return null;
 }
 
-export async function GET() {
-    try {
-        const rows = await getVendaPorCanalData();
+function formatDateKey(d: Date): string {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+}
 
-        // The spreadsheet has two pivot tables separated by empty rows.
-        // Section 1: Monthly summary (header row has "mes" column)
-        // Section 2: Daily detail (header row has "data" column)
-        // Since csv-parse uses the first row as headers, all rows share the same columns.
-        // We distinguish by checking which identifier field is populated.
+function getMonthKey(d: Date): string {
+    const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    return `${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
 
-        const resumoMensal: any[] = [];
-        const detalheDiario: any[] = [];
+interface AggregatedPeriod {
+    resumoMensal: { mes: string; canais: Record<string, number>; total: number }[];
+    detalheDiario: { data: string; canais: Record<string, number>; total: number }[];
+    totalGeral: { canais: Record<string, number>; total: number };
+}
 
-        for (const row of rows) {
-            const firstCol = (row[FIRST_COL] || '').toString().trim();
-            const firstColStr = firstCol.toLowerCase();
+function aggregateRows(rows: Record<string, any>[], startDate?: Date, endDate?: Date): AggregatedPeriod {
+    // Filter by date range if provided
+    const filtered = rows.filter(row => {
+        const d = parseDate(row.date);
+        if (!d) return false;
+        if (startDate && d < startDate) return false;
+        if (endDate && d > endDate) return false;
+        return true;
+    });
 
-            // Skip empty rows, headers, and total rows
-            if (!firstColStr || firstColStr === 'total geral' || firstColStr.includes('sum de purchase') || firstColStr === 'data') continue;
+    // Aggregate by month
+    const monthMap = new Map<string, Record<string, number>>();
+    // Aggregate by day
+    const dayMap = new Map<string, Record<string, number>>();
+    // Total by channel
+    const totalCanais: Record<string, number> = {};
 
-            const isDate = /^\d{2}\/\d{2}\/\d{4}$/.test(firstColStr);
-            const monthNames = ['janeiro', 'fevereiro', 'marco', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-            const isMonth = monthNames.includes(firstColStr.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+    for (const row of filtered) {
+        const d = parseDate(row.date);
+        if (!d) continue;
 
-            const canais = extractCanais(row);
-            const total = parseNumber(row.total_geral);
+        const canal = (row.atribuicao || 'Outros').toString();
+        const revenue = parseNumber(row.purchase_revenue);
 
-            if (isMonth) {
-                resumoMensal.push({
-                    mes: firstCol,
-                    canais,
-                    total,
-                });
-            } else if (isDate) {
-                detalheDiario.push({
-                    data: firstCol,
-                    canais,
-                    total,
-                });
-            }
-        }
+        if (revenue === 0) continue;
 
-        // Sort daily by date
-        detalheDiario.sort((a, b) => {
-            const [da, ma, ya] = a.data.split('/').map(Number);
-            const [db, mb, yb] = b.data.split('/').map(Number);
+        // Monthly
+        const monthKey = getMonthKey(d);
+        if (!monthMap.has(monthKey)) monthMap.set(monthKey, {});
+        const mEntry = monthMap.get(monthKey)!;
+        mEntry[canal] = (mEntry[canal] || 0) + revenue;
+
+        // Daily
+        const dayKey = formatDateKey(d);
+        if (!dayMap.has(dayKey)) dayMap.set(dayKey, {});
+        const dEntry = dayMap.get(dayKey)!;
+        dEntry[canal] = (dEntry[canal] || 0) + revenue;
+
+        // Total
+        totalCanais[canal] = (totalCanais[canal] || 0) + revenue;
+    }
+
+    // Build resumoMensal sorted chronologically
+    const resumoMensal = Array.from(monthMap.entries())
+        .sort((a, b) => {
+            // Parse "Mês YYYY" to sort
+            const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            const [mesA, yearA] = a[0].split(' ');
+            const [mesB, yearB] = b[0].split(' ');
+            const ya = parseInt(yearA), yb = parseInt(yearB);
+            if (ya !== yb) return ya - yb;
+            return meses.indexOf(mesA) - meses.indexOf(mesB);
+        })
+        .map(([mes, canais]) => ({
+            mes,
+            canais,
+            total: Object.values(canais).reduce((a, b) => a + b, 0),
+        }));
+
+    // Build detalheDiario sorted by date
+    const detalheDiario = Array.from(dayMap.entries())
+        .sort((a, b) => {
+            const [da, ma, ya] = a[0].split('/').map(Number);
+            const [db, mb, yb] = b[0].split('/').map(Number);
             return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime();
-        });
+        })
+        .map(([data, canais]) => ({
+            data,
+            canais,
+            total: Object.values(canais).reduce((a, b) => a + b, 0),
+        }));
 
-        // Compute totals
-        const totalGeral: Record<string, number> = {};
-        for (const row of resumoMensal) {
-            for (const [canal, val] of Object.entries(row.canais)) {
-                totalGeral[canal] = (totalGeral[canal] || 0) + (val as number);
+    const totalSum = Object.values(totalCanais).reduce((a, b) => a + b, 0);
+
+    return {
+        resumoMensal,
+        detalheDiario,
+        totalGeral: { canais: totalCanais, total: totalSum },
+    };
+}
+
+export async function GET(request: NextRequest) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const startDateStr = searchParams.get('startDate');
+        const endDateStr = searchParams.get('endDate');
+        const compareStartStr = searchParams.get('compareStartDate');
+        const compareEndStr = searchParams.get('compareEndDate');
+
+        const rows = await getGa4StoreData();
+
+        // Parse dates
+        const startDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : undefined;
+        const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : undefined;
+        const compareStart = compareStartStr ? new Date(compareStartStr + 'T00:00:00') : undefined;
+        const compareEnd = compareEndStr ? new Date(compareEndStr + 'T23:59:59') : undefined;
+
+        // Aggregate current period
+        const current = aggregateRows(rows, startDate, endDate);
+
+        // Collect all unique channel names for labels
+        const allCanais = new Set<string>();
+        for (const [canal] of Object.entries(current.totalGeral.canais)) allCanais.add(canal);
+
+        // Build canaisLabels (channel name → friendly display)
+        const canaisLabels: Record<string, string> = {};
+        for (const canal of allCanais) {
+            canaisLabels[canal] = canal.replace(/_/g, ' ');
+        }
+
+        // Aggregate comparison period if requested
+        let comparison: AggregatedPeriod | undefined;
+        if (compareStart && compareEnd) {
+            comparison = aggregateRows(rows, compareStart, compareEnd);
+            for (const [canal] of Object.entries(comparison.totalGeral.canais)) {
+                allCanais.add(canal);
+                if (!canaisLabels[canal]) canaisLabels[canal] = canal.replace(/_/g, ' ');
             }
         }
-        const totalGeralSum = Object.values(totalGeral).reduce((a, b) => a + b, 0);
 
         return NextResponse.json({
             success: true,
             data: {
-                resumoMensal,
-                detalheDiario,
-                totalGeral: { canais: totalGeral, total: totalGeralSum },
-                canaisLabels: CANAIS_LABELS,
+                current: {
+                    ...current,
+                    canaisLabels,
+                },
+                comparison: comparison || null,
+                channels: Array.from(allCanais).sort(),
             },
         });
     } catch (error: any) {

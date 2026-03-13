@@ -23,6 +23,7 @@ const SHEET_CONFIG = {
     BD_TV: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'bd tv' },
     METAS: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'Meta 2026' },
     VENDA_POR_CANAL: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'Venda por Canal' },
+    ATRIBUICAO: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'Atribuição' },
 } as const;
 
 // ============================================
@@ -46,25 +47,46 @@ function sanitizeColumnName(name: string): string {
 }
 
 // ============================================
-// GA4 ATTRIBUTION COMPUTATION
+// GA4 ATTRIBUTION — LOOKUP FROM "Atribuição" TAB
 // ============================================
 
-function computeGA4Attribution(sessionSourceMedium: string): string {
-    const ssm = (sessionSourceMedium || '').toLowerCase();
-    if (!ssm) return 'Outros';
+let _atribuicaoMapCache: Map<string, string> | null = null;
+let _atribuicaoMapFetchedAt = 0;
 
-    if (ssm.includes('google') && ssm.includes('cpc')) return 'Google_Ads';
-    if (ssm.includes('google') && ssm.includes('organic')) return 'Google_Organic';
-    if (ssm.includes('youtube')) return 'Google_Ads';
-    if (/chatgpt|gemini|scholar\.google|docs\.google|mail\.google|tagassistant|googleads\.g\.doubleclick/.test(ssm)) return 'Google_Organic';
-    if (/facebook|instagram|meta|\bff\b|\big\b|lm\.facebook|m\.facebook|l\.facebook|l\.instagram/.test(ssm)) return 'Meta Organico';
-    if (ssm.includes('cpc') && ssm.includes('facebook')) return 'Meta Ads';
-    if (ssm.includes('cpc') && ssm.includes('meta')) return 'Meta Ads';
-    if (ssm.includes('blue')) return 'Blue';
-    if (/activecampaign|email|yotpo|rdstation|edrone|btg360|allinmail|marketing|newsletter|3dactiv/.test(ssm)) return 'E-mail MKT';
-    if (/vendedor|octadesk|11tvreceptivo|12tvsuporte|35posvenda|admin\.pedbot|aline|atendimento|recovery|vended/.test(ssm)) return 'Vendedor';
-    if (ssm === '(direct) / (none)') return 'Direto';
-    return 'Outros';
+async function getAtribuicaoMapInternal(): Promise<Map<string, string>> {
+    const store = getStore();
+    const now = Date.now();
+
+    // Return cached map if sheets data hasn't changed
+    if (_atribuicaoMapCache && _atribuicaoMapFetchedAt >= store.atribuicao.fetchedAt && _atribuicaoMapFetchedAt > 0) {
+        return _atribuicaoMapCache;
+    }
+
+    const rows = await getStoreData(
+        store.atribuicao,
+        SHEET_CONFIG.ATRIBUICAO.spreadsheetId,
+        SHEET_CONFIG.ATRIBUICAO.sheetName
+    );
+
+    const map = new Map<string, string>();
+    for (const row of rows) {
+        const origem = (row.origem || '').toString().trim().toLowerCase();
+        const canal = (row.canal || '').toString().trim();
+        if (origem && canal) {
+            map.set(origem, canal);
+        }
+    }
+
+    _atribuicaoMapCache = map;
+    _atribuicaoMapFetchedAt = now;
+    console.log(`[Sheets] Built Atribuição map with ${map.size} entries`);
+    return map;
+}
+
+function lookupAttribution(ssm: string, map: Map<string, string>): string {
+    const key = (ssm || '').trim().toLowerCase();
+    if (!key) return 'Outros';
+    return map.get(key) || 'Outros';
 }
 
 // ============================================
@@ -131,6 +153,7 @@ declare global {
         tvSales: SheetStore;
         metas: SheetStore;
         vendaPorCanal: SheetStore;
+        atribuicao: SheetStore;
     } | undefined;
 }
 
@@ -144,6 +167,7 @@ function getStore() {
             tvSales: empty(),
             metas: empty(),
             vendaPorCanal: empty(),
+            atribuicao: empty(),
         };
     }
     return globalThis.__sheetsStore;
@@ -202,14 +226,18 @@ export async function getBdMagData(): Promise<Record<string, any>[]> {
 
 export async function getGa4StoreData(): Promise<Record<string, any>[]> {
     const store = getStore();
+
+    // First, ensure the attribution map is loaded
+    const attrMap = await getAtribuicaoMapInternal();
+
     return getStoreData(
         store.ga4,
         SHEET_CONFIG.GA4.spreadsheetId,
         SHEET_CONFIG.GA4.sheetName,
-        // Post-process: compute atribuicao
+        // Post-process: compute atribuicao via lookup
         (rows) => rows.map(r => ({
             ...r,
-            atribuicao: computeGA4Attribution(r.session_source_medium),
+            atribuicao: lookupAttribution(r.session_source_medium, attrMap),
         }))
     );
 }
@@ -250,6 +278,19 @@ export async function getVendaPorCanalData(): Promise<Record<string, any>[]> {
     );
 }
 
+export async function getAtribuicaoData(): Promise<Record<string, any>[]> {
+    const store = getStore();
+    return getStoreData(
+        store.atribuicao,
+        SHEET_CONFIG.ATRIBUICAO.spreadsheetId,
+        SHEET_CONFIG.ATRIBUICAO.sheetName
+    );
+}
+
+export async function getAtribuicaoMap(): Promise<Map<string, string>> {
+    return getAtribuicaoMapInternal();
+}
+
 // Force refresh all data (bypasses cache)
 export async function refreshAllData(): Promise<void> {
     const store = getStore();
@@ -260,16 +301,21 @@ export async function refreshAllData(): Promise<void> {
     store.tvSales.fetchedAt = 0;
     store.metas.fetchedAt = 0;
     store.vendaPorCanal.fetchedAt = 0;
+    store.atribuicao.fetchedAt = 0;
+    _atribuicaoMapCache = null;
+    _atribuicaoMapFetchedAt = 0;
 
     console.log('[Sheets] Refreshing all data...');
     await Promise.all([
+        getAtribuicaoData(), // fetch attribution map first (needed by ga4)
         getBdMagData(),
-        getGa4StoreData(),
         getGoogleAdsStoreData(),
         getTvSalesStoreData(),
         getMetasStoreData(),
         getVendaPorCanalData(),
     ]);
+    // GA4 depends on atribuicao map being loaded
+    await getGa4StoreData();
     console.log('[Sheets] All data refreshed');
 }
 
@@ -284,5 +330,6 @@ export function getCacheStatus() {
         tvSales: { rows: store.tvSales.data.length, ageMinutes: Math.round((now - store.tvSales.fetchedAt) / 60000), loading: !!store.tvSales.loading },
         metas: { rows: store.metas.data.length, ageMinutes: Math.round((now - store.metas.fetchedAt) / 60000), loading: !!store.metas.loading },
         vendaPorCanal: { rows: store.vendaPorCanal.data.length, ageMinutes: Math.round((now - store.vendaPorCanal.fetchedAt) / 60000), loading: !!store.vendaPorCanal.loading },
+        atribuicao: { rows: store.atribuicao.data.length, ageMinutes: Math.round((now - store.atribuicao.fetchedAt) / 60000), loading: !!store.atribuicao.loading },
     };
 }
