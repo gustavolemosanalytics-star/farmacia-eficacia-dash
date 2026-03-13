@@ -2,18 +2,20 @@
 
 import { ReactNode } from 'react';
 import { GlobalDatePicker } from './GlobalDatePicker';
+import { RefreshButton } from '@/components/layout/RefreshButton';
 
 interface PageFiltersProps {
     title: string;
     description?: string;
     children?: ReactNode; // For additional filters
     isMocked?: boolean;
+    showDatePicker?: boolean;
 }
 
-export function PageFilters({ title, description, children, isMocked }: PageFiltersProps) {
+export function PageFilters({ title, description, children, isMocked, showDatePicker = true }: PageFiltersProps) {
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 p-4 mb-6">
-            {/* Top Row: Title + Date Picker */}
+            {/* Top Row: Title + Date Picker + Refresh */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <div>
                     <div className="flex items-center gap-2">
@@ -28,7 +30,10 @@ export function PageFilters({ title, description, children, isMocked }: PageFilt
                         <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
                     )}
                 </div>
-                <GlobalDatePicker />
+                <div className="flex items-center gap-2">
+                    {showDatePicker && <GlobalDatePicker />}
+                    <RefreshButton />
+                </div>
             </div>
 
             {/* Bottom Row: Additional Filters (horizontal) */}

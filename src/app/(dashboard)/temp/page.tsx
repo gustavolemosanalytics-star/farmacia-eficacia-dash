@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageFilters } from '@/components/ui/PageFilters';
 
 interface CidadeData {
     cidade: string;
@@ -157,7 +158,7 @@ export default function TempPage() {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
-            <h1 className="text-2xl font-bold">Relatório Mídia Paga — 2026</h1>
+            <PageFilters title="Relatório Mídia Paga — 2026" showDatePicker={false} />
 
             {/* Totais */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

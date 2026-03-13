@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import { PageFilters } from '@/components/ui/PageFilters';
 import { DateRange } from 'react-day-picker';
 import { startOfMonth, subDays, format, subYears, startOfYear, endOfYear, getISOWeek, getYear, setISOWeek, startOfISOWeek, endOfISOWeek } from 'date-fns';
 
@@ -309,34 +310,34 @@ export default function VisaoGA4Page() {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto">
-            {/* Header + Filters */}
-            <div className="flex flex-col gap-4">
-                <h1 className="text-2xl font-bold">Visão GA4 — Receita por Canal</h1>
-                <div className="flex flex-wrap items-center gap-3">
-                    <DateRangePicker
-                        date={dateRange}
-                        setDate={setDateRange}
-                    />
-                    <Select
-                        value={comparisonType}
-                        onValueChange={(v) => setComparisonType(v as ComparisonType)}
-                    >
-                        <SelectTrigger className="w-[260px]">
-                            <SelectValue placeholder="Tipo de comparação" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {(Object.entries(COMPARISON_LABELS) as [ComparisonType, string][]).map(([key, label]) => (
-                                <SelectItem key={key} value={key}>{label}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {compDates && (
-                        <span className="text-xs text-zinc-500">
-                            vs {format(compDates.from, 'dd/MM/yyyy')} — {format(compDates.to, 'dd/MM/yyyy')}
-                        </span>
-                    )}
-                </div>
-            </div>
+            <PageFilters
+                title="Visão GA4 — Receita por Canal"
+                description="Dados agregados da aba GA4 com atribuição dinâmica"
+                showDatePicker={false}
+            >
+                <DateRangePicker
+                    date={dateRange}
+                    setDate={setDateRange}
+                />
+                <Select
+                    value={comparisonType}
+                    onValueChange={(v) => setComparisonType(v as ComparisonType)}
+                >
+                    <SelectTrigger className="w-[260px]">
+                        <SelectValue placeholder="Tipo de comparação" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {(Object.entries(COMPARISON_LABELS) as [ComparisonType, string][]).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                {compDates && (
+                    <span className="text-xs text-zinc-500">
+                        vs {format(compDates.from, 'dd/MM/yyyy')} — {format(compDates.to, 'dd/MM/yyyy')}
+                    </span>
+                )}
+            </PageFilters>
 
             {loading && (
                 <div className="flex items-center justify-center min-h-[40vh]">
