@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { PageFilters } from '@/components/ui/PageFilters';
 import { DateRange } from 'react-day-picker';
-import { startOfMonth, subDays, format, subYears, startOfYear, endOfYear, getISOWeek, getYear, setISOWeek, startOfISOWeek, endOfISOWeek } from 'date-fns';
+import { startOfMonth, subDays, subWeeks, subMonths, format, subYears, startOfYear, endOfYear, getISOWeek, getYear, setISOWeek, startOfISOWeek, endOfISOWeek, differenceInDays } from 'date-fns';
 
 // ==========================================
 // Types
@@ -32,10 +32,13 @@ interface VisaoGA4Response {
     channels: string[];
 }
 
-type ComparisonType = 'none' | 'day' | 'week' | 'month' | 'quarter' | 'semester' | 'quadrimester';
+type ComparisonType = 'none' | 'prev_period' | 'prev_week' | 'prev_year' | 'day' | 'week' | 'month' | 'quarter' | 'semester' | 'quadrimester';
 
 const COMPARISON_LABELS: Record<ComparisonType, string> = {
     none: 'Sem comparação',
+    prev_period: 'Mesmo período (mês anterior)',
+    prev_week: 'Semana anterior',
+    prev_year: 'Mesmo período (ano anterior)',
     day: 'Mesmo dia (ano anterior)',
     week: 'Mesma semana (ano anterior)',
     month: 'Mesmo mês (ano anterior)',
@@ -52,6 +55,25 @@ function getComparisonDates(start: Date, end: Date, type: ComparisonType): { fro
     if (type === 'none') return null;
 
     switch (type) {
+        case 'prev_period': {
+            // Same day range but in the previous month (e.g. 01-13 Mar → 01-13 Feb)
+            const fromPrev = subMonths(start, 1);
+            const toPrev = subMonths(end, 1);
+            return { from: fromPrev, to: toPrev };
+        }
+
+        case 'prev_week': {
+            // Same duration shifted back 7 days
+            const days = differenceInDays(end, start);
+            const fromPrev = subWeeks(start, 1);
+            const toPrev = subWeeks(end, 1);
+            return { from: fromPrev, to: toPrev };
+        }
+
+        case 'prev_year':
+            // Same exact date range, year - 1
+            return { from: subYears(start, 1), to: subYears(end, 1) };
+
         case 'day':
             return { from: subYears(start, 1), to: subYears(end, 1) };
 
