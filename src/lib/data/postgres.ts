@@ -145,6 +145,8 @@ interface CatalogoFilters {
     endDate?: Date;
     status?: string;
     atribuicao?: string;
+    categoria?: string;
+    estado?: string;
 }
 
 function filterBdMagRows(rows: Record<string, any>[], filters: CatalogoFilters): Record<string, any>[] {
@@ -162,6 +164,14 @@ function filterBdMagRows(rows: Record<string, any>[], filters: CatalogoFilters):
         // Atribuicao filter
         if (filters.atribuicao) {
             if (r.atribuicao !== filters.atribuicao) return false;
+        }
+        // Categoria filter
+        if (filters.categoria) {
+            if (r.categoria !== filters.categoria) return false;
+        }
+        // Estado filter
+        if (filters.estado) {
+            if (r.estado !== filters.estado) return false;
         }
         return true;
     });
@@ -428,6 +438,8 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
         categorias: [...new Set(allBdMag.map(r => r.categoria).filter(Boolean))].sort(),
         atribuicoes: [...new Set(allBdMag.map(r => r.atribuicao).filter(Boolean))].sort(),
         status: [...new Set(allBdMag.map(r => r.status).filter(Boolean))].sort(),
+        estados: [...new Set(allBdMag.map(r => r.estado).filter(Boolean))].sort(),
+        cidades: [...new Set(allBdMag.map(r => r.cidade).filter(Boolean))].sort(),
     };
 
     return {
@@ -568,4 +580,63 @@ export async function getTVSalesData(): Promise<any[]> {
 export async function getMetasData(): Promise<any[]> {
     const rows = await getMetasStoreData();
     return rows;
+}
+
+// ============================================
+// FREIGHT BY CITY AGGREGATION
+// ============================================
+
+export async function getFreightByCityAggregated(filters: CatalogoFilters = {}) {
+    const allBdMag = await getBdMagData();
+    const rows = filterBdMagRows(allBdMag, filters);
+
+    // Group by pedido first to get freight per order (avoid multi-item duplication)
+    const orderMap: Record<string, { cidade: string; estado: string; frete: number }> = {};
+    for (const r of rows) {
+        const pedido = r.pedido || '';
+        if (!pedido) continue;
+        if (orderMap[pedido]) continue; // already counted this order
+        const comFrete = parseNumber(r.valor_total_com_frete);
+        const semFrete = parseNumber(r.valor_total_sem_frete);
+        const frete = comFrete - semFrete;
+        orderMap[pedido] = {
+            cidade: r.cidade || 'N/A',
+            estado: r.estado || 'N/A',
+            frete: frete > 0 ? frete : 0,
+        };
+    }
+
+    // Aggregate by city
+    const cityMap: Record<string, { estado: string; totalFrete: number; pedidoCount: number }> = {};
+    let grandTotalFrete = 0;
+    let totalPedidos = 0;
+
+    for (const order of Object.values(orderMap)) {
+        const key = order.cidade;
+        if (!cityMap[key]) {
+            cityMap[key] = { estado: order.estado, totalFrete: 0, pedidoCount: 0 };
+        }
+        cityMap[key].totalFrete += order.frete;
+        cityMap[key].pedidoCount += 1;
+        grandTotalFrete += order.frete;
+        totalPedidos += 1;
+    }
+
+    const cities = Object.entries(cityMap)
+        .map(([cidade, data]) => ({
+            cidade,
+            estado: data.estado,
+            totalFrete: data.totalFrete,
+            avgFrete: data.pedidoCount > 0 ? data.totalFrete / data.pedidoCount : 0,
+            pedidoCount: data.pedidoCount,
+            percentOfTotal: grandTotalFrete > 0 ? (data.totalFrete / grandTotalFrete) * 100 : 0,
+        }))
+        .sort((a, b) => b.totalFrete - a.totalFrete);
+
+    return {
+        cities,
+        grandTotalFrete,
+        grandAvgFrete: totalPedidos > 0 ? grandTotalFrete / totalPedidos : 0,
+        totalPedidos,
+    };
 }

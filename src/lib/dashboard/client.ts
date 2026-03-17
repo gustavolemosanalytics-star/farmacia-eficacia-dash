@@ -12,6 +12,7 @@ import {
     getGA4SessionsData,
     getTVSalesData,
     getMetasData,
+    getFreightByCityAggregated,
 } from '@/lib/data/postgres';
 
 // ==========================================
@@ -452,11 +453,11 @@ export const fetchMagData = async () => {
 };
 
 // Aggregate Catalogo/Magento KPIs - Uses SQL-level aggregation (no full table scan)
-export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date, status?: string, atribuicao?: string, includeRaw: boolean = true) => {
-    const aggregated = await getCatalogoKPIsAggregated({ startDate, endDate, status, atribuicao });
+export const aggregateCatalogoKPIs = async (startDate?: Date, endDate?: Date, status?: string, atribuicao?: string, includeRaw: boolean = true, categoria?: string, estado?: string) => {
+    const aggregated = await getCatalogoKPIsAggregated({ startDate, endDate, status, atribuicao, categoria, estado });
 
     if (includeRaw) {
-        const rawData = await getCatalogoData({ startDate, endDate, status, atribuicao });
+        const rawData = await getCatalogoData({ startDate, endDate, status, atribuicao, categoria, estado });
         return { ...aggregated, rawData };
     }
 
@@ -757,4 +758,10 @@ export const aggregateCRMKPIs = async (startDate?: Date, endDate?: Date) => {
         cohorts,
         rawData: data
     };
+};
+
+// Aggregate Freight by City
+export const aggregateFreightData = async (startDate?: Date, endDate?: Date) => {
+    console.log('[Data] Fetching Freight by City data');
+    return await getFreightByCityAggregated({ startDate, endDate });
 };

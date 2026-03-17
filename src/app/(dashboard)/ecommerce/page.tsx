@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageFilters } from '@/components/ui/PageFilters';
 import { FilterDropdown } from '@/components/ui/FilterDropdown';
-import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useDashboardData';
+import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs, useFreightData } from '@/hooks/useDashboardData';
+import { FreightByCityTable } from '@/components/tables/FreightByCityTable';
 import {
     TrendingUp, TrendingDown, DollarSign, Target, ShoppingCart, Activity, BarChart3, Users, AlertTriangle, CheckCircle, Lightbulb, Clock, Zap, Package, MapPin, Search, ArrowUpDown
 } from 'lucide-react';
@@ -136,15 +137,25 @@ function TopProductsTable({ products, comparisonProductMap }: {
 
 export default function EcommercePage() {
     const { kpis: gadsKpis, comparisonKpis: gadsComparisonKpis, loading: loadingGads } = useGoogleAdsKPIs();
-    const { data: catalogoData, comparisonData: catalogoComparisonData, loading: loadingCatalogo } = useCatalogoData();
     const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
-
-    const loading = loadingGads || loadingCatalogo || loadingGA4;
 
     const [filterStatus, setFilterStatus] = useState<string | null>(null);
     const [filterAtribuicao, setFilterAtribuicao] = useState<string | null>(null);
+    const [filterCategoria, setFilterCategoria] = useState<string | null>(null);
+    const [filterEstado, setFilterEstado] = useState<string | null>(null);
 
-    const filterOptions = catalogoData?.filterOptions || { status: [], atribuicoes: [] };
+    const moreParams: Record<string, string> = {};
+    if (filterCategoria) moreParams.categoria = filterCategoria;
+    if (filterEstado) moreParams.estado = filterEstado;
+
+    const { data: catalogoData, comparisonData: catalogoComparisonData, loading: loadingCatalogo } = useCatalogoData(
+        undefined, undefined, filterStatus || undefined, filterAtribuicao || undefined, Object.keys(moreParams).length > 0 ? moreParams : undefined
+    );
+    const { data: freightData, loading: loadingFreight } = useFreightData();
+
+    const loading = loadingGads || loadingCatalogo || loadingGA4;
+
+    const filterOptions = catalogoData?.filterOptions || { status: [], atribuicoes: [], categorias: [], estados: [] };
 
     // Analytics and Insights
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -599,6 +610,8 @@ export default function EcommercePage() {
             >
                 <FilterDropdown label="Status" options={filterOptions.status} value={filterStatus} onChange={setFilterStatus} />
                 <FilterDropdown label="Atribuição" options={filterOptions.atribuicoes} value={filterAtribuicao} onChange={setFilterAtribuicao} />
+                <FilterDropdown label="Categoria" options={filterOptions.categorias} value={filterCategoria} onChange={setFilterCategoria} />
+                <FilterDropdown label="Estado" options={filterOptions.estados} value={filterEstado} onChange={setFilterEstado} />
             </PageFilters>
 
             {loading && (
@@ -1000,6 +1013,16 @@ export default function EcommercePage() {
                         </Card>
                     )}
                 </section>
+            )}
+
+            {/* Freight by City */}
+            {!loading && freightData && (
+                <FreightByCityTable
+                    cities={freightData.cities || []}
+                    grandTotalFrete={freightData.grandTotalFrete || 0}
+                    grandAvgFrete={freightData.grandAvgFrete || 0}
+                    totalPedidos={freightData.totalPedidos || 0}
+                />
             )}
         </div>
     );

@@ -129,12 +129,18 @@ export function useGA4KPIs() {
 }
 
 // Hook for Catalogo Data with server-side filtering
-export function useCatalogoData(customStart?: Date, customEnd?: Date, status?: string, atribuicao?: string) {
+export function useCatalogoData(customStart?: Date, customEnd?: Date, status?: string, atribuicao?: string, moreParams?: Record<string, string>) {
     const extraParams: Record<string, string> = {};
     if (status) extraParams.status = status;
     if (atribuicao) extraParams.atribuicao = atribuicao;
+    if (moreParams) Object.entries(moreParams).forEach(([k, v]) => { if (v) extraParams[k] = v; });
 
     return useSheetData<any>('/api/dashboard/catalogo', false, false, customStart, customEnd, Object.keys(extraParams).length > 0 ? extraParams : undefined);
+}
+
+// Hook for Freight by City data
+export function useFreightData() {
+    return useSheetData<any>('/api/dashboard/freight', false);
 }
 
 // Hook for YoY Analysis - lightweight SQL aggregation

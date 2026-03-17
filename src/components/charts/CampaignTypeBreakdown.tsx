@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChevronDown, ChevronUp, Target, MousePointer, DollarSign, BarChart3, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Target, MousePointer, DollarSign, BarChart3, TrendingUp, Package } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { cn } from '@/lib/utils';
 
@@ -35,9 +35,19 @@ interface Campaign {
     roas: number;
 }
 
+interface ProductByType {
+    nome: string;
+    receita: number;
+    quantidade: number;
+    investimento: number;
+    cpa: number;
+    roas: number;
+}
+
 interface Props {
     byCampaignType: CampaignType[];
     byCampaign: Campaign[];
+    productsByType?: Record<string, ProductByType[]>;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -49,7 +59,7 @@ const TYPE_COLORS: Record<string, string> = {
     'outros': '#6b7280',
 };
 
-export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
+export function CampaignTypeBreakdown({ byCampaignType, byCampaign, productsByType }: Props) {
     const [expandedType, setExpandedType] = useState<string | null>(null);
     const [sortBy, setSortBy] = useState<'spend' | 'roas'>('spend');
 
@@ -259,6 +269,56 @@ export function CampaignTypeBreakdown({ byCampaignType, byCampaign }: Props) {
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
+
+                                    {/* Product table for this campaign type */}
+                                    {productsByType?.[typeData.type]?.length ? (
+                                        <div className="mt-4 pt-4 border-t border-border">
+                                            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3 flex items-center gap-1">
+                                                <Package className="h-3 w-3" />
+                                                Produtos nesta categoria ({productsByType[typeData.type].length})
+                                            </h4>
+                                            <div className="max-h-[300px] overflow-y-auto">
+                                                <table className="w-full text-xs">
+                                                    <thead className="sticky top-0 bg-card">
+                                                        <tr className="border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                            <th className="text-left py-2 px-2 font-bold">Produto</th>
+                                                            <th className="text-right py-2 px-2 font-bold">Receita</th>
+                                                            <th className="text-right py-2 px-2 font-bold">Qtd</th>
+                                                            <th className="text-right py-2 px-2 font-bold">Invest.</th>
+                                                            <th className="text-right py-2 px-2 font-bold">CPA</th>
+                                                            <th className="text-right py-2 px-2 font-bold">ROAS</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {productsByType[typeData.type].slice(0, 15).map((prod, idx) => (
+                                                            <tr key={idx} className="border-b border-border last:border-0 hover:bg-muted/50">
+                                                                <td className="py-1.5 px-2 max-w-[200px] truncate" title={prod.nome}>{prod.nome}</td>
+                                                                <td className="py-1.5 px-2 text-right font-medium text-emerald-600">
+                                                                    R$ {prod.receita.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                                                                </td>
+                                                                <td className="py-1.5 px-2 text-right text-muted-foreground">{prod.quantidade}</td>
+                                                                <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                                                                    R$ {prod.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                </td>
+                                                                <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                                                                    R$ {prod.cpa > 0 ? prod.cpa.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '—'}
+                                                                </td>
+                                                                <td className="py-1.5 px-2 text-right">
+                                                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${prod.roas >= 3 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                                                        prod.roas >= 1.5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                                                            prod.roas > 0 ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                                                                                'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                                                                        }`}>
+                                                                        {prod.roas > 0 ? `${prod.roas.toFixed(2)}x` : 'N/A'}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    ) : null}
                                 </div>
                             )}
                         </CardContent>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICard } from '@/components/kpi/KPICard';
 import { PageFilters } from '@/components/ui/PageFilters';
+import { FilterDropdown } from '@/components/ui/FilterDropdown';
 import { useGoogleAdsKPIs, useCatalogoData, useGA4KPIs } from '@/hooks/useDashboardData';
 import { CampaignTypeBreakdown } from '@/components/charts/CampaignTypeBreakdown';
 import {
@@ -127,6 +128,12 @@ export default function MidiaPagaPage() {
     const { kpis: gadsKpis, loading: loadingGads } = useGoogleAdsKPIs();
     const { data: catalogoData, loading: loadingCatalogo } = useCatalogoData();
     const { kpis: ga4Kpis, loading: loadingGA4 } = useGA4KPIs();
+
+    const [filterCampaignType, setFilterCampaignType] = useState<string | null>(null);
+
+    const campaignTypeOptions = useMemo(() => {
+        return (gadsKpis?.byCampaignType || []).map((t: any) => t.label);
+    }, [gadsKpis]);
 
     const loading = loadingGads || loadingCatalogo || loadingGA4;
 
@@ -404,6 +411,52 @@ export default function MidiaPagaPage() {
             .sort((a, b) => b.receita - a.receita)
             .slice(0, 20);
 
+        // Products grouped by campaign type
+        const classifyCampaignType = (campaign: string): string => {
+            const lower = (campaign || '').toLowerCase();
+            if (lower.includes('visita')) return 'visita_loja';
+            if (lower.includes('lead')) return 'search_leads';
+            if (lower.includes('institucional') && !lower.includes('lead') && !lower.includes('visita')) return 'search_institucional';
+            if (lower.includes('shopping')) return 'shopping';
+            if (lower.includes('pmax') && !lower.includes('lead') && !lower.includes('visita')) return 'pmax_ecommerce';
+            return 'outros';
+        };
+
+        const productsByTypeMap: Record<string, Record<string, { nome: string; receita: number; quantidade: number; investimento: number }>> = {};
+        googleAdsOrders.forEach((o: any) => {
+            const nome = o.nomeProduto || 'Sem Nome';
+            const rawCamp = o.campanha || '';
+            const tipo = classifyCampaignType(rawCamp);
+            const day = normalizeDate(o.data);
+            const camp = normalizeCamp(rawCamp);
+            const key = `${day}_${camp}`;
+
+            if (!productsByTypeMap[tipo]) productsByTypeMap[tipo] = {};
+            if (!productsByTypeMap[tipo][nome]) productsByTypeMap[tipo][nome] = { nome, receita: 0, quantidade: 0, investimento: 0 };
+
+            const orderRevenue = o.receitaProduto || 0;
+            productsByTypeMap[tipo][nome].receita += orderRevenue;
+            productsByTypeMap[tipo][nome].quantidade += 1;
+
+            const campDayRevenue = revenueByCampDayInMag[key] || 0;
+            const campDaySpend = spendByCampDay[key] || 0;
+            if (campDayRevenue > 0) {
+                productsByTypeMap[tipo][nome].investimento += (orderRevenue / campDayRevenue) * campDaySpend;
+            }
+        });
+
+        const productsByType: Record<string, any[]> = {};
+        for (const [tipo, prods] of Object.entries(productsByTypeMap)) {
+            productsByType[tipo] = Object.values(prods)
+                .map(p => ({
+                    ...p,
+                    cpa: p.quantidade > 0 ? p.investimento / p.quantidade : 0,
+                    roas: p.investimento > 0 ? p.receita / p.investimento : 0,
+                }))
+                .filter(p => p.receita > 0)
+                .sort((a, b) => b.receita - a.receita);
+        }
+
         return {
             receitaGoogleAds,
             googleAdsOrdersCount: googleAdsOrders.length,
@@ -418,6 +471,7 @@ export default function MidiaPagaPage() {
             avgSpend,
             avgRoas,
             productAnalysis,
+            productsByType,
         };
     }, [catalogoData, gadsKpis, ga4Kpis]);
 
@@ -574,7 +628,9 @@ export default function MidiaPagaPage() {
             <PageFilters
                 title="Mídia Paga"
                 description="Performance de Google Ads • Dados do BD GAds e BD Mag"
-            />
+            >
+                <FilterDropdown label="Tipo Campanha" options={campaignTypeOptions} value={filterCampaignType} onChange={setFilterCampaignType} />
+            </PageFilters>
 
             {loading && (
                 <div className="flex items-center justify-center py-8">
@@ -941,8 +997,11 @@ export default function MidiaPagaPage() {
                         Campanhas por Tipo
                     </h2>
                     <CampaignTypeBreakdown
-                        byCampaignType={gadsKpis.byCampaignType}
+                        byCampaignType={filterCampaignType
+                            ? gadsKpis.byCampaignType.filter((t: any) => t.label === filterCampaignType)
+                            : gadsKpis.byCampaignType}
                         byCampaign={analytics?.campaignAnalysis || []}
+                        productsByType={analytics?.productsByType}
                     />
                 </section>
             )}
