@@ -16,8 +16,13 @@ const SECONDARY_SPREADSHEET_ID = '198auS_FJrjvfvGMuTxWFFwgL8NHLiq3dMFsWSyBpBpA';
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
+// BD Mag historical data lives in the old spreadsheet (up to 27/12/2025).
+// From 28/12/2025 onward, BD Mag data comes from the secondary spreadsheet.
+const BD_MAG_CUTOVER = '2025-12-28'; // rows with data >= this date come from SECONDARY
+
 const SHEET_CONFIG = {
     BD_MAG: { spreadsheetId: HISTORICAL_SPREADSHEET_ID, sheetName: 'BD Mag' },
+    BD_MAG_NEW: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'BD Mag' },
     GA4: { spreadsheetId: HISTORICAL_SPREADSHEET_ID, sheetName: 'ga4' },
     GOOGLE_ADS: { spreadsheetId: HISTORICAL_SPREADSHEET_ID, sheetName: 'google_ads' },
     BD_TV: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'bd tv' },
@@ -148,6 +153,7 @@ interface SheetStore {
 declare global {
     var __sheetsStore: {
         bdMag: SheetStore;
+        bdMagNew: SheetStore;
         ga4: SheetStore;
         googleAds: SheetStore;
         tvSales: SheetStore;
@@ -162,6 +168,7 @@ function getStore() {
         const empty = (): SheetStore => ({ data: [], fetchedAt: 0, loading: null });
         globalThis.__sheetsStore = {
             bdMag: empty(),
+            bdMagNew: empty(),
             ga4: empty(),
             googleAds: empty(),
             tvSales: empty(),
@@ -215,13 +222,51 @@ async function getStoreData(
 // PUBLIC API — Data Access Functions
 // ============================================
 
+/**
+ * Normalize a date string (dd/MM/yyyy or yyyy-MM-dd) to yyyy-MM-dd for comparison.
+ */
+function toISODate(raw: string): string {
+    if (!raw) return '';
+    const s = raw.toString().trim().split(' ')[0]; // strip time
+    // dd/MM/yyyy
+    if (s.includes('/')) {
+        const [d, m, y] = s.split('/');
+        if (y && m && d) return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+    return s; // already yyyy-MM-dd
+}
+
 export async function getBdMagData(): Promise<Record<string, any>[]> {
     const store = getStore();
-    return getStoreData(
-        store.bdMag,
-        SHEET_CONFIG.BD_MAG.spreadsheetId,
-        SHEET_CONFIG.BD_MAG.sheetName
-    );
+
+    // Fetch both sources in parallel
+    const [historical, newer] = await Promise.all([
+        getStoreData(
+            store.bdMag,
+            SHEET_CONFIG.BD_MAG.spreadsheetId,
+            SHEET_CONFIG.BD_MAG.sheetName
+        ),
+        getStoreData(
+            store.bdMagNew,
+            SHEET_CONFIG.BD_MAG_NEW.spreadsheetId,
+            SHEET_CONFIG.BD_MAG_NEW.sheetName
+        ),
+    ]);
+
+    // Historical: keep only rows before the cutover date
+    const histFiltered = historical.filter(r => {
+        const d = toISODate(r.data);
+        return d && d < BD_MAG_CUTOVER;
+    });
+
+    // New: keep only rows from the cutover date onward
+    const newFiltered = newer.filter(r => {
+        const d = toISODate(r.data);
+        return d && d >= BD_MAG_CUTOVER;
+    });
+
+    console.log(`[Sheets] BD Mag merged: ${histFiltered.length} historical + ${newFiltered.length} new = ${histFiltered.length + newFiltered.length} total`);
+    return [...histFiltered, ...newFiltered];
 }
 
 export async function getGa4StoreData(): Promise<Record<string, any>[]> {
@@ -296,6 +341,7 @@ export async function refreshAllData(): Promise<void> {
     const store = getStore();
     // Reset fetchedAt to force re-fetch
     store.bdMag.fetchedAt = 0;
+    store.bdMagNew.fetchedAt = 0;
     store.ga4.fetchedAt = 0;
     store.googleAds.fetchedAt = 0;
     store.tvSales.fetchedAt = 0;
@@ -325,6 +371,7 @@ export function getCacheStatus() {
     const now = Date.now();
     return {
         bdMag: { rows: store.bdMag.data.length, ageMinutes: Math.round((now - store.bdMag.fetchedAt) / 60000), loading: !!store.bdMag.loading },
+        bdMagNew: { rows: store.bdMagNew.data.length, ageMinutes: Math.round((now - store.bdMagNew.fetchedAt) / 60000), loading: !!store.bdMagNew.loading },
         ga4: { rows: store.ga4.data.length, ageMinutes: Math.round((now - store.ga4.fetchedAt) / 60000), loading: !!store.ga4.loading },
         googleAds: { rows: store.googleAds.data.length, ageMinutes: Math.round((now - store.googleAds.fetchedAt) / 60000), loading: !!store.googleAds.loading },
         tvSales: { rows: store.tvSales.data.length, ageMinutes: Math.round((now - store.tvSales.fetchedAt) / 60000), loading: !!store.tvSales.loading },
