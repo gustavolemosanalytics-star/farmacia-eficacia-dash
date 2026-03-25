@@ -29,6 +29,7 @@ const SHEET_CONFIG = {
     METAS: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'Meta 2026' },
     VENDA_POR_CANAL: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'Venda por Canal' },
     ATRIBUICAO: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'Atribuição' },
+    BD_GA4: { spreadsheetId: SECONDARY_SPREADSHEET_ID, sheetName: 'BD GA4' },
 } as const;
 
 // ============================================
@@ -160,6 +161,7 @@ declare global {
         metas: SheetStore;
         vendaPorCanal: SheetStore;
         atribuicao: SheetStore;
+        bdGa4: SheetStore;
     } | undefined;
 }
 
@@ -175,6 +177,7 @@ function getStore() {
             metas: empty(),
             vendaPorCanal: empty(),
             atribuicao: empty(),
+            bdGa4: empty(),
         };
     }
     return globalThis.__sheetsStore;
@@ -332,6 +335,15 @@ export async function getAtribuicaoData(): Promise<Record<string, any>[]> {
     );
 }
 
+export async function getBdGa4Data(): Promise<Record<string, any>[]> {
+    const store = getStore();
+    return getStoreData(
+        store.bdGa4,
+        SHEET_CONFIG.BD_GA4.spreadsheetId,
+        SHEET_CONFIG.BD_GA4.sheetName
+    );
+}
+
 export async function getAtribuicaoMap(): Promise<Map<string, string>> {
     return getAtribuicaoMapInternal();
 }
@@ -348,6 +360,7 @@ export async function refreshAllData(): Promise<void> {
     store.metas.fetchedAt = 0;
     store.vendaPorCanal.fetchedAt = 0;
     store.atribuicao.fetchedAt = 0;
+    store.bdGa4.fetchedAt = 0;
     _atribuicaoMapCache = null;
     _atribuicaoMapFetchedAt = 0;
 
@@ -359,6 +372,7 @@ export async function refreshAllData(): Promise<void> {
         getTvSalesStoreData(),
         getMetasStoreData(),
         getVendaPorCanalData(),
+        getBdGa4Data(),
     ]);
     // GA4 depends on atribuicao map being loaded
     await getGa4StoreData();
@@ -378,5 +392,6 @@ export function getCacheStatus() {
         metas: { rows: store.metas.data.length, ageMinutes: Math.round((now - store.metas.fetchedAt) / 60000), loading: !!store.metas.loading },
         vendaPorCanal: { rows: store.vendaPorCanal.data.length, ageMinutes: Math.round((now - store.vendaPorCanal.fetchedAt) / 60000), loading: !!store.vendaPorCanal.loading },
         atribuicao: { rows: store.atribuicao.data.length, ageMinutes: Math.round((now - store.atribuicao.fetchedAt) / 60000), loading: !!store.atribuicao.loading },
+        bdGa4: { rows: store.bdGa4.data.length, ageMinutes: Math.round((now - store.bdGa4.fetchedAt) / 60000), loading: !!store.bdGa4.loading },
     };
 }

@@ -13,6 +13,8 @@ import {
     getTVSalesData,
     getMetasData,
     getFreightByCityAggregated,
+    getBdGA4GoogleAdsData,
+    type BdGA4Item,
 } from '@/lib/data/postgres';
 
 // ==========================================
@@ -79,7 +81,10 @@ const parseDate = (dateStr: string): Date | null => {
 
 // Aggregate Google Ads KPIs
 export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) => {
-    const data = await fetchGoogleAdsData(startDate, endDate);
+    const [data, bdGa4Items] = await Promise.all([
+        fetchGoogleAdsData(startDate, endDate),
+        getBdGA4GoogleAdsData(startDate, endDate),
+    ]);
 
     // Excluindo campanhas "Lead" e "Visita" para custo do ROAS conforme solicitado
     const isLeadsCampaign = (campaign: string) => (campaign || '').toLowerCase().includes('lead');
@@ -87,29 +92,41 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
 
     const totalGrossCost = data.reduce((sum, entry) => sum + (entry.cost || 0), 0);
     const ecommerceData = data.filter(entry => !isLeadsCampaign(entry.campaign) && !isVisitaCampaign(entry.campaign));
-    const totalCost = ecommerceData.reduce((sum, entry) => sum + (entry.cost || 0), 0); // Este será o "Investimento Google Ads" principal para o ROAS
+    const totalCost = ecommerceData.reduce((sum, entry) => sum + (entry.cost || 0), 0);
+
+    // Revenue from BD GA4 (Atribuição 1 = Google_Ads, Purchase revenue)
+    const bdGa4Revenue = bdGa4Items.reduce((sum, item) => sum + item.purchaseRevenue, 0);
 
     const totalConversions = data.reduce((sum, entry) => sum + (entry.conversions || 0), 0);
     const totalEcommerceClicks = ecommerceData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
     const totalEcommerceImpressions = ecommerceData.reduce((sum, entry) => sum + (entry.impressions || 0), 0);
 
-    // Weighted CTR (Total Clicks / Total Impressions) using filtered ecommerce data
+    // Weighted CTR
     const avgCTR = totalEcommerceImpressions > 0 ? (totalEcommerceClicks / totalEcommerceImpressions) * 100 : 0;
-
     const costPerConversion = totalConversions > 0 ? totalCost / totalConversions : 0;
 
-    // Daily Cost, Conversions, and ConversionValue Aggregation
+    // Daily Cost Aggregation (from google_ads)
     const dailyMetricsMap: { [key: string]: { cost: number; conversions: number; conversionValue: number } } = {};
     data.forEach(entry => {
         const date = parseDate(entry.day);
         if (date) {
-            const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+            const dateStr = date.toISOString().split('T')[0];
             if (!dailyMetricsMap[dateStr]) {
                 dailyMetricsMap[dateStr] = { cost: 0, conversions: 0, conversionValue: 0 };
             }
             dailyMetricsMap[dateStr].cost += entry.cost || 0;
             dailyMetricsMap[dateStr].conversions += entry.conversions || 0;
-            dailyMetricsMap[dateStr].conversionValue += entry.conversionValue || 0;
+        }
+    });
+    // Inject BD GA4 revenue into daily metrics
+    bdGa4Items.forEach(item => {
+        const date = parseDate(item.date);
+        if (date) {
+            const dateStr = date.toISOString().split('T')[0];
+            if (!dailyMetricsMap[dateStr]) {
+                dailyMetricsMap[dateStr] = { cost: 0, conversions: 0, conversionValue: 0 };
+            }
+            dailyMetricsMap[dateStr].conversionValue += item.purchaseRevenue;
         }
     });
     const dailyData = Object.entries(dailyMetricsMap)
@@ -130,9 +147,9 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     const ecommerceClicks = ecommerceData.reduce((sum, entry) => sum + (entry.clicks || 0), 0);
     const ecommerceImpressions = ecommerceData.reduce((sum, entry) => sum + (entry.impressions || 0), 0);
 
-    // Conversion Value for ROAS calculation (from google_ads table)
-    const totalConversionValue = ecommerceData.reduce((sum, entry) => sum + (entry.conversionValue || 0), 0);
-    const roas = totalCost > 0 ? totalConversionValue / totalCost : 0;
+    // ROAS: BD GA4 revenue / Google Ads cost
+    const totalConversionValue = bdGa4Revenue;
+    const roas = totalCost > 0 ? bdGa4Revenue / totalCost : 0;
 
     // ==========================================
     // CLASSIFICAÇÃO DE CAMPANHAS (5 tipos)
@@ -141,14 +158,11 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
 
     const classifyCampaign = (campaign: string): CampaignType => {
         const lower = (campaign || '').toLowerCase();
-
-        // Check in specific order (most restrictive first)
         if (lower.includes('visita')) return 'visita_loja';
         if (lower.includes('lead')) return 'search_leads';
         if (lower.includes('institucional') && !lower.includes('lead') && !lower.includes('visita')) return 'search_institucional';
         if (lower.includes('shopping')) return 'shopping';
         if (lower.includes('pmax') && !lower.includes('lead') && !lower.includes('visita')) return 'pmax_ecommerce';
-
         return 'outros';
     };
 
@@ -162,6 +176,18 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
     };
 
     // ==========================================
+    // BD GA4 Revenue by Campaign (cross-match event_campaign ↔ google_ads campaign)
+    // ==========================================
+    const normCamp = (c: string) => (c || '').toLowerCase().trim();
+    const ga4RevenueByCampaign: Record<string, number> = {};
+    bdGa4Items.forEach(item => {
+        const camp = normCamp(item.eventCampaign);
+        if (camp) {
+            ga4RevenueByCampaign[camp] = (ga4RevenueByCampaign[camp] || 0) + item.purchaseRevenue;
+        }
+    });
+
+    // ==========================================
     // DADOS POR CAMPANHA (para tabela detalhada)
     // ==========================================
     const campaignMap: {
@@ -169,7 +195,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
             campaign: string;
             spend: number;
             conversions: number;
-            conversionValue: number;  // For ROAS
+            conversionValue: number;
             clicks: number;
             impressions: number;
             tipo: CampaignType;
@@ -191,10 +217,15 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         }
         campaignMap[campaign].spend += entry.cost || 0;
         campaignMap[campaign].conversions += entry.conversions || 0;
-        campaignMap[campaign].conversionValue += entry.conversionValue || 0;
         campaignMap[campaign].clicks += entry.clicks || 0;
         campaignMap[campaign].impressions += entry.impressions || 0;
     });
+
+    // Assign BD GA4 revenue to each campaign via direct match on event_campaign
+    for (const c of Object.values(campaignMap)) {
+        const campKey = normCamp(c.campaign);
+        c.conversionValue = ga4RevenueByCampaign[campKey] || 0;
+    }
 
     const byCampaign = Object.values(campaignMap)
         .map(c => ({
@@ -202,7 +233,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
             ctr: c.impressions > 0 ? (c.clicks / c.impressions) * 100 : 0,
             cpc: c.clicks > 0 ? c.spend / c.clicks : 0,
             cpa: c.conversions > 0 ? c.spend / c.conversions : 0,
-            roas: c.spend > 0 ? c.conversionValue / c.spend : 0,  // Campaign-level ROAS
+            roas: c.spend > 0 ? c.conversionValue / c.spend : 0,
         }))
         .sort((a, b) => b.spend - a.spend);
 
@@ -211,8 +242,8 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         totalGrossCost,
         spend_formatted: `R$ ${totalCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
         conversions: totalConversions,
-        conversionValue: totalConversionValue,  // Campaign revenue from google_ads
-        roas,  // ROAS calculated from conversion_value / cost from google_ads table
+        conversionValue: totalConversionValue,  // Revenue from BD GA4 (Atribuição 1 = Google_Ads)
+        roas,  // ROAS = BD GA4 revenue / Google Ads cost
         clicks: totalEcommerceClicks,
         impressions: totalEcommerceImpressions,
         ctr: avgCTR,
@@ -220,13 +251,12 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
         costPerConversion,
         cpc: totalEcommerceClicks > 0 ? totalCost / totalEcommerceClicks : 0,
         dailyData,
-        // Segmentação Leads vs Ecommerce
         segmented: {
             leads: {
                 spend: leadsSpend,
                 spend_formatted: `R$ ${leadsSpend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
                 conversions: leadsConversions,
-                conversionsLabel: 'Leads', // Label para exibição
+                conversionsLabel: 'Leads',
                 clicks: leadsClicks,
                 impressions: leadsImpressions,
                 meta: LEADS_META,
@@ -236,7 +266,7 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
                 spend: ecommerceSpend,
                 spend_formatted: `R$ ${ecommerceSpend.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
                 conversions: ecommerceConversions,
-                conversionsLabel: 'Compras', // Label para exibição
+                conversionsLabel: 'Compras',
                 clicks: ecommerceClicks,
                 impressions: ecommerceImpressions,
                 meta: ECOMMERCE_META,
@@ -244,7 +274,6 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
             },
         },
         byCampaign,
-        // Agregação por tipo de campanha (5 tipos) para drill-down interativo
         byCampaignType: (() => {
             const typeMap: Record<CampaignType, { spend: number; conversions: number; conversionValue: number; clicks: number; impressions: number; campaigns: string[] }> = {
                 'pmax_ecommerce': { spend: 0, conversions: 0, conversionValue: 0, clicks: 0, impressions: 0, campaigns: [] },
@@ -279,6 +308,8 @@ export const aggregateGoogleAdsKPIs = async (startDate?: Date, endDate?: Date) =
             })).filter(t => t.spend > 0);
         })(),
         rawData: data,
+        // BD GA4 items for frontend (product, city, campaign details)
+        bdGa4Items,
     };
 };
 

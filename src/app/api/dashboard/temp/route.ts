@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getBdMagData, getGoogleAdsStoreData } from '@/lib/data/sheets-store';
+import { getBdMagData, getGoogleAdsStoreData, getBdGa4Data } from '@/lib/data/sheets-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,15 +26,6 @@ function parseNumber(val: any): number {
     return isNaN(num) ? 0 : num;
 }
 
-function isCompletedStatus(status: string | null | undefined): boolean {
-    if (!status || status === '') return true;
-    const lower = status.toLowerCase();
-    return lower.includes('complete') || lower.includes('completo') ||
-        lower.includes('pago') || lower.includes('enviado') ||
-        lower.includes('faturado') || lower.includes('entregue') ||
-        lower.includes('delivered');
-}
-
 const PAID_MEDIA_ATTRIBUTIONS = ['Google_Ads', 'Meta Ads'];
 
 interface MonthData {
@@ -48,18 +39,11 @@ interface MonthData {
 function processMonth(
     bdMagRows: Record<string, any>[],
     gadsRows: Record<string, any>[],
+    bdGa4Rows: Record<string, any>[],
     monthStart: string,
     monthEnd: string,
 ): MonthData {
-    // Filter BD Mag: date in range, completed, paid media attribution
-    const filteredBdMag = bdMagRows.filter(r => {
-        const d = normalizeDate(r.data);
-        if (!d || d < monthStart || d > monthEnd) return false;
-        if (!isCompletedStatus(r.status)) return false;
-        return true;
-    });
-
-    // Filter Google Ads by date range, excluding Lead and Visita campaigns
+    // Filter Google Ads by date range, excluding Lead and Visita campaigns (for investment/cost only)
     const filteredGads = gadsRows.filter(r => {
         const d = normalizeDate(r.date);
         if (!d || d < monthStart || d > monthEnd) return false;
@@ -68,39 +52,47 @@ function processMonth(
         return true;
     });
 
-    // Google Ads: investment (cost) and revenue (conversion_value)
+    // Google Ads: investment (cost) from Google Ads sheet
     let investimento = 0;
-    let receita = 0;
     for (const g of filteredGads) {
         investimento += parseNumber(g.spend || g.cost || g.investimento);
-        receita += parseNumber(g.conversion_value || g.conv_value || g.receita);
     }
 
-    // Group by city from BD Mag (paid media attributed orders) for proportional distribution
-    const paidMediaOrders = filteredBdMag.filter(r =>
-        PAID_MEDIA_ATTRIBUTIONS.includes(r.atribuicao)
-    );
+    // Revenue from BD GA4 (atribuicao_1 = Google_Ads)
+    const filteredBdGa4 = bdGa4Rows.filter(r => {
+        const atrib = (r.atribuicao_1 || '').toString().trim();
+        if (atrib !== 'Google_Ads') return false;
+        const d = normalizeDate(r.date || r.data);
+        if (!d || d < monthStart || d > monthEnd) return false;
+        return true;
+    });
 
-    const cityMap: Record<string, { receitaBdMag: number; pedidos: Set<string> }> = {};
-    let totalReceitaBdMag = 0;
+    let receita = 0;
+    for (const r of filteredBdGa4) {
+        receita += parseNumber(r.purchase_revenue);
+    }
 
-    for (const r of paidMediaOrders) {
+    // Group by city from BD GA4 (Google_Ads orders) for proportional distribution
+    const cityMap: Record<string, { receitaGa4: number; pedidos: Set<string> }> = {};
+    let totalReceitaGa4 = 0;
+
+    for (const r of filteredBdGa4) {
         const cidade = (r.cidade || 'N/A').trim();
-        const rev = parseNumber(r.receita_do_produto);
-        const pedido = r.pedido || '';
+        const rev = parseNumber(r.purchase_revenue);
+        const pedido = r.transaction_id || '';
 
-        totalReceitaBdMag += rev;
-        if (!cityMap[cidade]) cityMap[cidade] = { receitaBdMag: 0, pedidos: new Set() };
-        cityMap[cidade].receitaBdMag += rev;
+        totalReceitaGa4 += rev;
+        if (!cityMap[cidade]) cityMap[cidade] = { receitaGa4: 0, pedidos: new Set() };
+        cityMap[cidade].receitaGa4 += rev;
         if (pedido) cityMap[cidade].pedidos.add(pedido);
     }
 
-    const pedidoSet = new Set(paidMediaOrders.map(r => r.pedido).filter(Boolean));
+    const pedidoSet = new Set(filteredBdGa4.map(r => r.transaction_id).filter(Boolean));
 
-    // Distribute Google Ads revenue and investment proportionally by city's BD Mag share
+    // Distribute revenue and investment proportionally by city's share
     const byCidade = Object.entries(cityMap)
         .map(([cidade, d]) => {
-            const percentual = totalReceitaBdMag > 0 ? (d.receitaBdMag / totalReceitaBdMag) * 100 : 0;
+            const percentual = totalReceitaGa4 > 0 ? (d.receitaGa4 / totalReceitaGa4) * 100 : 0;
             const cidadeReceita = receita * (percentual / 100);
             const cidadeInvestimento = investimento * (percentual / 100);
             return {
@@ -135,9 +127,10 @@ function getMonthRange(year: number, month: number): { start: string; end: strin
 
 export async function GET() {
     try {
-        const [bdMag, gads] = await Promise.all([
+        const [bdMag, gads, bdGa4] = await Promise.all([
             getBdMagData(),
             getGoogleAdsStoreData(),
+            getBdGa4Data(),
         ]);
 
         const now = new Date();
@@ -159,7 +152,7 @@ export async function GET() {
             for (let m = mStart; m <= mEnd; m++) {
                 const { start, end } = getMonthRange(y, m);
                 const key = MONTH_NAMES[m - 1] + (y > startYear ? `_${y}` : '');
-                const data = processMonth(bdMag, gads, start, end);
+                const data = processMonth(bdMag, gads, bdGa4, start, end);
                 months[key] = data;
                 monthLabels[key] = `${MONTH_LABELS[m - 1]} ${y}`;
                 totalInvestimento += data.investimento;

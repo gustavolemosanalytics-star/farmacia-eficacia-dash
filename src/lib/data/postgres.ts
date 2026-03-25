@@ -8,6 +8,7 @@
 
 import {
     getBdMagData,
+    getBdGa4Data,
     getGa4StoreData,
     getGoogleAdsStoreData,
     getTvSalesStoreData,
@@ -84,6 +85,20 @@ export type GA4SessionsItem = {
     addToCarts: number;
     checkouts: number;
     purchases: number;
+};
+
+export type BdGA4Item = {
+    transactionId: string;
+    date: string;
+    eventCampaign: string;
+    purchaseRevenue: number;
+    produto: string;
+    atribuicao1: string;
+    cidade: string;
+    uf: string;
+    status: string;
+    qdePedidos: number;
+    eventSourceMedium: string;
 };
 
 // ============================================
@@ -273,18 +288,48 @@ export async function getGA4SessionsData(startDate?: Date, endDate?: Date): Prom
 }
 
 // ============================================
+// BD GA4 — Google Ads Revenue from GA4 data
+// ============================================
+
+export async function getBdGA4GoogleAdsData(startDate?: Date, endDate?: Date): Promise<BdGA4Item[]> {
+    const allRows = await getBdGa4Data();
+    const filtered = allRows.filter(r => {
+        // Filter by atribuicao_1 = Google_Ads
+        const atrib = (r.atribuicao_1 || '').toString().trim();
+        if (atrib !== 'Google_Ads') return false;
+        // Date filter
+        if (!isInDateRange(r.date || r.data, startDate, endDate)) return false;
+        return true;
+    });
+
+    return filtered.map(r => ({
+        transactionId: r.transaction_id || '',
+        date: r.date || r.data || '',
+        eventCampaign: r.event_campaign || '',
+        purchaseRevenue: parseNumber(r.purchase_revenue),
+        produto: r.produto || r.prod2 || '',
+        atribuicao1: (r.atribuicao_1 || '').toString().trim(),
+        cidade: r.cidade || '',
+        uf: r.uf || '',
+        status: r.status || '',
+        qdePedidos: parseNumber(r.qde_pedidos) || 1,
+        eventSourceMedium: r.event_source_medium || '',
+    }));
+}
+
+// ============================================
 // CATALOGO KPIs AGGREGATION (replaces 14 SQL queries)
 // ============================================
 
 export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
-    const [allBdMag, allGoogleAds] = await Promise.all([
+    const [allBdMag, bdGa4GoogleAds] = await Promise.all([
         getBdMagData(),
-        getGoogleAdsStoreData(),
+        getBdGA4GoogleAdsData(filters.startDate, filters.endDate),
     ]);
 
     const rows = filterBdMagRows(allBdMag, filters);
 
-    // Single-pass aggregation
+    // Single-pass aggregation (BD Mag = Receita Magento)
     let totalReceita = 0;
     let totalSemFrete = 0;
     let totalComFrete = 0;
@@ -297,7 +342,6 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
     const dailyMap: Record<string, { receita: number; pedidos: number }> = {};
     const dailyAtribMap: Record<string, Record<string, number>> = {};
     const allAtribuicoesSet = new Set<string>();
-    let googleAdsReceita = 0;
     let roasReceita = 0;
 
     for (const r of rows) {
@@ -346,29 +390,29 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
             dailyAtribMap[normalizedDate][atribKey] = (dailyAtribMap[normalizedDate][atribKey] || 0) + receita;
         }
 
-        // Google Ads revenue
-        if (atrib.toLowerCase().includes('google')) {
-            googleAdsReceita += receita;
-        }
-
-        // ROAS revenue
+        // ROAS revenue (excludes vendedor and outros)
         const lowerAtrib = atrib.toLowerCase();
         if (atrib && lowerAtrib !== 'vendedor' && lowerAtrib !== 'outros') {
             roasReceita += receita;
         }
     }
 
-    // Google Ads conversion_value from google_ads table
-    const gadsFiltered = allGoogleAds.filter(r => isInDateRange(r.date, filters.startDate, filters.endDate));
-    let gadsConversionTotal = 0;
-    const gadsDailyMap: Record<string, number> = {};
-    for (const g of gadsFiltered) {
-        const cv = parseNumber(g.conversion_value || g.conv_value || g.receita);
-        gadsConversionTotal += cv;
-        const gDate = normalizeDate(g.date) || '';
-        if (gDate) {
-            gadsDailyMap[gDate] = (gadsDailyMap[gDate] || 0) + cv;
+    // Google Ads revenue from BD GA4 (atribuicao_1 = Google_Ads)
+    let googleAdsReceita = 0;
+    const ga4DailyMap: Record<string, number> = {};
+    for (const item of bdGa4GoogleAds) {
+        googleAdsReceita += item.purchaseRevenue;
+        const d = normalizeDate(item.date);
+        if (d) {
+            ga4DailyMap[d] = (ga4DailyMap[d] || 0) + item.purchaseRevenue;
         }
+    }
+
+    // Inject BD GA4 Google_Ads daily data into dailyAtribMap
+    allAtribuicoesSet.add('Google_Ads');
+    for (const [date, revenue] of Object.entries(ga4DailyMap)) {
+        if (!dailyAtribMap[date]) dailyAtribMap[date] = {};
+        dailyAtribMap[date]['Google_Ads'] = revenue;
     }
 
     // Build results
@@ -377,12 +421,12 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
     const totalProdutosVendidos = rows.length;
     const ticketMedio = totalPedidos > 0 ? totalSemFrete / totalPedidos : 0;
 
-    // Override Google_Ads with conversion_value from google_ads table
+    // Override Google_Ads in atribuicaoMap with BD GA4 revenue
+    atribuicaoMap['Google_Ads'] = googleAdsReceita;
+    allAtribuicoesSet.add('Google_Ads');
+
     const byAtribuicao = Object.entries(atribuicaoMap)
-        .map(([name, value]) => ({
-            name,
-            value: name === 'Google_Ads' ? gadsConversionTotal : value,
-        }))
+        .map(([name, value]) => ({ name, value }))
         .sort((a, b) => b.value - a.value);
 
     const byCategory = Object.entries(categoriaMap)
@@ -407,11 +451,6 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
         .map(([date, d]) => ({ date, receita: d.receita, pedidos: d.pedidos }))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-    // Inject google_ads daily data for dates only in google_ads
-    Object.keys(gadsDailyMap).forEach(date => {
-        if (!dailyAtribMap[date]) dailyAtribMap[date] = {};
-    });
-
     const allAtribuicoes = [...allAtribuicoesSet];
 
     const dailyRevenueByAtribuicao = Object.entries(dailyAtribMap)
@@ -419,16 +458,13 @@ export async function getCatalogoKPIsAggregated(filters: CatalogoFilters = {}) {
         .map(([date, atribData]) => {
             const entry: any = { date };
             allAtribuicoes.forEach(a => {
-                if (a === 'Google_Ads') {
-                    entry[a] = gadsDailyMap[date] || 0;
-                } else {
-                    entry[a] = atribData[a] || 0;
-                }
+                entry[a] = atribData[a] || 0;
             });
             return entry;
         });
 
-    const receitaGoogleAds = gadsConversionTotal;
+    // Google Ads revenue from BD Mag (atribuicao = Google_Ads)
+    const receitaGoogleAds = googleAdsReceita;
     const receitaParaROAS = roasReceita;
 
     // Filter options from ALL data (not filtered)

@@ -69,7 +69,7 @@ function ProductROASTable({ products }: { products: any[] }) {
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-card-foreground">Quais produtos trazem mais retorno via Google Ads?</CardTitle>
                     <p className="text-xs text-muted-foreground">
-                        Cruzamento de bd_mag (atribuição Google_Ads) com google_ads por campanha e data
+                        Cruzamento de BD GA4 (Atribuição 1 = Google_Ads) com google_ads por Event campaign e data
                     </p>
                 </CardHeader>
                 <CardContent>
@@ -139,48 +139,21 @@ export default function MidiaPagaPage() {
 
     // Advanced Analytics
     const analytics = useMemo(() => {
-        if (!catalogoData?.rawData || !gadsKpis) return null;
+        if (!gadsKpis) return null;
 
-        const filtered = catalogoData.rawData.filter((d: any) =>
-            d.status?.toLowerCase().includes('complete') ||
-            d.status?.toLowerCase().includes('completo') ||
-            d.status?.toLowerCase().includes('pago') ||
-            d.status?.toLowerCase().includes('enviado') ||
-            d.status?.toLowerCase().includes('faturado') ||
-            !d.status
-        );
+        // BD GA4 items (atribuicao_1 = Google_Ads) from server
+        const googleAdsOrders = gadsKpis.bdGa4Items || [];
 
-        // Google Ads attributed revenue
-        const googleAdsOrders = filtered.filter((d: any) =>
-            d.atribuicao?.toLowerCase().includes('google') ||
-            d.midia?.toLowerCase().includes('google') ||
-            d.origem?.toLowerCase().includes('google')
-        );
+        const receitaGoogleAds = googleAdsOrders.reduce((sum: number, d: any) => sum + (d.purchaseRevenue || 0), 0);
 
-        const receitaGoogleAds = googleAdsOrders.reduce((sum: number, d: any) => sum + (d.receitaProduto || 0), 0);
+        // Revenue by Attribution from catalogoData (BD Mag)
+        const byAtribuicao = catalogoData?.byAtribuicao || [];
 
-        // Revenue by Attribution
-        const atribuicaoRevenue: { [key: string]: number } = {};
-        filtered.forEach((d: any) => {
-            const atrib = d.atribuicao || 'Não identificado';
-            atribuicaoRevenue[atrib] = (atribuicaoRevenue[atrib] || 0) + (d.receitaProduto || 0);
-        });
-        const byAtribuicao = Object.entries(atribuicaoRevenue)
-            .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value);
-
-        // Improved Normalization Helpers
-        const normalizeCamp = (c: string) =>
-            (c || '').toLowerCase().trim()
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                .replace(/^\[pmax\]\s*/, '')
-                .replace(/^e_pmax_pla_/, '')
-                .replace(/pmax/g, '')
-                .replace(/[ \-_.\.]/g, ''); // Remove spaces, hyphens, underscores, AND dots
+        // Normalization helpers for campaign matching
+        const normalizeCamp = (c: string) => (c || '').toLowerCase().trim();
 
         const normalizeDate = (dStr: string) => {
             if (!dStr) return '';
-            // Handle DD/MM/YYYY HH:MM:SS
             if (dStr.includes('/')) {
                 const parts = dStr.split(' ')[0].split('/');
                 if (parts.length === 3) {
@@ -193,7 +166,7 @@ export default function MidiaPagaPage() {
             return (dStr || '').split(' ')[0];
         };
 
-        // Granular Category performance matching bd_mag.camp with google_ads.campaign on specific dates
+        // Spend by campaign+day from google_ads
         const spendByCampDay: { [key: string]: number } = {};
         if (gadsKpis.rawData) {
             gadsKpis.rawData.forEach((g: any) => {
@@ -206,64 +179,56 @@ export default function MidiaPagaPage() {
             });
         }
 
-        const revenueByCampDayInMag: { [key: string]: number } = {};
+        // Revenue by campaign+day from BD GA4
+        const revenueByCampDay: { [key: string]: number } = {};
         googleAdsOrders.forEach((o: any) => {
-            const day = normalizeDate(o.data);
-            const camp = normalizeCamp(o.campanha);
+            const day = normalizeDate(o.date);
+            const camp = normalizeCamp(o.eventCampaign);
             if (day && camp) {
                 const key = `${day}_${camp}`;
-                revenueByCampDayInMag[key] = (revenueByCampDayInMag[key] || 0) + (o.receitaProduto || 0);
+                revenueByCampDay[key] = (revenueByCampDay[key] || 0) + (o.purchaseRevenue || 0);
             }
         });
 
-        const categoryStats: { [cat: string]: { receita: number; pedidos: number; investimento: number } } = {};
+        // Product stats from BD GA4 (using produto field and eventCampaign for cross-matching)
+        const productStatsMap: { [key: string]: { nome: string; receita: number; quantidade: number; investimento: number } } = {};
         googleAdsOrders.forEach((o: any) => {
-            const cat = o.categoria?.split(',')[0]?.trim() || 'Outros';
-            const day = normalizeDate(o.data);
-            const camp = normalizeCamp(o.campanha);
+            const nome = o.produto || 'Sem Nome';
+            const day = normalizeDate(o.date);
+            const camp = normalizeCamp(o.eventCampaign);
             const key = `${day}_${camp}`;
 
-            if (!categoryStats[cat]) categoryStats[cat] = { receita: 0, pedidos: 0, investimento: 0 };
+            if (!productStatsMap[nome]) productStatsMap[nome] = { nome, receita: 0, quantidade: 0, investimento: 0 };
 
-            const orderRevenue = o.receitaProduto || 0;
-            categoryStats[cat].receita += orderRevenue;
-            categoryStats[cat].pedidos += 1;
+            const orderRevenue = o.purchaseRevenue || 0;
+            productStatsMap[nome].receita += orderRevenue;
+            productStatsMap[nome].quantidade += 1;
 
-            const campDayRevenue = revenueByCampDayInMag[key] || 0;
+            const campDayRevenue = revenueByCampDay[key] || 0;
             const campDaySpend = spendByCampDay[key] || 0;
-
-            // Attribute spend proportionally to revenue within the specific campaign and day
             if (campDayRevenue > 0) {
-                const attributedSpend = (orderRevenue / campDayRevenue) * campDaySpend;
-                categoryStats[cat].investimento += attributedSpend;
+                productStatsMap[nome].investimento += (orderRevenue / campDayRevenue) * campDaySpend;
             }
         });
 
-        const topCategoriesGads = Object.entries(categoryStats)
-            .map(([name, data]) => ({
-                name: name.length > 20 ? name.substring(0, 20) + '...' : name,
-                ...data,
-                roas: data.investimento > 0 ? data.receita / data.investimento : 0
+        // Top categories — BD GA4 doesn't have category, group by produto instead
+        const topCategoriesGads = Object.values(productStatsMap)
+            .map(p => ({
+                name: p.nome.length > 20 ? p.nome.substring(0, 20) + '...' : p.nome,
+                receita: p.receita,
+                pedidos: p.quantidade,
+                investimento: p.investimento,
+                roas: p.investimento > 0 ? p.receita / p.investimento : 0
             }))
             .sort((a, b) => b.receita - a.receita)
-            .slice(0, 10); // Show top 10 as requested in context of rankings
+            .slice(0, 10);
 
-        // Revenue per Campaign (Actual from Magento)
-        const revenueByCampaign: { [name: string]: number } = {};
-        googleAdsOrders.forEach((d: any) => {
-            const campName = d.campanha?.toLowerCase().trim();
-            if (campName) {
-                revenueByCampaign[campName] = (revenueByCampaign[campName] || 0) + (d.receitaProduto || 0);
-            }
-        });
-
-        // Campaign analysis with ACTUAL ROAS per campaign
+        // Campaign analysis with ROAS per campaign (revenue from BD GA4 via byCampaign)
         const campaignAnalysis = (gadsKpis.byCampaign || []).map((camp: any) => {
             const campName = camp.campaign?.toLowerCase().trim();
             const campaignRevenue = camp.conversionValue || 0;
             const campaignRoas = camp.spend > 0 ? campaignRevenue / camp.spend : 0;
 
-            // Sessions from Cross Analysis (GA4)
             const ga4Camp = ga4Kpis?.campaignCrossAnalysis?.find((c: any) => c.campaign?.toLowerCase().trim() === campName);
             const sessions = ga4Camp?.sessions || 0;
             const costPerSession = sessions > 0 ? camp.spend / sessions : 0;
@@ -283,7 +248,6 @@ export default function MidiaPagaPage() {
         const worstCampaign = campaignAnalysis.filter((c: any) => c.spend > 100).sort((a: any, b: any) => a.roas - b.roas)[0];
 
         // Investment Potential Analysis
-        // Calculate averages for comparison
         const avgSpend = campaignAnalysis.reduce((sum: number, c: any) => sum + (c.spend || 0), 0) / (campaignAnalysis.length || 1);
         const avgRoas = campaignAnalysis.filter((c: any) => c.roas > 0).reduce((sum: number, c: any) => sum + c.roas, 0) / (campaignAnalysis.filter((c: any) => c.roas > 0).length || 1);
         const avgEfficiency = campaignAnalysis.filter((c: any) => c.efficiency > 0).reduce((sum: number, c: any) => sum + c.efficiency, 0) / (campaignAnalysis.filter((c: any) => c.efficiency > 0).length || 1);
@@ -348,20 +312,13 @@ export default function MidiaPagaPage() {
             .sort((a: any, b: any) => b.potentialScore - a.potentialScore)
             .slice(0, 10);
 
-        // Daily performance
+        // Daily performance (from BD GA4)
         const dailyMap: { [date: string]: { receita: number; custo: number } } = {};
         googleAdsOrders.forEach((d: any) => {
-            let dateStr = '';
-            if (d.data) {
-                if (d.data.includes('/')) {
-                    dateStr = d.data.split('/').reverse().join('-');
-                } else {
-                    dateStr = d.data.split(' ')[0];
-                }
-            }
+            const dateStr = normalizeDate(d.date);
             if (dateStr) {
                 if (!dailyMap[dateStr]) dailyMap[dateStr] = { receita: 0, custo: 0 };
-                dailyMap[dateStr].receita += d.receitaProduto || 0;
+                dailyMap[dateStr].receita += d.purchaseRevenue || 0;
             }
         });
 
@@ -376,33 +333,11 @@ export default function MidiaPagaPage() {
             .filter(d => d.receita > 0 || d.custo > 0)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        // Dashboard Level ROAS: always conversion_value / spend from google_ads (excluding Lead/Visita)
+        // Dashboard Level ROAS: BD GA4 revenue / Google Ads spend (excluding Lead/Visita)
         const roas = gadsKpis.roas || 0;
 
-        // Product-level ROAS analysis: crossing bd_mag (Google_Ads) with google_ads by camp/campaign
-        const productStats: { [key: string]: { nome: string; receita: number; quantidade: number; investimento: number } } = {};
-        googleAdsOrders.forEach((o: any) => {
-            const nome = o.nomeProduto || 'Sem Nome';
-            const day = normalizeDate(o.data);
-            const camp = normalizeCamp(o.campanha);
-            const key = `${day}_${camp}`;
-
-            if (!productStats[nome]) productStats[nome] = { nome, receita: 0, quantidade: 0, investimento: 0 };
-
-            const orderRevenue = o.receitaProduto || 0;
-            productStats[nome].receita += orderRevenue;
-            productStats[nome].quantidade += 1;
-
-            const campDayRevenue = revenueByCampDayInMag[key] || 0;
-            const campDaySpend = spendByCampDay[key] || 0;
-
-            if (campDayRevenue > 0) {
-                const attributedSpend = (orderRevenue / campDayRevenue) * campDaySpend;
-                productStats[nome].investimento += attributedSpend;
-            }
-        });
-
-        const productAnalysis = Object.values(productStats)
+        // Product-level ROAS analysis from BD GA4
+        const productAnalysis = Object.values(productStatsMap)
             .map(p => ({
                 ...p,
                 roas: p.investimento > 0 ? p.receita / p.investimento : 0,
@@ -424,21 +359,21 @@ export default function MidiaPagaPage() {
 
         const productsByTypeMap: Record<string, Record<string, { nome: string; receita: number; quantidade: number; investimento: number }>> = {};
         googleAdsOrders.forEach((o: any) => {
-            const nome = o.nomeProduto || 'Sem Nome';
-            const rawCamp = o.campanha || '';
+            const nome = o.produto || 'Sem Nome';
+            const rawCamp = o.eventCampaign || '';
             const tipo = classifyCampaignType(rawCamp);
-            const day = normalizeDate(o.data);
+            const day = normalizeDate(o.date);
             const camp = normalizeCamp(rawCamp);
             const key = `${day}_${camp}`;
 
             if (!productsByTypeMap[tipo]) productsByTypeMap[tipo] = {};
             if (!productsByTypeMap[tipo][nome]) productsByTypeMap[tipo][nome] = { nome, receita: 0, quantidade: 0, investimento: 0 };
 
-            const orderRevenue = o.receitaProduto || 0;
+            const orderRevenue = o.purchaseRevenue || 0;
             productsByTypeMap[tipo][nome].receita += orderRevenue;
             productsByTypeMap[tipo][nome].quantidade += 1;
 
-            const campDayRevenue = revenueByCampDayInMag[key] || 0;
+            const campDayRevenue = revenueByCampDay[key] || 0;
             const campDaySpend = spendByCampDay[key] || 0;
             if (campDayRevenue > 0) {
                 productsByTypeMap[tipo][nome].investimento += (orderRevenue / campDayRevenue) * campDaySpend;
@@ -473,7 +408,7 @@ export default function MidiaPagaPage() {
             productAnalysis,
             productsByType,
         };
-    }, [catalogoData, gadsKpis, ga4Kpis]);
+    }, [gadsKpis, ga4Kpis, catalogoData]);
 
     // Intelligent Insights
     const insights = useMemo(() => {
@@ -524,7 +459,7 @@ export default function MidiaPagaPage() {
             result.push({
                 type: 'insight',
                 icon: Lightbulb,
-                title: 'Categoria Mais Rentável',
+                title: 'Produto Mais Rentável',
                 description: `"${topCat.name}" gera R$${(topCat.receita / 1000).toFixed(1)}k via Google Ads.`
             });
         }
@@ -627,7 +562,7 @@ export default function MidiaPagaPage() {
         <div className="space-y-6">
             <PageFilters
                 title="Mídia Paga"
-                description="Performance de Google Ads • Dados do BD GAds e BD Mag"
+                description="Performance de Google Ads • Receita via BD GA4 • Spend via Google Ads"
             >
                 <FilterDropdown label="Tipo Campanha" options={campaignTypeOptions} value={filterCampaignType} onChange={setFilterCampaignType} />
             </PageFilters>
@@ -706,7 +641,7 @@ export default function MidiaPagaPage() {
                                     <div className="h-1 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
                                         <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min((roas / 3) * 100, 100)}%` }} />
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">Conv. Value: R$ {(gadsKpis?.conversionValue || 0).toLocaleString('pt-BR')}</p>
+                                    <p className="text-[10px] text-muted-foreground">Receita GA4: R$ {(gadsKpis?.conversionValue || 0).toLocaleString('pt-BR')}</p>
                                 </CardContent>
                             </Card>
 
